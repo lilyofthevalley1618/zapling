@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F5F2FF">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Zapling">
 <title>Zapling: learn electronics, one spark at a time</title>
 <style>
 :root{
@@ -297,6 +301,26 @@ body:has(.lesson) #askFab,body:has(.sprigchat) #askFab{display:none}
 .mcard{position:relative;aspect-ratio:1/.9;border:2px solid var(--line);border-radius:16px;background:var(--peril);cursor:pointer;box-shadow:0 4px 0 var(--line);padding:6px;font-family:inherit}
 .mcard .back{display:flex;width:56%;margin:auto}.mcard .face{display:none;align-items:center;justify-content:center;height:100%;font-size:15px;color:var(--ink)}.mcard .face svg{width:90%}
 .mcard.up{background:#fff}.mcard.up .back{display:none}.mcard.up .face{display:flex}.mcard.done{border-color:var(--mint);box-shadow:0 4px 0 var(--mint)}
+/* ---- Onboarding ---- */
+.onb{position:fixed;inset:0;z-index:105;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto;animation:fade .25s}
+.onb .box{width:100%;max-width:440px;position:relative;padding-top:30px}
+.onbskip{position:absolute;top:0;right:0;border:0;background:transparent;font:inherit;font-weight:900;color:var(--ink2);font-size:15px;cursor:pointer;padding:6px}
+.onb .bigtitle{margin:6px 0}.onb .dots{display:flex;gap:6px;justify-content:center;margin-top:16px}
+.onb .dots i{width:8px;height:8px;border-radius:99px;background:var(--line)}.onb .dots i.on{background:var(--peri);width:22px}
+.goalopts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.goalopt{flex-direction:column;align-items:flex-start;gap:2px}.goalopt b{font-size:22px}.goalopt span{font-weight:900;color:var(--mintd)}.goalopt small{color:var(--ink2);font-weight:700}
+.timein{width:100%;border:2px solid var(--line);border-radius:12px;padding:10px;font:inherit;font-weight:800;font-size:18px;background:#fff;color:var(--ink)}
+/* ---- Shop ---- */
+.shopwrap{text-align:center}.avprev{width:150px;margin:0 auto}
+.shopact{display:flex;gap:10px;align-items:center;justify-content:center;min-height:44px;margin:4px 0 10px;flex-wrap:wrap}.shopact .btn{width:auto;padding:9px 16px}
+.shopcats{display:flex;flex-wrap:wrap;justify-content:center;margin-bottom:10px}
+.shopgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sitem{border:2px solid var(--line);background:#fff;border-radius:16px;padding:6px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;font-family:inherit;color:var(--ink);box-shadow:0 3px 0 var(--line)}
+.sitem svg{width:64px;height:auto}.sitem b{font-size:12px}.sitem span{font-size:12px;font-weight:800;color:var(--ink2);display:flex;align-items:center;gap:2px}.sitem span svg{width:15px}
+.sitem.sel{border-color:var(--peri);box-shadow:0 3px 0 var(--peri)}.sitem.eq span{color:var(--mintd)}
+.plunits{display:flex;flex-direction:column;gap:6px;align-items:center;margin:6px 0}
+@media (max-width:400px){.tab{font-size:10.5px;padding:6px 1px}.tab svg{width:24px;height:24px}.bottomnav .inner{gap:2px}}
+@media (max-width:380px){#btnSound,.chip .lv,.brand{display:none}.chip .cd{display:none}}
 </style>
 </head>
 <body>
@@ -307,12 +331,14 @@ body:has(.lesson) #askFab,body:has(.sprigchat) #askFab{display:none}
     <span class="chip" id="chipStreak" title="Daily streak"></span>
     <span class="chip" id="chipFreeze" title="Streak freezes"></span>
     <span class="chip" id="chipXp" title="XP and level"></span>
+    <span class="chip" id="chipTok" title="Tokens"></span>
     <button class="iconbtn" id="btnSound" aria-label="Toggle sound"></button>
   </header>
   <main>
     <section id="v-learn" class="view on" aria-label="Lesson path"></section>
     <section id="v-review" class="view" aria-label="Flashcards"></section>
     <section id="v-games" class="view" aria-label="Games"></section>
+    <section id="v-shop" class="view" aria-label="Avatar shop"></section>
     <section id="v-profile" class="view" aria-label="Profile and settings"></section>
   </main>
   <nav class="bottomnav" aria-label="Main">
@@ -320,6 +346,7 @@ body:has(.lesson) #askFab,body:has(.sprigchat) #askFab{display:none}
       <button class="tab on" data-tab="learn" id="tabLearn"></button>
       <button class="tab" data-tab="review" id="tabReview"></button>
       <button class="tab" data-tab="games" id="tabGames"></button>
+      <button class="tab" data-tab="shop" id="tabShop"></button>
       <button class="tab" data-tab="profile" id="tabProfile"></button>
     </div>
   </nav>
@@ -2015,19 +2042,21 @@ function renderTop() {
   $('#chipStreak').title = `${S.streak}-day streak` + (activeToday() ? ' (done today)' : ' (do a lesson today to keep it going)');
   $('#chipFreeze').innerHTML = ICON.snow() + `<span>${S.freezes}</span>`;
   $('#chipFreeze').title = `${S.freezes} streak freeze${S.freezes === 1 ? '' : 's'}: saves your streak if you miss a day`;
-  $('#chipXp').innerHTML = ICON.bolt() + `<span>${S.xp}</span><span style="color:var(--perid);font-size:12px;margin-left:2px">Lv${lv}</span>`;
+  $('#chipXp').innerHTML = ICON.bolt() + `<span>${S.xp}</span><span class="lv" style="color:var(--perid);font-size:12px;margin-left:2px">Lv${lv}</span>`;
   $('#btnSound').innerHTML = S.sound ? ICON.soundOn() : ICON.soundOff();
   $('#btnSound').setAttribute('aria-pressed', S.sound);
   const due = dueCards().length;
   $('#tabLearn').innerHTML = ICON.path() + 'Learn';
   $('#tabReview').innerHTML = ICON.cards() + 'Flashcards' + (due ? `<span class="badge">${due}</span>` : '');
   $('#tabGames').innerHTML = ICON.game() + 'Games';
+  $('#tabShop').innerHTML = ICON.shop() + 'Shop';
+  $('#chipTok').innerHTML = ICON.token() + `<span>${S.tokens || 0}</span>`;
   $('#tabProfile').innerHTML = ICON.user() + 'Profile';
 }
 function showTab(t) {
   $$('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   $$('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + t));
-  if (t === 'learn') renderPath(); if (t === 'review') renderReview(); if (t === 'profile') renderProfile(); if (t === 'games') renderGames();
+  if (t === 'learn') renderPath(); if (t === 'review') renderReview(); if (t === 'profile') renderProfile(); if (t === 'games') renderGames(); if (t === 'shop') renderShop();
   window.scrollTo(0, 0);
 }
 
@@ -2049,7 +2078,7 @@ function renderPath() {
   const v = $('#v-learn'); v.innerHTML = '';
   const dxp = S.daily.d === today() ? S.daily.xp : 0;
   const greet = activeToday() ? `Nice work today! Your streak is lit.` : (S.xp === 0 ? `Hi, I'm Sprig! Let's learn how electricity really works, one tiny lesson at a time.` : `Welcome back! One lesson keeps your streak going.`);
-  v.appendChild(el(`<div class="hello">${mascot(activeToday() ? 'cheer' : 'happy')}<div class="txt" style="flex:1"><b>${greet}</b><div class="small" style="margin-top:4px">Daily goal: ${Math.min(dxp, DAILY_GOAL)} / ${DAILY_GOAL} XP</div><div class="dailygoal"><i style="width:${Math.min(100, dxp / DAILY_GOAL * 100)}%"></i></div></div></div>`));
+  v.appendChild(el(`<div class="hello">${mascot(activeToday() ? 'cheer' : 'happy')}<div class="txt" style="flex:1"><b>${greet}</b>${goalBar()}</div></div>`));
   let mascotPlaced = false;
   UNITS.forEach(u => {
     const nodes = unitNodes(u);
@@ -2273,6 +2302,7 @@ function complete() {
   const leveled = addXp(R.xp);
   const first = !S.done[R.id];
   S.done[R.id] = { at: today() };
+  const tok = lessonTokens(R.id);
   LESSONS[R.id].cards.forEach(id => { if (!S.cards[id]) S.cards[id] = { box: 1, due: today() }; });
   const bumped = bumpStreak(); save();
   const acc = R.graded ? Math.round(R.correct / R.graded * 100) : 100;
@@ -2281,7 +2311,7 @@ function complete() {
     <div class="statrow">
       <div class="stat" style="border-color:var(--sun)"><div class="h" style="background:var(--sun)">XP earned</div><div class="v">${ICON.bolt()}${R.xp}</div></div>
       <div class="stat" style="border-color:var(--mint)"><div class="h" style="background:var(--mint)">Accuracy</div><div class="v">${acc}%</div></div>
-      <div class="stat" style="border-color:var(--coral)"><div class="h" style="background:var(--coral)">Streak</div><div class="v">${ICON.flame(true)}${S.streak}</div></div>
+      <div class="stat" style="border-color:var(--sund)"><div class="h" style="background:var(--sund)">Tokens</div><div class="v">${ICON.token()}+${tok}</div></div>
     </div>
     ${bumped ? `<p class="status ok" style="margin:0 auto 8px">${S.streak === 1 ? 'Streak started! Come back tomorrow.' : 'Streak extended!'}</p>` : ''}
     <p class="small">${first ? `+${LESSONS[R.id].cards.length} flashcards added to your deck` : 'Practice makes perfect!'}</p></div>`;
@@ -2305,6 +2335,7 @@ function testResults() {
   ts.attempts++; ts.best = Math.max(ts.best, pct);
   let leveled = false;
   if (firstPass) { ts.passed = true; leveled = addXp(50); }
+  const tokT = pass ? testTokens(R.id) : 0; if (tokT) pendingToasts.push([`+${tokT} tokens for passing the unit test!`, ICON.token()]);
   if (pass) bumpStreak();
   save();
   const wrongTags = [...new Set(R.results.filter(r => !r.ok).map(r => r.step.tag))];
@@ -2671,7 +2702,7 @@ function renderProfile() {
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
   const allL = UNITS.flatMap(u => u.lessons), doneL = allL.filter(id => S.done[id]).length, passed = UNITS.filter(u => (S.tests[u.test] || {}).passed).length;
   const days = Array.from({ length: 7 }, (_, i) => addDays(today(), i - 6));
-  v.appendChild(el(`<div class="pagehead"><span style="width:60px">${mascot('cheer')}</span><div><h1>Your progress</h1><p>Level ${lv} spark</p></div></div>`));
+  v.appendChild(el(`<div class="pagehead"><span style="width:70px;cursor:pointer" id="profAv" title="Customize in the Shop">${avatarSVG()}</span><div><h1>Your progress</h1><p>Level ${lv} spark</p></div></div>`));
   v.appendChild(el(`<div class="panel"><h3>Level ${lv}</h3><div class="lvlbar"><i style="width:${(S.xp - a) / (b - a) * 100}%"></i></div><div class="small">${S.xp} XP · ${b - S.xp} XP to level ${lv + 1}</div>
     <div class="statrow"><div class="stat" style="border-color:var(--coral)"><div class="h" style="background:var(--coral)">Streak</div><div class="v">${ICON.flame(activeToday())}${S.streak}</div></div>
     <div class="stat" style="border-color:var(--sun)"><div class="h" style="background:var(--sund)">Best</div><div class="v">${S.best}</div></div>
@@ -2683,6 +2714,8 @@ function renderProfile() {
     <div class="setrow"><div class="l">Sound effects<small>Little chimes for right and wrong answers</small></div><button class="switch ${S.sound ? 'on' : ''}" id="swSound" role="switch" aria-checked="${S.sound}" aria-label="Sound effects"></button></div>
     <div class="setrow"><div class="l">Reset progress<small>Erase XP, streak, lessons and cards on this device</small></div><button class="btn coral" id="btnReset" style="width:auto;padding:10px 16px">Reset</button></div></div>`);
   v.appendChild(sp);
+  $('#profAv').onclick = () => showTab('shop');
+  v.appendChild(goalPanel());
   v.appendChild(aiPanel());
   v.appendChild(el(`<p class="small center" style="margin:4px 20px 30px">Zapling prototype · Units 1–6 · progress is saved in this browser only.</p>`));
   $('#swSound').onclick = () => { S.sound = !S.sound; save(); renderTop(); renderProfile(); SFX.tap(); };
@@ -3371,12 +3404,282 @@ function gameOver() {
   SFX.done(); if (rec && GM.score) confetti(); if (lvUp) toast('Level up!', ICON.star());
 }
 /* =========================================================
+   ONBOARDING · DAILY GOAL (active minutes) · REMINDERS · PWA
+   Everything lives in S.prefs / S.time, so it syncs with the save
+   if accounts are added later (see onboardingResult()).
+   ========================================================= */
+const GOALS = [[5, 'Casual', 'A quick spark'], [10, 'Regular', 'A lesson a day'], [15, 'Serious', 'Real momentum'], [30, 'Really dedicated', 'Deep practice']];
+const IDLE_MS = 60000, SITE_URL = 'https://lilyofthevalley1618.github.io/zapling/';
+function ensurePrefs() {
+  if (!S.prefs || typeof S.prefs !== 'object') S.prefs = {};
+  if (![5, 10, 15, 30].includes(S.prefs.goalMin)) S.prefs.goalMin = 10;
+  if (!S.prefs.remind || typeof S.prefs.remind !== 'object') S.prefs.remind = { on: false, time: '19:00' };
+  if (!/^\d\d:\d\d$/.test(S.prefs.remind.time || '')) S.prefs.remind.time = '19:00';
+  if (!S.time || S.time.d !== today()) S.time = { d: today(), sec: 0, hit: false };
+}
+/* hook for a future account signup: send this with the new account */
+const onboardingResult = () => ({ onboarded: S.prefs.onboarded || null, goalMin: S.prefs.goalMin, remind: { ...S.prefs.remind } });
+const goalSec = () => S.prefs.goalMin * 60;
+const todayMin = () => Math.floor((S.time.d === today() ? S.time.sec : 0) / 60);
+const goalBar = () => `<div class="small" style="margin-top:4px">Daily goal: <b>${Math.min(todayMin(), S.prefs.goalMin)} / ${S.prefs.goalMin} min</b>${S.time.hit ? ' ✓' : ''}</div><div class="dailygoal"><i style="width:${Math.min(100, (S.time.sec || 0) / goalSec() * 100)}%"></i></div>`;
+
+/* ---------- active learning time ---------- */
+let lastAct = Date.now(), tSave = 0;
+['pointerdown', 'keydown', 'wheel', 'touchstart', 'input'].forEach(e => addEventListener(e, () => { lastAct = Date.now(); }, { passive: true, capture: true }));
+const onLearningScreen = () => !!(R && $('.lesson')) || !!(typeof GM !== 'undefined' && GM && !GM.over) || ($('#v-review').classList.contains('on') && !$('.lesson'));
+function tickTime() {
+  if (S.time.d !== today()) S.time = { d: today(), sec: 0, hit: false };
+  if (document.visibilityState !== 'visible' || Date.now() - lastAct > IDLE_MS || !onLearningScreen()) return;
+  S.time.sec++;
+  if (!S.time.hit && S.time.sec >= goalSec()) { S.time.hit = true; save(); confetti(); SFX.level(); toast(`Daily goal reached: ${S.prefs.goalMin} minutes! Sprig is proud.`, ICON.star()); }
+  if (++tSave >= 10) { tSave = 0; save(); }
+}
+
+/* ---------- reminders ---------- */
+const notifOK = () => 'Notification' in window;
+async function notify(title, body) {
+  try {
+    const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+    if (reg && reg.showNotification) return reg.showNotification(title, { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'zapling-daily' });
+    return new Notification(title, { body, icon: 'icon-192.png', tag: 'zapling-daily' });
+  } catch (e) { }
+}
+function checkReminder() {
+  const r = S.prefs.remind; if (!r.on || !notifOK() || Notification.permission !== 'granted' || r.last === today() || S.time.hit) return;
+  const [h, m] = r.time.split(':').map(Number), d = new Date(now());
+  if (d.getHours() * 60 + d.getMinutes() < h * 60 + m) return;
+  r.last = today(); save();
+  notify('Time for a little Zapling spark ⚡', `${S.prefs.goalMin - Math.min(todayMin(), S.prefs.goalMin)} minutes left on today's goal. Sprig saved you a seat!`);
+}
+async function askNotify() {
+  if (!notifOK()) return 'unsupported';
+  try { return await Notification.requestPermission(); } catch (e) { return 'denied'; }
+}
+function downloadICS() {
+  const [h, m] = S.prefs.remind.time.split(':'), d = today().replace(/-/g, ''), stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Zapling//Daily reminder//EN', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT', `UID:zapling-daily-${Date.now()}@zapling`, `DTSTAMP:${stamp}`,
+    `DTSTART:${d}T${h}${m}00`, `DURATION:PT${S.prefs.goalMin}M`, 'RRULE:FREQ=DAILY', 'SUMMARY:Zapling practice ⚡', `DESCRIPTION:${S.prefs.goalMin} minutes with Sprig: ${SITE_URL}`, `URL:${SITE_URL}`,
+    'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Zapling practice', 'TRIGGER:PT0M', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' })); a.download = 'zapling-daily-reminder.ics';
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  window.__lastICS = ics; return ics;
+}
+const REMIND_NOTE = `<div class="warn" style="background:var(--sunl);border-radius:12px;padding:9px 11px;font-size:13px;font-weight:700;color:#6B4A00;margin-top:10px">Honest note: Zapling has no server, so it can only nudge you <b>while it's open</b> (a background tab on a computer counts). It can't wake a closed browser, and iPhones don't show these at all. For a reminder that always works, add it to your calendar.</div>`;
+
+/* ---------- onboarding ---------- */
+function showOnboarding() {
+  const returning = S.xp > 0 || Object.keys(S.done).length > 0;
+  let view = 'welcome', goal = S.prefs.goalMin, want = false, time = S.prefs.remind.time, perm = '', level = S.prefs.level || null, PL = null;
+  const O = el(`<div class="onb" role="dialog" aria-modal="true" aria-label="Welcome to Zapling"><div class="box"><button class="onbskip" id="onbSkip">Skip</button><div id="onbBody"></div><div class="dots" id="onbDots"></div></div></div>`);
+  document.body.appendChild(O);
+  const ORDER = ['welcome', 'level', 'goal', 'remind'];
+  const finish = skipped => { S.prefs.goalMin = goal; if (level) S.prefs.level = level; S.prefs.remind = Object.assign(S.prefs.remind, { on: want && perm !== 'denied', time }); S.prefs.onboarded = { at: new Date().toISOString(), v: 1, skipped: !!skipped, returning, level }; save(); O.remove(); renderTop(); showTab('learn'); if (!skipped) toast(`Goal set: ${goal} min a day`, ICON.star()); };
+  const go = v => { view = v; SFX.tap(); draw(); };
+  const draw = () => {
+    const B = $('#onbBody', O), di = ORDER.indexOf(view === 'quiz' || view === 'result' ? 'level' : view);
+    $('#onbDots', O).innerHTML = ORDER.map((_, i) => `<i class="${i === di ? 'on' : ''}"></i>`).join('');
+    if (view === 'welcome') B.innerHTML = `<div class="center">${mascot('cheer', 'style="width:130px"')}<div class="bigtitle">${returning ? 'Welcome back!' : 'Hi, I\'m Sprig!'}</div><p class="body" style="color:var(--ink2)">${returning ? 'Zapling now has daily goals, reminders and a placement check. Your XP, streak and lessons are all safe. Want to set them up? (30 seconds)' : 'Zapling teaches electronics from zero, in tiny friendly lessons with circuits you can play with. Let\'s set things up.'}</p></div><button class="btn primary" id="onbNext">${returning ? 'Set it up' : 'Let\'s go!'}</button>`;
+    if (view === 'level') B.innerHTML = `<div class="center">${mascot('think', 'style="width:84px"')}<div class="bigtitle" style="font-size:24px">How much electronics do you know?</div>${returning ? '<p class="small">Nothing you\'ve already finished will be removed.</p>' : ''}</div>
+      <div class="goalopts" style="grid-template-columns:1fr">${[['beginner', 'Complete beginner', 'Start at Unit 1 (recommended)'], ['intermediate', 'Intermediate', 'Take a short placement check'], ['advanced', 'Advanced', 'Harder placement check with multi-step problems']].map(([k, n, d]) => `<button class="opt goalopt lvlopt" data-l="${k}"><span style="font-size:17px">${n}</span><small>${d}</small></button>`).join('')}</div>`;
+    if (view === 'quiz') {
+      const U = UNITS[PL.u], Q = PL.bank[PL.u][PL.q], ord = Q.tf ? [0, 1] : PL.ord || (PL.ord = shuffle(Q.opts.map((_, i) => i)));
+      B.innerHTML = `<div class="kicker">Placement · Unit ${U.n}: ${U.title} · ${PL.q + 1}/${PL.bank[PL.u].length}</div><h2 class="q">${Q.q}</h2><div class="opts">${ord.map(i => `<button class="opt plopt" data-i="${i}"><span>${Q.opts[i]}</span></button>`).join('')}</div><button class="btn ghost" id="plStop" style="margin-top:12px">I'm not sure: stop here</button>`;
+      $$('.plopt', O).forEach(b => b.onclick = () => {
+        if (PL.lock) return; PL.lock = true; const ok = +b.dataset.i === Q.a; b.classList.add(ok ? 'right' : 'wrong'); ok ? SFX.good() : SFX.bad(); if (ok) PL.right++;
+        setTimeout(() => {
+          PL.lock = false; PL.ord = null; PL.q++;
+          if (PL.q >= PL.bank[PL.u].length) { const pass = PL.right / PL.bank[PL.u].length >= .8; if (pass) PL.placed = PL.u + 1; if (!pass || PL.u === UNITS.length - 1) return go('result'); PL.u++; PL.q = 0; PL.right = 0; }
+          draw();
+        }, 450);
+      });
+      $('#plStop', O).onclick = () => go('result');
+    }
+    if (view === 'result') {
+      const n = PL.placed, start = Math.min(n + 1, UNITS.length);
+      B.innerHTML = `<div class="center">${mascot(n ? 'cheer' : 'happy', 'style="width:120px"')}<div class="bigtitle" style="font-size:26px">${n === UNITS.length ? 'You placed out of every unit!' : `You're starting at Unit ${start}`}</div>
+        ${n ? `<p class="small">Placed out of:</p><div class="plunits">${UNITS.slice(0, n).map(u => `<span class="ctxchip" style="background:${u.color}22;color:var(--ink)">✓ Unit ${u.n}: ${u.title}</span>`).join('')}</div><p class="small">Those lessons stay open to replay any time. Placement bonus: +${n * TOK_PLACED} tokens, +${n * XP_PLACED} XP.</p>` : `<p class="body" style="color:var(--ink2)">Unit 1 it is. It moves fast when you already know it!</p>`}</div>
+        <button class="btn primary" id="plOk">${n ? 'Sounds good!' : 'Continue'}</button>${n ? '<button class="btn ghost" id="plOne" style="margin-top:8px">Start at Unit 1 instead</button>' : ''}`;
+      $('#plOk', O).onclick = () => { if (n) { applyPlacement(n, level); confetti(); } go('goal'); };
+      if ($('#plOne', O)) $('#plOne', O).onclick = () => { S.placement = { level, units: [], declined: n, at: new Date().toISOString() }; go('goal'); };
+      if (n) confetti();
+    }
+    if (view === 'goal') B.innerHTML = `<div class="center">${mascot('happy', 'style="width:84px"')}<div class="bigtitle" style="font-size:24px">Pick a daily goal</div><p class="small">Minutes of real learning a day. Lessons, tests, flashcards and games all count. You can change it any time in Profile.</p></div>
+      <div class="goalopts">${GOALS.map(([m, n, d]) => `<button class="opt goalopt ${m === goal ? 'sel' : ''}" data-m="${m}"><b>${m} min</b><span>${n}</span><small>${d}</small></button>`).join('')}</div><button class="btn primary" id="onbNext">Continue</button>`;
+    if (view === 'remind') B.innerHTML = `<div class="center">${mascot('think', 'style="width:84px"')}<div class="bigtitle" style="font-size:24px">Daily reminders?</div></div>
+      <div class="opts grid2"><button class="opt big ${!want ? 'sel' : ''}" id="rNo">No thanks</button><button class="opt big ${want ? 'sel' : ''}" id="rYes">Yes, remind me</button></div>
+      ${want ? `<label class="small" style="display:block;font-weight:800;margin:12px 0 4px" for="rTime">Remind me at</label><input type="time" id="rTime" value="${time}" class="timein">
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px"><button class="btn peri" id="rPerm">${perm === 'granted' ? 'Notifications on ✓' : 'Allow notifications'}</button><button class="btn ghost" id="rIcs">Add a daily reminder to my calendar</button></div>${perm && perm !== 'granted' ? `<p class="small">Notifications are ${perm === 'unsupported' ? 'not available in this browser' : 'blocked'}. The calendar reminder still works.</p>` : ''}${REMIND_NOTE}` : ''}
+      <button class="btn primary" id="onbNext" style="margin-top:12px">Finish</button>`;
+    const nx = $('#onbNext', O); if (nx) nx.onclick = () => { if (view === 'remind') { SFX.tap(); finish(false); } else go(ORDER[ORDER.indexOf(view) + 1]); };
+    $$('.lvlopt', O).forEach(b => b.onclick = () => { level = b.dataset.l; if (level === 'beginner') return go('goal'); PL = { bank: placementBank(level), u: 0, q: 0, right: 0, placed: 0 }; go('quiz'); });
+    $$('.goalopt[data-m]', O).forEach(b => b.onclick = () => { goal = +b.dataset.m; SFX.tap(); draw(); });
+    if ($('#rNo', O)) { $('#rNo', O).onclick = () => { want = false; draw(); }; $('#rYes', O).onclick = () => { want = true; draw(); }; }
+    if ($('#rTime', O)) { $('#rTime', O).onchange = e => { time = e.target.value || time; S.prefs.remind.time = time; }; $('#rPerm', O).onclick = async () => { perm = await askNotify(); draw(); }; $('#rIcs', O).onclick = () => { S.prefs.remind.time = time; downloadICS(); toast('Calendar file downloaded: open it to add the reminder', ICON.check()); }; }
+  };
+  $('#onbSkip', O).onclick = () => finish(true);
+  draw();
+}
+
+/* ---------- Profile panel ---------- */
+function goalPanel() {
+  const r = S.prefs.remind, perm = notifOK() ? Notification.permission : 'unsupported';
+  const p = el(`<div class="panel aiform" id="goalPanel"><h3>Daily goal & reminders</h3>${goalBar()}
+    <label for="goalSel">Daily goal</label><select id="goalSel">${GOALS.map(([m, n]) => `<option value="${m}" ${m === S.prefs.goalMin ? 'selected' : ''}>${m} min · ${n}</option>`).join('')}</select>
+    <div class="setrow" style="padding-bottom:0"><div class="l">Practice reminders<small>${r.on ? (perm === 'granted' ? 'On' : perm === 'unsupported' ? 'This browser can\'t show notifications' : 'Needs notification permission') : 'Off'}</small></div><button class="switch ${r.on ? 'on' : ''}" id="remSw" role="switch" aria-checked="${r.on}" aria-label="Practice reminders"></button></div>
+    <label for="remTime">Reminder time</label><input type="time" id="remTime" value="${r.time}">
+    <div class="btnrow"><button class="btn ghost" id="remIcs">Add a daily reminder to my calendar</button></div>${REMIND_NOTE}</div>`);
+  $('#goalSel', p).onchange = e => { S.prefs.goalMin = +e.target.value; S.time.hit = S.time.sec >= goalSec(); save(); renderProfile(); };
+  $('#remTime', p).onchange = e => { if (e.target.value) { S.prefs.remind.time = e.target.value; S.prefs.remind.last = null; save(); } };
+  $('#remSw', p).onclick = async () => { if (!r.on) { const g = await askNotify(); r.on = true; if (g !== 'granted') toast('Notifications aren\'t allowed here. Try the calendar reminder.', ICON.why()); } else r.on = false; save(); renderProfile(); };
+  $('#remIcs', p).onclick = () => { downloadICS(); toast('Calendar file downloaded: open it to add the reminder', ICON.check()); };
+  return p;
+}
+
+/* ---------- PWA (only when served over http/https) ---------- */
+function initPWA() {
+  if (!/^https?:$/.test(location.protocol)) return;
+  document.head.insertAdjacentHTML('beforeend', '<link rel="manifest" href="manifest.webmanifest">');
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
+}
+function initGoal() {
+  ensurePrefs(); save(); initPWA();
+  setInterval(() => { tickTime(); }, 1000);
+  setInterval(checkReminder, 30000); setTimeout(checkReminder, 3000);
+  addEventListener('visibilitychange', () => { if (!document.hidden) checkReminder(); else save(); });
+  if (!S.prefs.onboarded) showOnboarding();
+}
+/* =========================================================
+   TOKENS · AVATAR SHOP · PLACEMENT DATA
+   All stored in the progress save: S.tokens, S.tokGranted, S.tokDay, S.avatar, S.placement
+   ========================================================= */
+ICON.token = (c = '') => `<svg viewBox="0 0 28 28" aria-hidden="true" class="${c}"><circle cx="14" cy="14" r="11" fill="#FFC94D" stroke="#E3A31A" stroke-width="2.5"/><path d="M15.5 7.5 10 15h4l-1.5 5.5L18 13h-4z" fill="#fff" stroke="#E3A31A" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
+ICON.shop = () => `<svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 11h18l-1.6 11.2a2 2 0 0 1-2 1.8H8.6a2 2 0 0 1-2-1.8z" fill="currentColor"/><path d="M9.5 11V9a4.5 4.5 0 0 1 9 0v2" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="14" cy="17" r="2.2" fill="#fff"/></svg>`;
+const TOK_UNIT = { u1: 5, u2: 5, u3: 6, u4: 6, u5: 8, u6: 8 }, TOK_TEST = 15, TOK_PRACTICE = 1, TOK_PRACTICE_DAY = 5, TOK_PLACED = 10, XP_PLACED = 20;
+function ensureShop() {
+  if (typeof S.tokens !== 'number' || !isFinite(S.tokens)) S.tokens = 0;
+  if (!S.tokGranted || typeof S.tokGranted !== 'object') S.tokGranted = {};
+  if (!S.avatar || typeof S.avatar !== 'object') S.avatar = {};
+  S.avatar.owned = Array.isArray(S.avatar.owned) ? S.avatar.owned : [];
+  ['battery', 'mint'].forEach(i => { if (!S.avatar.owned.includes(i)) S.avatar.owned.push(i); });
+  S.avatar.eq = Object.assign({ body: 'battery', color: 'mint' }, S.avatar.eq || {});
+  // retroactive grant for lessons/tests completed before tokens existed (placed-out ones get the placement bonus instead)
+  UNITS.forEach(u => {
+    u.lessons.forEach(l => { const d = S.done[l]; if (d && !d.placed && !S.tokGranted[l]) { S.tokGranted[l] = 1; S.tokens += TOK_UNIT[u.id]; } });
+    const t = S.tests[u.test]; if (t && t.passed && !t.placed && !S.tokGranted[u.test]) { S.tokGranted[u.test] = 1; S.tokens += TOK_TEST; }
+  });
+}
+function lessonTokens(lid) {
+  if (!S.tokGranted[lid]) { S.tokGranted[lid] = 1; const n = TOK_UNIT[LESSONS[lid].unit]; S.tokens += n; return n; }
+  if (!S.tokDay || S.tokDay.d !== today()) S.tokDay = { d: today(), n: 0 };
+  if (S.tokDay.n >= TOK_PRACTICE_DAY) return 0;
+  S.tokDay.n += TOK_PRACTICE; S.tokens += TOK_PRACTICE; return TOK_PRACTICE;
+}
+function testTokens(tid) { if (S.tokGranted[tid]) return 0; S.tokGranted[tid] = 1; S.tokens += TOK_TEST; return TOK_TEST; }
+
+/* ---------- avatar: layered SVG, accessories use per-shape anchors ---------- */
+const BODIES = {
+  battery: { a: { top: 42, eye: 76, hw: 28 }, d: (c, k) => `<rect x="48" y="33" width="24" height="12" rx="4" fill="${k}"/><rect x="32" y="42" width="56" height="86" rx="17" fill="${c}" stroke="${k}" stroke-width="3"/><rect x="38" y="48" width="10" height="30" rx="5" fill="#fff" opacity=".3"/>` },
+  round: { a: { top: 50, eye: 82, hw: 38 }, d: (c, k) => `<circle cx="60" cy="88" r="40" fill="${c}" stroke="${k}" stroke-width="3"/><ellipse cx="42" cy="68" rx="7" ry="11" fill="#fff" opacity=".3"/>` },
+  capsule: { a: { top: 28, eye: 60, hw: 22 }, d: (c, k) => `<rect x="38" y="24" width="44" height="104" rx="22" fill="${c}" stroke="${k}" stroke-width="3"/><rect x="44" y="34" width="8" height="30" rx="4" fill="#fff" opacity=".3"/>` },
+  star: { a: { top: 46, eye: 88, hw: 26 }, d: (c, k) => { const p = []; for (let i = 0; i < 10; i++) { const r = i % 2 ? 23 : 50, t = -Math.PI / 2 + i * Math.PI / 5; p.push((60 + r * Math.cos(t)).toFixed(1) + ',' + (90 + r * Math.sin(t)).toFixed(1)); } return `<polygon points="${p.join(' ')}" fill="${c}" stroke="${k}" stroke-width="3" stroke-linejoin="round"/>`; } },
+};
+const COLORS = { mint: ['#2EC4A0', '#1C9E80'], coral: ['#FF8C7B', '#E0604F'], sun: ['#FFC94D', '#E3A31A'], peri: ['#8F95FF', '#5A61D8'], sky: ['#6FCFF5', '#2F9CCB'], pink: ['#FFA8C5', '#E0708F'], lilac: ['#C39BE6', '#9163C4'], midnight: ['#3B3670', '#211D45'] };
+const ACC = {
+  party: a => `<path d="M${60 - 16} ${a.top + 3}L60 ${a.top - 34}L${60 + 16} ${a.top + 3}Z" fill="#FF7F6E" stroke="#E0604F" stroke-width="2" stroke-linejoin="round"/><path d="M${60 - 9} ${a.top - 12}l18 4M${60 - 5} ${a.top - 23}l10 3" stroke="#FFC94D" stroke-width="3" stroke-linecap="round"/><circle cx="60" cy="${a.top - 35}" r="5" fill="#FFC94D"/>`,
+  beanie: a => `<path d="M${60 - 25} ${a.top + 6}Q${60 - 25} ${a.top - 22} 60 ${a.top - 22}Q${60 + 25} ${a.top - 22} ${60 + 25} ${a.top + 6}Z" fill="#7C83FD"/><rect x="${60 - 27}" y="${a.top - 1}" width="54" height="10" rx="5" fill="#5A61D8"/><circle cx="60" cy="${a.top - 24}" r="6" fill="#FFC94D"/>`,
+  tophat: a => `<rect x="${60 - 26}" y="${a.top - 3}" width="52" height="7" rx="3.5" fill="#2E2A5A"/><rect x="${60 - 16}" y="${a.top - 34}" width="32" height="32" rx="4" fill="#2E2A5A"/><rect x="${60 - 16}" y="${a.top - 12}" width="32" height="6" fill="#FF7F6E"/>`,
+  crown: a => `<path d="M${60 - 19} ${a.top + 3}V${a.top - 18}l9.5 9 9.5-15 9.5 15 9.5-9V${a.top + 3}Z" fill="#FFC94D" stroke="#E3A31A" stroke-width="2.5" stroke-linejoin="round"/><circle cx="60" cy="${a.top - 5}" r="3.5" fill="#FF7F6E"/><circle cx="${60 - 11}" cy="${a.top - 3}" r="2.5" fill="#7C83FD"/><circle cx="${60 + 11}" cy="${a.top - 3}" r="2.5" fill="#2EC4A0"/>`,
+  roundg: (a, e) => `<g fill="#fff" fill-opacity=".3" stroke="#2E2A5A" stroke-width="2.5"><circle cx="${60 - e}" cy="${a.eye}" r="8.5"/><circle cx="${60 + e}" cy="${a.eye}" r="8.5"/></g><path d="M${60 - e + 8.5} ${a.eye}h${2 * e - 17}" stroke="#2E2A5A" stroke-width="2.5"/>`,
+  shades: (a, e) => `<g fill="#2E2A5A"><rect x="${60 - e - 10}" y="${a.eye - 6}" width="20" height="13" rx="5"/><rect x="${60 + e - 10}" y="${a.eye - 6}" width="20" height="13" rx="5"/></g><path d="M${60 - e + 10} ${a.eye - 2}h${2 * e - 20}" stroke="#2E2A5A" stroke-width="3"/><path d="M${60 - e - 6} ${a.eye - 3}l5-1" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".6"/>`,
+  goggles: (a, e) => `<path d="M${60 - a.hw - 1} ${a.eye}H${60 + a.hw + 1}" stroke="#F2A93B" stroke-width="6"/><rect x="${60 - e - 12}" y="${a.eye - 9}" width="${2 * e + 24}" height="18" rx="9" fill="#DDF8EF" fill-opacity=".75" stroke="#F2A93B" stroke-width="3"/><path d="M60 ${a.eye - 9}v18" stroke="#F2A93B" stroke-width="2.5"/>`,
+  bow: a => `<g transform="translate(${60 + a.hw * .55},${a.top + 6})"><path d="M0 0L-13 -8V8ZM0 0L13 -8V8Z" fill="#FF9DB5" stroke="#E0708F" stroke-width="2" stroke-linejoin="round"/><circle r="4" fill="#E0708F"/></g>`,
+  phones: a => `<path d="M${60 - a.hw - 4} ${a.eye}Q${60 - a.hw - 4} ${a.top - 16} 60 ${a.top - 16}Q${60 + a.hw + 4} ${a.top - 16} ${60 + a.hw + 4} ${a.eye}" stroke="#2E2A5A" stroke-width="5" fill="none"/><rect x="${60 - a.hw - 10}" y="${a.eye - 10}" width="12" height="20" rx="5" fill="#FF7F6E" stroke="#2E2A5A" stroke-width="2.5"/><rect x="${60 + a.hw - 2}" y="${a.eye - 10}" width="12" height="20" rx="5" fill="#FF7F6E" stroke="#2E2A5A" stroke-width="2.5"/>`,
+  antenna: a => `<path d="M${60 - 10} ${a.top + 2}L${60 - 16} ${a.top - 20}" stroke="#9AA3B5" stroke-width="2.5" stroke-linecap="round"/><circle cx="${60 - 17}" cy="${a.top - 27}" r="10" fill="#FF9DB5" opacity=".4"/><path d="M${60 - 22} ${a.top - 20}v-7a5 5 0 0 1 10 0v7z" fill="#FF7F8E" stroke="#E0506A" stroke-width="1.8"/>`,
+  earring: a => `<g transform="translate(${60 + a.hw + 3},${a.eye + 8})"><path d="M0 -4V22" stroke="#9AA3B5" stroke-width="1.8"/><rect x="-3.5" y="4" width="7" height="13" rx="3" fill="#E8D5A8" stroke="#B89A5E" stroke-width="1.2"/><path d="M-3.5 8h7M-3.5 11h7M-3.5 14h7" stroke-width="1.6" stroke="#8B5A2B"/><path d="M-3.5 11h7" stroke="#E0604F" stroke-width="1.6"/></g>`,
+};
+const BGS = {
+  bgsky: `<rect x="0" y="-12" width="120" height="152" rx="18" fill="#E7E8FF"/><g fill="#FFC94D"><path d="M20 10l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/><path d="M100 30l1.5 3.5 3.5 1.5-3.5 1.5-1.5 3.5-1.5-3.5-3.5-1.5 3.5-1.5z"/><circle cx="96" cy="120" r="2.5"/><circle cx="16" cy="100" r="2"/></g>`,
+  bgboard: `<rect x="0" y="-12" width="120" height="152" rx="18" fill="#1E7A5E"/><g stroke="#FFC94D" stroke-width="2" fill="none" opacity=".55"><path d="M0 20h24v30h14M120 40h-20v40H86M0 118h30v14M120 110h-26v28"/></g><g fill="#FFC94D" opacity=".7"><circle cx="38" cy="50" r="3"/><circle cx="86" cy="80" r="3"/><circle cx="30" cy="132" r="3"/></g>`,
+  bgsunset: `<defs><linearGradient id="sunG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB38A"/><stop offset="1" stop-color="#FFE6A8"/></linearGradient></defs><rect x="0" y="-12" width="120" height="152" rx="18" fill="url(#sunG)"/><circle cx="92" cy="18" r="14" fill="#FFF3D6" opacity=".9"/>`,
+};
+const PETS = {
+  spark: `<g transform="translate(100,116)"><circle r="13" fill="#FFE27A" opacity=".5"/><path d="M2 -12L-7 2h6l-3 10 10-14h-6z" fill="#FFC94D" stroke="#E3A31A" stroke-width="1.8" stroke-linejoin="round"/><circle cx="-1" cy="-1" r="1.3" fill="#2E2A5A"/><circle cx="3.5" cy="-1" r="1.3" fill="#2E2A5A"/></g>`,
+  electron: `<g transform="translate(100,114)"><ellipse rx="15" ry="6" fill="none" stroke="#7C83FD" stroke-width="1.8" transform="rotate(-25)"/><circle r="8" fill="#8F95FF" stroke="#5A61D8" stroke-width="2"/><path d="M-3.5 0h7" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><circle cx="-3" cy="-3.5" r="1" fill="#fff"/></g>`,
+};
+function avatarSVG(eq = S.avatar.eq, size = '') {
+  const B = BODIES[eq.body] || BODIES.battery, a = B.a, [c, k] = COLORS[eq.color] || COLORS.mint, e = Math.min(12, a.hw * .48), dark = eq.color === 'midnight';
+  const face = `<g fill="${dark ? '#fff' : '#2E2A5A'}"><ellipse cx="${60 - e}" cy="${a.eye}" rx="4.3" ry="5.6"/><ellipse cx="${60 + e}" cy="${a.eye}" rx="4.3" ry="5.6"/></g><circle cx="${60 - e + 1.5}" cy="${a.eye - 2}" r="1.5" fill="${dark ? '#2E2A5A' : '#fff'}"/><circle cx="${60 + e + 1.5}" cy="${a.eye - 2}" r="1.5" fill="${dark ? '#2E2A5A' : '#fff'}"/><path d="M${60 - 6} ${a.eye + 10}q6 6 12 0" stroke="${dark ? '#fff' : '#2E2A5A'}" stroke-width="2.6" fill="none" stroke-linecap="round"/><g fill="#FF8FA3" opacity=".55"><ellipse cx="${60 - e - 7}" cy="${a.eye + 8}" rx="4.5" ry="3"/><ellipse cx="${60 + e + 7}" cy="${a.eye + 8}" rx="4.5" ry="3"/></g>`;
+  const L = s => eq[s] && ACC[eq[s]] ? ACC[eq[s]](a, e) : '';
+  return `<svg viewBox="0 -12 120 152" ${size} role="img" aria-label="Your Zapling avatar">${eq.bg && BGS[eq.bg] ? BGS[eq.bg] : ''}<ellipse cx="60" cy="134" rx="30" ry="4" fill="#2E2A5A" opacity=".08"/>${B.d(c, k)}${face}${L('eyes')}${L('ears')}${L('deco')}${L('hat')}${L('bling')}${eq.pet && PETS[eq.pet] ? PETS[eq.pet] : ''}</svg>`;
+}
+const SHOP = [
+  ['Bodies', 'body', [['battery', 'Classic battery', 0], ['round', 'Round spark', 40], ['capsule', 'Tall capsule', 60], ['star', 'Superstar', 120]]],
+  ['Colors', 'color', [['mint', 'Mint', 0], ['coral', 'Coral', 10], ['sun', 'Sunny', 10], ['peri', 'Periwinkle', 15], ['sky', 'Sky', 15], ['pink', 'Bubblegum', 20], ['lilac', 'Lilac', 20], ['midnight', 'Midnight', 35]]],
+  ['Hats', 'hat', [['party', 'Party hat', 25], ['beanie', 'Beanie', 30], ['tophat', 'Top hat', 80], ['crown', 'Crown', 150]]],
+  ['Glasses', 'eyes', [['roundg', 'Round glasses', 20], ['shades', 'Sunglasses', 45], ['goggles', 'Safety goggles', 55]]],
+  ['Bling', null, [['bow', 'Bow', 25, 'deco'], ['phones', 'Headphones', 70, 'ears'], ['antenna', 'LED antenna', 40, 'bling'], ['earring', 'Resistor earring', 35, 'bling']]],
+  ['Extras', null, [['bgsky', 'Starry sky', 30, 'bg'], ['bgboard', 'Circuit board', 50, 'bg'], ['bgsunset', 'Sunset', 60, 'bg'], ['spark', 'Pet spark', 90, 'pet'], ['electron', 'Pet electron', 110, 'pet']]],
+];
+const ITEMS = {}; SHOP.forEach(([cat, slot, list]) => list.forEach(([id, name, price, s]) => { ITEMS[id] = { id, name, price, slot: s || slot, cat }; }));
+let SHOPCAT = 'Bodies', SHOPSEL = null;
+function renderShop() {
+  const v = $('#v-shop'); v.innerHTML = '';
+  const eq = S.avatar.eq, sel = SHOPSEL && ITEMS[SHOPSEL], prev = sel ? Object.assign({}, eq, { [sel.slot]: sel.id }) : eq;
+  const owned = id => S.avatar.owned.includes(id), on = id => eq[ITEMS[id].slot] === id;
+  v.appendChild(el(`<div class="pagehead"><div><h1>Shop</h1><p>Earn tokens by finishing lessons and passing unit tests.</p></div><span class="chip" style="margin-left:auto">${ICON.token()}<span id="shopBal">${S.tokens}</span></span></div>`));
+  const p = el(`<div class="panel shopwrap"><div class="avprev">${avatarSVG(prev)}</div><div class="shopact" id="shopAct"></div>
+    <div class="flowtoggle shopcats" role="tablist">${SHOP.map(([c]) => `<button class="${c === SHOPCAT ? 'on' : ''}" data-c="${c}">${c}</button>`).join('')}</div>
+    <div class="shopgrid">${SHOP.find(s => s[0] === SHOPCAT)[2].map(([id]) => { const it = ITEMS[id]; return `<button class="sitem ${SHOPSEL === id ? 'sel' : ''} ${on(id) ? 'eq' : ''}" data-i="${id}" aria-label="${it.name}">${avatarSVG(Object.assign({}, eq, { [it.slot]: id }))}<b>${it.name}</b><span>${on(id) ? 'Equipped' : owned(id) ? 'Owned' : `${ICON.token()} ${it.price}`}</span></button>`; }).join('')}</div></div>`);
+  v.appendChild(p);
+  const act = $('#shopAct', p);
+  if (!sel) act.innerHTML = `<span class="small">Tap an item to try it on.</span>`;
+  else if (!owned(sel.id)) act.innerHTML = `<b>${sel.name}</b><button class="btn primary small" id="shopBuy" ${S.tokens < sel.price ? 'disabled' : ''}>Buy for ${sel.price}</button>${S.tokens < sel.price ? `<span class="small">Need ${sel.price - S.tokens} more</span>` : ''}`;
+  else if (on(sel.id)) act.innerHTML = `<b>${sel.name}</b>${['body', 'color'].includes(sel.slot) ? '<span class="small">Equipped</span>' : '<button class="btn ghost small" id="shopOff">Take off</button>'}`;
+  else act.innerHTML = `<b>${sel.name}</b><button class="btn peri small" id="shopOn">Wear it</button>`;
+  $$('.shopcats button', p).forEach(b => b.onclick = () => { SHOPCAT = b.dataset.c; SHOPSEL = null; SFX.tap(); renderShop(); });
+  $$('.sitem', p).forEach(b => b.onclick = () => { SHOPSEL = b.dataset.i; SFX.tap(); renderShop(); });
+  if ($('#shopBuy')) $('#shopBuy').onclick = async () => {
+    const ok = await modal({ art: avatarSVG(prev), title: `Buy ${sel.name}?`, text: `This costs <b>${sel.price} tokens</b>. You have ${S.tokens}.`, buttons: [['Buy it', 'primary', true], ['Not now', 'ghost', false]] });
+    if (!ok || S.tokens < sel.price || owned(sel.id)) return;
+    S.tokens -= sel.price; S.avatar.owned.push(sel.id); S.avatar.eq[sel.slot] = sel.id; save(); SFX.level(); confetti(); renderTop(); renderShop(); toast(`${sel.name} is yours!`, ICON.star());
+  };
+  if ($('#shopOn')) $('#shopOn').onclick = () => { S.avatar.eq[sel.slot] = sel.id; save(); SFX.tap(); renderShop(); };
+  if ($('#shopOff')) $('#shopOff').onclick = () => { delete S.avatar.eq[sel.slot]; save(); SFX.tap(); SHOPSEL = null; renderShop(); };
+}
+
+/* ---------- placement ---------- */
+const ADV = {
+  u1: [['A plastic comb rubbed on hair picks up extra electrons. Its charge is now…', ['Negative', 'Positive', 'Still neutral']], ['Why is a bird sitting on ONE power line safe?', ['Both feet are at nearly the same voltage, so almost no current flows through it', 'Bird feet are perfect insulators', 'Power lines carry no current']], ['In a copper wire carrying current, what actually moves?', ['Free electrons drifting slowly toward the + terminal', 'Protons flowing toward the − terminal', 'Atoms of copper sliding along the wire']]],
+  u2: [['A steady 0.5 A flows for 2 minutes. How much charge passes a point?', ['60 C', '1 C', '30 C']], ['0.047 MΩ is the same as…', ['47 kΩ', '470 kΩ', '4.7 kΩ']], ['To measure the current through a bulb, the meter goes…', ['In series, so the current flows through it', 'In parallel, across the bulb', 'Across the battery']]],
+  u3: [['A 12 V heater draws 3 A. Its resistance and power are…', ['4 Ω and 36 W', '36 Ω and 4 W', '4 Ω and 12 W']], ['You double the voltage across a fixed resistor. Its power becomes…', ['4 times as much', '2 times as much', 'The same']], ['A 1 kΩ resistor has 10 V across it. What power does it use?', ['0.1 W', '10 W', '0.01 W']]],
+  u4: [['Three 30 Ω resistors in parallel, then in series with 10 Ω. Total?', ['20 Ω', '100 Ω', '40 Ω']], ['12 V divider: R1 = 8 kΩ on top, R2 = 4 kΩ below. V_out across R2?', ['4 V', '8 V', '6 V']], ['Two identical bulbs on one battery go from series to parallel. The battery current becomes…', ['4 times as much', '2 times as much', 'The same']]],
+  u5: [['The net label "VCC" appears at two places with no wire drawn between them. They are…', ['Connected', 'Not connected', 'Connected only through ground']], ['On a parts list, Q3 is most likely a…', ['Transistor', 'Capacitor', 'Crystal']], ['On an LED symbol, the cathode (−) is…', ['The side with the bar', 'The side with the flat base of the triangle', 'Whichever leg is longer']]],
+  u6: [['12 V drives 2 kΩ, 3 kΩ and 1 kΩ in series. Voltage across the 3 kΩ?', ['6 V', '4 V', '3 V']], ['Node X: 6 kΩ up to 12 V, and both 3 kΩ and 6 kΩ down to ground. V_X?', ['3 V', '4 V', '6 V']], ['A circuit reads 10 V with nothing connected and 5 V with a 5 kΩ load. R_Th is…', ['5 kΩ', '10 kΩ', '2.5 kΩ']]],
+};
+function placementBank(level) {
+  return UNITS.map(u => level === 'advanced'
+    ? ADV[u.id].map(([q, opts]) => ({ q, opts, a: 0 }))
+    : shuffle(TESTS[u.test].steps.filter(s => s.type === 'mc' || s.type === 'tf')).slice(0, 3).map(s => s.type === 'tf' ? { q: s.q, opts: ['True', 'False'], a: s.a ? 0 : 1, tf: true } : { q: s.q, opts: s.opts, a: s.a }));
+}
+function applyPlacement(n, level) {
+  let bonusT = 0, bonusX = 0; const units = [];
+  UNITS.slice(0, n).forEach(u => {
+    units.push(u.id);
+    u.lessons.forEach(l => { if (!S.done[l]) S.done[l] = { at: today(), placed: true }; });
+    const t = testState(u.test); if (!t.passed) { t.passed = true; t.placed = true; }
+    if (!(S.placement && S.placement.units || []).includes(u.id)) { bonusT += TOK_PLACED; bonusX += XP_PLACED; }
+  });
+  S.tokens += bonusT; if (bonusX) addXp(bonusX);
+  S.placement = { level, units, at: new Date().toISOString(), tokens: bonusT, xp: bonusX }; save();
+  return { bonusT, bonusX };
+}
+/* =========================================================
    INIT
    ========================================================= */
-migrate(); regenHearts(); checkStreakOnLoad(); save();
+migrate(); ensurePrefs(); ensureShop(); regenHearts(); checkStreakOnLoad(); save();
 $$('.tab').forEach(b => b.onclick = () => { SFX.tap(); if (b.dataset.tab === 'review') RV = null; showTab(b.dataset.tab); });
 $('#btnSound').onclick = () => { S.sound = !S.sound; save(); renderTop(); SFX.tap(); };
-renderTop(); showTab('learn'); flushToasts(); mountSprigFab();
+renderTop(); showTab('learn'); flushToasts(); mountSprigFab(); initGoal();
 addEventListener('keydown', e => { if (e.key === 'Escape' && $('.sprigchat')) closeSprig(); });
 setInterval(() => { regenHearts(); renderHearts(); if (R && (R.phase === 'main' || R.phase === 'ooh')) setHead(); tickOOH(); }, 1000);
 addEventListener('visibilitychange', () => { if (!document.hidden) { regenHearts(); renderTop(); } });
