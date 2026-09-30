@@ -286,6 +286,17 @@ body:has(.lesson) #askFab,body:has(.sprigchat) #askFab{display:none}
 .aiform input,.aiform select{width:100%;border:2px solid var(--line);border-radius:12px;padding:9px 10px;font:inherit;font-weight:700;font-size:14.5px;background:#fff;color:var(--ink)}
 .aiform .warn{background:var(--sunl);border-radius:12px;padding:9px 11px;font-size:13px;font-weight:700;color:#6B4A00;margin-top:10px}
 .aiform .btnrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.aiform .btnrow .btn{width:auto;padding:10px 14px;flex:1}
+/* ---- Games ---- */
+.ggrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gcard{border:2px solid var(--line);border-top:6px solid var(--uc);background:#fff;border-radius:18px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:4px;cursor:pointer;box-shadow:0 4px 0 var(--line);font-family:inherit;color:var(--ink)}
+.gcard b{font-size:15.5px}.gcard span{font-size:12.5px;font-weight:700;color:var(--ink2);line-height:1.3}.gcard em{font-style:normal;font-weight:900;font-size:13px;color:var(--mintd);margin-top:auto}
+.gcard.locked{opacity:.5;cursor:default}.gcard.locked em{color:var(--ink2)}
+.gbig{background:#fff;border:2px solid var(--line);border-radius:20px;padding:26px 14px;text-align:center;font-size:26px;font-weight:900}
+.gfb{margin-top:10px;font-weight:700;font-size:14.5px;color:var(--corald);display:flex;gap:6px;align-items:flex-start}.gfb svg{width:20px;flex:none}
+.memgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.mcard{position:relative;aspect-ratio:1/.9;border:2px solid var(--line);border-radius:16px;background:var(--peril);cursor:pointer;box-shadow:0 4px 0 var(--line);padding:6px;font-family:inherit}
+.mcard .back{display:flex;width:56%;margin:auto}.mcard .face{display:none;align-items:center;justify-content:center;height:100%;font-size:15px;color:var(--ink)}.mcard .face svg{width:90%}
+.mcard.up{background:#fff}.mcard.up .back{display:none}.mcard.up .face{display:flex}.mcard.done{border-color:var(--mint);box-shadow:0 4px 0 var(--mint)}
 </style>
 </head>
 <body>
@@ -301,12 +312,14 @@ body:has(.lesson) #askFab,body:has(.sprigchat) #askFab{display:none}
   <main>
     <section id="v-learn" class="view on" aria-label="Lesson path"></section>
     <section id="v-review" class="view" aria-label="Flashcards"></section>
+    <section id="v-games" class="view" aria-label="Games"></section>
     <section id="v-profile" class="view" aria-label="Profile and settings"></section>
   </main>
   <nav class="bottomnav" aria-label="Main">
     <div class="inner">
       <button class="tab on" data-tab="learn" id="tabLearn"></button>
       <button class="tab" data-tab="review" id="tabReview"></button>
+      <button class="tab" data-tab="games" id="tabGames"></button>
       <button class="tab" data-tab="profile" id="tabProfile"></button>
     </div>
   </nav>
@@ -1863,11 +1876,11 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
-const DEFAULT = () => ({ v: 3, hearts: 8, heartsAt: null, xp: 0, streak: 0, best: 0, last: null, freezes: 1, days: {}, done: {}, tests: {}, cards: {}, sound: true, daily: { d: null, xp: 0 } });
+const DEFAULT = () => ({ v: 3, hearts: 8, heartsAt: null, xp: 0, streak: 0, best: 0, last: null, freezes: 1, days: {}, done: {}, tests: {}, cards: {}, sound: true, daily: { d: null, xp: 0 }, games: { best: {}, xd: { d: null, xp: 0 } } });
 function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && typeof s === 'object') return Object.assign(DEFAULT(), s); } catch (e) { } return DEFAULT(); }
 let S = load();
 function migrate() {
-  ['days', 'done', 'tests', 'cards'].forEach(k => { if (!S[k] || typeof S[k] !== 'object') S[k] = {}; });
+  ['days', 'done', 'tests', 'cards', 'games'].forEach(k => { if (!S[k] || typeof S[k] !== 'object') S[k] = {}; });
   if (S.test) { S.tests.t1 = S.test; delete S.test; }
   ['xp', 'streak', 'best', 'freezes'].forEach(k => { if (typeof S[k] !== 'number' || !isFinite(S[k])) S[k] = DEFAULT()[k]; });
   // v1 saves had per-lesson hearts (never stored): start them on a full persistent pool, keep everything else
@@ -2008,12 +2021,13 @@ function renderTop() {
   const due = dueCards().length;
   $('#tabLearn').innerHTML = ICON.path() + 'Learn';
   $('#tabReview').innerHTML = ICON.cards() + 'Flashcards' + (due ? `<span class="badge">${due}</span>` : '');
+  $('#tabGames').innerHTML = ICON.game() + 'Games';
   $('#tabProfile').innerHTML = ICON.user() + 'Profile';
 }
 function showTab(t) {
   $$('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   $$('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + t));
-  if (t === 'learn') renderPath(); if (t === 'review') renderReview(); if (t === 'profile') renderProfile();
+  if (t === 'learn') renderPath(); if (t === 'review') renderReview(); if (t === 'profile') renderProfile(); if (t === 'games') renderGames();
   window.scrollTo(0, 0);
 }
 
@@ -3188,6 +3202,173 @@ function aiPanel() {
   $('#aiRemove', p).onclick = () => { const c = aiLoad(); delete c.key; c.on = false; aiSave(c); toast('Key removed from this browser', ICON.check()); renderProfile(); };
   $('#aiOn', p).onclick = () => { const c = aiLoad(); if (!c.key) return; c.on = c.on === false; aiSave(c); renderProfile(); };
   return p;
+}
+/* =========================================================
+   GAMES: 12 quick mini-games (2 per unit) on one shared shell
+   Unlock: a unit's games open once that unit's first lesson is done.
+   XP: up to +20 per round, max 60 XP/day from games. Never costs hearts.
+   ========================================================= */
+ICON.game = () => `<svg viewBox="0 0 28 28" aria-hidden="true"><rect x="3" y="8" width="22" height="13" rx="6.5" fill="currentColor"/><path d="M9 11.5v6M6 14.5h6" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><circle cx="18.5" cy="13" r="1.7" fill="#fff"/><circle cx="21" cy="16.3" r="1.7" fill="#fff"/></svg>`;
+const GAME_XP_ROUND = 20, GAME_XP_DAY = 60;
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const gn = x => { const s = String(+(+x).toPrecision(6)); return /e/.test(s) ? (+x).toFixed(10).replace(/\.?0+$/, '') : s; };
+function numOpts(ans, cands, unit = '') { const s = [ans]; cands.forEach(c => { c = +(+c).toPrecision(6); if (c >= 0 && !s.some(x => Math.abs(x - c) < 1e-9) && s.length < 3) s.push(c); }); let k = 2; while (s.length < 3) { const c = +(ans * k + 1).toPrecision(6); if (!s.includes(c)) s.push(c); k++; } return { opts: s.map(x => gn(x) + unit), a: 0 }; }
+const gsvg = (inner, h = 150) => `<svg viewBox="0 0 300 ${h}" role="img" aria-label="Game picture"><rect width="300" height="${h}" rx="18" fill="${BG}"/>${inner}</svg>`;
+const ERRS = {
+  ok: ['Nothing, it works', `${wire('M50 55V25H130M170 25H250V55M250 95V125H50V95')}${sym('res', 150, 25)}${sym('led', 250, 75, 90)}`],
+  noR: ['No resistor to protect the LED', `${wire('M50 55V25H250V55M250 95V125H50V95')}${sym('led', 250, 75, 90)}`],
+  back: ['The LED is in backwards', `${wire('M50 55V25H130M170 25H250V55M250 95V125H50V95')}${sym('res', 150, 25)}${sym('led', 250, 75, -90)}`],
+  open: ['The loop is broken (a gap)', `${wire('M50 55V25H130M170 25H250V55M250 95V125H170M130 125H50V95')}${sym('res', 150, 25)}${sym('led', 250, 75, 90)}${dot(170, 125)}${dot(130, 125)}`],
+  short: ['A wire shorts the battery', `${wire('M50 55V25H130M170 25H250V55M250 95V125H50V95M50 25H18V125H50')}${sym('res', 150, 25)}${sym('led', 250, 75, 90)}${dot(50, 25)}${dot(50, 125)}`],
+};
+const CONDS = ['Copper wire', 'Aluminum foil', 'Steel nail', 'Gold ring', 'Pencil graphite', 'Salt water', 'Silver spoon', 'Brass key'];
+const INSUL = ['Rubber band', 'Glass marble', 'Plastic ruler', 'Dry wood', 'Air', 'Ceramic mug', 'Paper', 'Cotton cloth'];
+const SPDRAW = {
+  s1: gsvg(`${wire('M40 55V25H90M130 25H170M210 25H260V125H40V95')}${sym('bat', 40, 75, 90)}${sym('res', 110, 25)}${sym('res', 190, 25)}`),
+  s2: gsvg(`${wire('M40 55V25H130M170 25H260V55M260 95V125H40V95')}${sym('bat', 40, 75, 90)}${sym('res', 150, 25)}${sym('res', 260, 75, 90)}`),
+  p1: gsvg(`${wire('M40 55V25H250V55M250 95V125H40V95M150 25V55M150 95V125')}${sym('bat', 40, 75, 90)}${sym('res', 150, 75, 90)}${sym('res', 250, 75, 90)}${dot(150, 25)}${dot(150, 125)}`),
+  p2: gsvg(`${wire('M40 55V25H110V50H130M110 25V100H130M170 50H190V100H170M190 75H260V125H40V95')}${sym('bat', 40, 75, 90)}${sym('res', 150, 50)}${sym('res', 150, 100)}${dot(110, 25)}${dot(190, 75)}`),
+};
+const SPFACT = [['The same current flows through both parts', 0], ['Each part gets the full battery voltage', 1], ['Remove one bulb and the other stays lit', 1], ['Total resistance is bigger than either resistor', 0], ['Total resistance is smaller than the smallest resistor', 1], ['The voltages across the parts add up to the battery', 0], ['The branch currents add up to the total', 1], ['Home outlets are wired this way', 1]];
+const PPAIRS = [[10, 10], [20, 20], [30, 60], [20, 30], [10, 40], [60, 60], [40, 40], [30, 30], [100, 100], [12, 6], [60, 20]];
+const RATE = [[.125, '1/8 W'], [.25, '1/4 W'], [.5, '1/2 W'], [1, '1 W'], [2, '2 W']];
+const MEMSYM = ['bat', 'res', 'cap', 'led', 'diode', 'gnd', 'sw', 'lamp', 'ind', 'npn'];
+const junc = (a, b, c) => gsvg(`${wire('M30 75H150M150 15V75M150 75H270M150 75V140')}<g fill="#FF7F6E"><path d="M80 67l14 8-14 8z"/><path d="M142 35l8 14 8-14z"/></g><g fill="#7C83FD"><path d="M210 67l14 8-14 8z"/><path d="M142 105l8 14 8-14z"/></g>${dot(150, 75, INK)}${lbl(80, 60, a + ' A in', '#E0604F', 13)}${lbl(162, 36, b + ' A in', '#E0604F', 13, 'start')}${lbl(220, 60, c + ' A out', '#5A61D8', 13)}${lbl(162, 124, '? A out', '#5A61D8', 14, 'start')}`);
+
+const GAMES = [
+  { id: 'g1', u: 'u1', name: 'Conductor Rush', blurb: 'Sort each material: does charge flow through it?', fixed: true,
+    gen() { const c = Math.random() < .5, it = pick(c ? CONDS : INSUL); return { q: 'Conductor or insulator?', art: `<div class="gbig">${it}</div>`, opts: ['Conductor', 'Insulator'], a: c ? 0 : 1, fb: `${it} is ${c ? 'a conductor: charge moves through it easily' : 'an insulator: charge can\'t move through it easily'}.` }; } },
+  { id: 'g2', u: 'u1', name: 'Charge Pop', blurb: 'Do these two charges attract or repel?', fixed: true,
+    gen() {
+      if (Math.random() < .15) return { q: 'A charged balloon near a neutral wall…', art: gsvg(`${chargeBlob('−', 90, 75, 34)}<rect x="200" y="15" width="50" height="120" rx="8" fill="#E7E8FF" stroke="#B3AEDA" stroke-width="2"/>${lbl(225, 80, 'wall', '#6B6899', 13)}`), opts: ['Attract', 'Repel'], a: 0, fb: 'The balloon pushes the wall\'s electrons slightly away, so the nearby surface turns a little positive, and they attract.' };
+      const s1 = pick(['+', '−']), s2 = pick(['+', '−']), same = s1 === s2;
+      return { q: 'Attract or repel?', art: gsvg(`${chargeBlob(s1, 95, 75, 34)}${chargeBlob(s2, 205, 75, 34)}`), opts: ['Attract', 'Repel'], a: same ? 1 : 0, fb: same ? 'Like charges repel.' : 'Opposite charges attract.' };
+    } },
+  { id: 'g3', u: 'u2', name: 'Prefix Match', blurb: 'Convert milli, kilo, micro and mega fast.',
+    gen() {
+      const P = pick([['m', 1e-3], ['k', 1e3], ['µ', 1e-6], ['M', 1e6], ['m', 1e-3], ['k', 1e3]]), U = pick(['A', 'V', 'Ω']);
+      if (P[0] === 'µ' && U === 'Ω') P[0] = 'm', P[1] = 1e-3;
+      const v = pick([1, 2, 2.2, 4.7, 5, 10, 22, 47, 100, 250, 470]);
+      if (Math.random() < .5) { const ans = v * P[1], o = numOpts(ans, [v / P[1], ans / 10, ans * 10], ' ' + U); return { q: `${v} ${P[0]}${U} = ?`, art: '', ...o, fb: `${P[0]} means × ${gn(P[1])}, so ${v} ${P[0]}${U} = ${gn(ans)} ${U}.` }; }
+      const base = v * P[1], o = numOpts(v, [v * 1000, v / 1000, v * 10], ' ' + P[0] + U); return { q: `${gn(base)} ${U} = ?`, art: '', ...o, fb: `${gn(base)} ${U} ÷ ${gn(P[1])} = ${v} ${P[0]}${U}.` };
+    } },
+  { id: 'g4', u: 'u2', name: 'Read the Meter', blurb: 'Predict what the meter will show.',
+    gen() {
+      const t = Math.random();
+      if (t < .45) { const n = 1 + Math.floor(Math.random() * 4), ans = n * 1.5; return { q: `A voltmeter across ${n} AA cell${n > 1 ? 's' : ''} (1.5 V each) in series reads…`, art: gsvg([...Array(n)].map((_, i) => cuteCell(150 - (n - 1) * 25 + i * 50, 75, '')).join('')), ...numOpts(ans, [1.5, ans + 1.5, n], ' V'), fb: `Cells in series add: ${n} × 1.5 V = ${gn(ans)} V.` }; }
+      if (t < .85) { const x = pick([0.1, 0.2, 0.25, 0.3, 0.5, 1, 2]); return { q: `In one series loop, ammeter A1 reads ${x} A. What does A2 (elsewhere in the same loop) read?`, art: '', ...numOpts(x, [x / 2, x * 2, 0], ' A'), fb: 'One loop, one current: every ammeter in a series loop reads the same.' }; }
+      return { q: 'A voltmeter across a closed switch (plain metal contact) in a working circuit reads about…', art: '', opts: ['0 V', 'The battery voltage', 'Half the battery voltage'], a: 0, fb: 'A closed switch is basically a wire: almost no voltage drop across it.' };
+    } },
+  { id: 'g5', u: 'u3', name: 'Ohm Speed Solve', blurb: 'V = I × R: find the missing one, quick!',
+    gen() {
+      const I = pick([0.5, 1, 1.5, 2, 3]), R = pick([2, 4, 6, 8, 10, 12]), V = I * R, k = Math.floor(Math.random() * 3);
+      if (k === 0) return { q: `I = ${I} A, R = ${R} Ω. V = ?`, art: '', ...numOpts(V, [I + R, R / I, V * 2], ' V'), fb: `V = I × R = ${I} × ${R} = ${gn(V)} V.` };
+      if (k === 1) return { q: `V = ${gn(V)} V, R = ${R} Ω. I = ?`, art: '', ...numOpts(I, [V * R, R / V, I * 2], ' A'), fb: `I = V ÷ R = ${gn(V)} ÷ ${R} = ${I} A.` };
+      return { q: `V = ${gn(V)} V, I = ${I} A. R = ?`, art: '', ...numOpts(R, [V * I, I / V, R * 2], ' Ω'), fb: `R = V ÷ I = ${gn(V)} ÷ ${I} = ${R} Ω.` };
+    } },
+  { id: 'g6', u: 'u3', name: 'Don\'t Burn It!', blurb: 'Pick the smallest power rating that won\'t cook the resistor.',
+    gen() {
+      let V, R, P;
+      do { V = pick([3, 5, 6, 9, 12]); R = pick([10, 22, 47, 100, 220, 470, 1000]); P = V * V / R; } while (P < .03 || P > 1.8 || RATE.some(([r]) => Math.abs(P - r) / r < .15));
+      const ai = RATE.findIndex(([r]) => r > P), idx = [ai, ai - 1, ai + 1 < RATE.length ? ai + 1 : ai - 2].filter(i => i >= 0);
+      while (idx.length < 3) { const j = Math.floor(Math.random() * RATE.length); if (!idx.includes(j)) idx.push(j); }
+      return { q: `${V} V across ${R} Ω. Which rating is the smallest safe pick?`, art: `<div class="small center">Hint: P = V² ÷ R</div>`, opts: idx.map(i => RATE[i][1]), a: 0, fb: `P = ${V}² ÷ ${R} = ${gn(P.toFixed(3))} W, so the smallest rating above that is ${RATE[ai][1]}.` };
+    } },
+  { id: 'g7', u: 'u4', name: 'Series or Parallel?', blurb: 'Quick-tap how the parts are connected.', fixed: true,
+    gen() {
+      if (Math.random() < .55) { const k = pick(Object.keys(SPDRAW)); return { q: 'How are the two resistors connected?', art: SPDRAW[k], opts: ['Series', 'Parallel'], a: k[0] === 's' ? 0 : 1, fb: k[0] === 's' ? 'One single path through both: series.' : 'Both ends are joined, making two separate paths: parallel.' }; }
+      const [t, a] = pick(SPFACT); return { q: 'Series or parallel?', art: `<div class="gbig" style="font-size:19px">${t}</div>`, opts: ['Series', 'Parallel'], a, fb: `That's true for ${a ? 'parallel' : 'series'} circuits.` };
+    } },
+  { id: 'g8', u: 'u4', name: 'Target Builder', blurb: 'Pick the combo that hits the target resistance.',
+    gen() {
+      const par = (a, b) => a * b / (a + b), mk = (p, m) => ({ t: m ? `${p[0]} Ω ∥ ${p[1]} Ω (parallel)` : `${p[0]} Ω + ${p[1]} Ω (series)`, v: m ? par(...p) : p[0] + p[1] });
+      const good = mk(pick(PPAIRS), Math.random() < .5 ? 1 : 0), o = [good];
+      for (let g = 0; o.length < 3 && g < 50; g++) { const c = mk(pick(PPAIRS), Math.random() < .5 ? 1 : 0); if (!o.some(x => Math.abs(x.v - c.v) < 1e-6)) o.push(c); }
+      return { q: `Make exactly <b>${gn(good.v)} Ω</b>`, art: '', opts: o.map(x => x.t), a: 0, fb: `${good.t} = ${gn(good.v)} Ω. Series: add. Parallel: product ÷ sum.` };
+    } },
+  { id: 'g9', u: 'u5', name: 'Symbol Memory', blurb: 'Flip cards to match each symbol with its name.', mode: 'memory', secs: 90 },
+  { id: 'g10', u: 'u5', name: 'Spot the Error', blurb: 'What\'s wrong with this LED circuit?',
+    gen() {
+      const k = pick(Object.keys(ERRS)), others = shuffle(Object.keys(ERRS).filter(x => x !== k)).slice(0, 2);
+      return { q: 'What\'s wrong with this schematic?', art: gsvg(ERRS[k][1]), opts: [k, ...others].map(x => ERRS[x][0]), a: 0, fb: { ok: 'Battery → resistor → LED (pointing the right way) → back: it works.', noR: 'Without a resistor, too much current flows and the LED burns out.', back: 'The LED\'s triangle points against the current, so it blocks it.', open: 'There\'s a gap in the bottom wire, so no current can flow.', short: 'The extra wire joins + straight to −: a short circuit.' }[k] };
+    } },
+  { id: 'g11', u: 'u6', name: 'Junction Balance', blurb: 'KCL: what flows out of the node?',
+    gen() { let a, b, c; do { a = pick([.5, 1, 1.5, 2, 2.5, 3]); b = pick([.5, 1, 1.5, 2]); c = pick([.5, 1, 1.5, 2, 2.5]); } while (c >= a + b); const ans = a + b - c; return { q: 'Current in = current out. What is <b>?</b>', art: junc(a, b, c), ...numOpts(ans, [a + b, a + b + c, Math.abs(a - c)], ' A'), fb: `In: ${a} + ${b} = ${gn(a + b)} A. Out: ${c} + ? → ? = ${gn(ans)} A.` }; } },
+  { id: 'g12', u: 'u6', name: 'Loop Filler', blurb: 'KVL: the drops add up to the battery.',
+    gen() {
+      let V, d1, d2; do { V = pick([6, 9, 12]); d1 = 1 + Math.floor(Math.random() * 5); d2 = 1 + Math.floor(Math.random() * 5); } while (d1 + d2 >= V);
+      const ans = V - d1 - d2;
+      return { q: 'Around the loop, rises = drops. What does R3 drop?', art: gsvg(`${wire('M40 55V25H90M130 25H180M220 25H260V55M260 95V125H40V95')}${sym('bat', 40, 75, 90)}${sym('res', 110, 25)}${sym('res', 200, 25)}${sym('res', 260, 75, 90)}${lbl(18, 79, V + ' V', '#E0604F', 13)}${lbl(110, 50, d1 + ' V', INK, 13)}${lbl(200, 50, d2 + ' V', INK, 13)}${lbl(238, 79, 'R3: ? V', '#5A61D8', 14, 'end')}`),
+        ...numOpts(ans, [V, d1 + d2, V - d1], ' V'), fb: `${V} = ${d1} + ${d2} + ? → ? = ${ans} V.` };
+    } },
+];
+/* ---------- state ---------- */
+const gstate = () => { if (!S.games || typeof S.games !== 'object') S.games = {}; S.games.best = S.games.best || {}; if (!S.games.xd || S.games.xd.d !== today()) S.games.xd = { d: today(), xp: 0 }; return S.games; };
+const gameUnlocked = g => !!S.done[unitOf(g.u).lessons[0]];
+/* ---------- Games tab ---------- */
+function renderGames() {
+  const v = $('#v-games'), G = gstate(); v.innerHTML = '';
+  v.appendChild(el(`<div class="pagehead"><span style="width:60px">${mascot('cheer')}</span><div><h1>Games</h1><p>Quick rounds. Never cost hearts. Today: ${G.xd.xp}/${GAME_XP_DAY} game XP.</p></div></div>`));
+  UNITS.forEach(u => {
+    const gs = GAMES.filter(g => g.u === u.id), open = gameUnlocked(gs[0]);
+    const p = el(`<div class="panel"><h3 style="color:${u.color}">Unit ${u.n}: ${u.title}</h3><div class="ggrid"></div>${open ? '' : `<p class="small" style="margin:6px 0 0">Finish lesson ${LABEL[u.lessons[0]]} to unlock these games.</p>`}</div>`);
+    gs.forEach(g => { const b = el(`<button class="gcard ${open ? '' : 'locked'}" data-g="${g.id}" ${open ? '' : 'disabled'} style="--uc:${u.color}"><b>${g.name}</b><span>${g.blurb}</span><em>${open ? (G.best[g.id] ? 'Best: ' + G.best[g.id] : 'Play!') : 'Locked'}</em></button>`); b.onclick = () => { SFX.tap(); playGame(g); }; $('.ggrid', p).appendChild(b); });
+    v.appendChild(p);
+  });
+  v.appendChild(el(`<p class="small center" style="margin:4px 20px 30px">Up to +${GAME_XP_ROUND} XP a round, ${GAME_XP_DAY} XP a day from games.</p>`));
+}
+/* ---------- shared shell: timer, score, results, replay ---------- */
+let GM = null;
+function playGame(g) {
+  Anim.clear(); $('.lesson')?.remove(); if (GM) clearInterval(GM.tick);
+  const secs = g.secs || 60;
+  GM = { g, score: 0, right: 0, wrong: 0, combo: 0, end: Date.now() + secs * 1000, secs, lock: false };
+  const L = el(`<div class="lesson game" role="dialog" aria-modal="true" aria-label="${esc(g.name)}"><div class="inner"><div class="lhead"><button class="iconbtn" id="gx" aria-label="Quit game">${ICON.close()}</button><div class="prog" aria-label="Time left"><i id="gtime" style="width:100%"></i></div><span class="status ok" id="gscore" style="padding:5px 10px">0</span></div><div class="stage" id="gstage"></div></div></div>`);
+  document.body.appendChild(L); document.body.style.overflow = 'hidden';
+  $('#gx').onclick = quitGame;
+  GM.tick = setInterval(() => { const left = GM.end - Date.now(); $('#gtime').style.width = Math.max(0, left / (secs * 1000) * 100) + '%'; if (left <= 0) gameOver(); }, 100);
+  g.mode === 'memory' ? memRound() : nextQ();
+}
+function quitGame() { if (GM) clearInterval(GM.tick); GM = null; $('.lesson.game')?.remove(); document.body.style.overflow = ''; renderTop(); showTab('games'); }
+const gScore = () => { $('#gscore').textContent = GM.score + (GM.combo >= 3 ? ` ×${GM.combo}` : ''); };
+function nextQ() {
+  if (!GM) return; const it = GM.g.gen(), st = $('#gstage');
+  const order = GM.g.fixed ? it.opts.map((_, i) => i) : shuffle(it.opts.map((_, i) => i));
+  st.innerHTML = `<div class="kicker">${GM.g.name}</div><h2 class="q">${it.q}</h2>${it.art ? `<div class="art">${it.art}</div>` : ''}<div class="opts ${GM.g.fixed ? 'grid2' : ''}">${order.map(i => `<button class="opt ${GM.g.fixed ? 'big' : ''}" data-oi="${i}"><span>${it.opts[i]}</span></button>`).join('')}</div><div id="gfb" class="gfb"></div>`;
+  GM.lock = false;
+  $$('.opt', st).forEach(b => b.onclick = () => {
+    if (!GM || GM.lock) return; GM.lock = true; const ok = +b.dataset.oi === it.a;
+    b.classList.add(ok ? 'right' : 'wrong'); if (!ok) $(`.opt[data-oi="${it.a}"]`, st).classList.add('right');
+    if (ok) { GM.right++; GM.combo++; GM.score += 10 + (GM.combo >= 3 ? 5 : 0); SFX.good(); }
+    else { GM.wrong++; GM.combo = 0; GM.end -= 2000; SFX.bad(); $('#gfb').innerHTML = `${ICON.why()} ${it.fb || ''} <b>(−2 s)</b>`; }
+    gScore(); setTimeout(nextQ, ok ? 380 : 1500);
+  });
+}
+function memRound() {
+  const syms = shuffle(MEMSYM.slice()).slice(0, 6), cards = shuffle(syms.flatMap(s => [{ s, k: 'sym' }, { s, k: 'name' }]));
+  const st = $('#gstage'); let open = [], found = 0;
+  st.innerHTML = `<div class="kicker">${GM.g.name}</div><h2 class="q">Match each symbol to its name</h2><div class="memgrid">${cards.map((c, i) => `<button class="mcard" data-i="${i}" data-s="${c.s}" aria-label="Hidden card"><span class="back">${mascot('happy')}</span><span class="face">${c.k === 'sym' ? symCard(c.s) : `<b>${SYMNAME[c.s]}</b>`}</span></button>`).join('')}</div>`;
+  $$('.mcard', st).forEach(b => b.onclick = () => {
+    if (!GM || GM.lock || b.classList.contains('up')) return; b.classList.add('up'); open.push(b); SFX.flip();
+    if (open.length < 2) return; GM.lock = true; const [x, y] = open.map(e => cards[+e.dataset.i]);
+    if (x.s === y.s && x.k !== y.k) { open.forEach(e => e.classList.add('done')); open = []; found++; GM.right++; GM.combo++; GM.score += 20; SFX.good(); gScore(); GM.lock = false; if (found === 6) { GM.score += Math.max(0, Math.round((GM.end - Date.now()) / 1000)); gameOver(); } }
+    else { GM.wrong++; GM.combo = 0; setTimeout(() => { open.forEach(e => e.classList.remove('up')); open = []; if (GM) GM.lock = false; }, 700); }
+  });
+}
+function gameOver() {
+  if (!GM || GM.over) return; GM.over = true; clearInterval(GM.tick);
+  const G = gstate(), g = GM.g, prev = G.best[g.id] || 0, rec = GM.score > prev;
+  if (rec) G.best[g.id] = GM.score;
+  const raw = g.mode === 'memory' ? Math.min(GAME_XP_ROUND, GM.right * 3 + (GM.right === 6 ? 2 : 0)) : Math.max(0, Math.min(GAME_XP_ROUND, 2 * GM.right - 2 * GM.wrong));
+  const xp = Math.max(0, Math.min(raw, GAME_XP_DAY - G.xd.xp)); G.xd.xp += xp;
+  const lvUp = xp ? addXp(xp) : false; save(); renderTop();
+  const total = GM.right + GM.wrong;
+  $('#gstage').innerHTML = `<div class="center" style="padding-top:10px">${mascot(GM.right >= GM.wrong ? 'cheer' : 'think', 'style="width:120px"')}<div class="bigtitle">${rec ? 'New best!' : 'Time!'}</div>
+    <div class="statrow"><div class="stat" style="border-color:var(--mint)"><div class="h" style="background:var(--mint)">Score</div><div class="v">${GM.score}</div></div><div class="stat" style="border-color:var(--sun)"><div class="h" style="background:var(--sund)">Best</div><div class="v">${G.best[g.id] || 0}</div></div><div class="stat" style="border-color:var(--peri)"><div class="h" style="background:var(--peri)">XP</div><div class="v">+${xp}</div></div></div>
+    <p class="small">${GM.right} right${total ? ` of ${total}` : ''}${G.xd.xp >= GAME_XP_DAY ? ' · Daily game XP maxed: play for fun and best scores!' : ''}</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px"><button class="btn primary" id="gagain">Play again</button><button class="btn ghost" id="gback">Back to games</button></div></div>`;
+  $('#gagain').onclick = () => playGame(g); $('#gback').onclick = quitGame;
+  SFX.done(); if (rec && GM.score) confetti(); if (lvUp) toast('Level up!', ICON.star());
 }
 /* =========================================================
    INIT
