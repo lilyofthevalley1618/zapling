@@ -73,7 +73,23 @@ main{flex:1;padding-bottom:96px}
 .startbubble{position:absolute;top:-38px;left:50%;transform:translateX(-50%);background:#fff;color:var(--corald);font-weight:900;font-size:13px;letter-spacing:.6px;padding:6px 12px;border-radius:12px;border:2px solid var(--line);white-space:nowrap;animation:bob 1.8s ease-in-out infinite}
 .startbubble::after{content:"";position:absolute;bottom:-8px;left:50%;margin-left:-7px;border:7px solid transparent;border-top-color:#fff;border-bottom:0}
 @keyframes bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-4px)}}
-.pathmascot{position:absolute;width:86px;pointer-events:none;animation:sway 3s ease-in-out infinite}
+.pathmascot{position:absolute;width:86px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.pathmascot svg{overflow:visible}
+.avbody,.aveyes,.avpet{transform-box:fill-box}.avbody{transform-origin:50% 100%}.aveyes{transform-origin:50% 50%}.avpet{transform-origin:50% 50%}
+.avspark{opacity:0;transform-box:fill-box;transform-origin:50% 50%}
+.a-bounce .avbody{animation:avBounce .8s ease-out}.a-bounce .avpet{animation:avHop .8s .1s ease-out}
+.a-wiggle .avbody{animation:avWiggle .9s ease-in-out}
+.a-blink .aveyes{animation:avBlink .45s ease-in-out 2}
+.a-wave .avbody{animation:avWave 1.1s ease-in-out}.a-wave .aveyes{animation:avBlink .4s .3s}
+.a-hop .avbody{animation:avHop .9s cubic-bezier(.3,.7,.4,1)}.a-hop .avpet{animation:avHop .9s .15s cubic-bezier(.3,.7,.4,1)}
+.a-sparkle .avspark{animation:avSpark 1.2s ease-out}.a-sparkle .avbody{animation:avBounce .8s ease-out}
+@keyframes avBounce{0%,100%{transform:none}30%{transform:scale(1.06,.92)}55%{transform:translateY(-7px) scale(.97,1.04)}80%{transform:scale(1.02,.98)}}
+@keyframes avWiggle{0%,100%{transform:none}20%{transform:rotate(-7deg)}45%{transform:rotate(6deg)}70%{transform:rotate(-4deg)}}
+@keyframes avBlink{0%,100%{transform:none}50%{transform:scaleY(.1)}}
+@keyframes avWave{0%,100%{transform:none}25%{transform:rotate(-10deg) translateX(-2px)}50%{transform:rotate(3deg)}75%{transform:rotate(-8deg)}}
+@keyframes avHop{0%,100%{transform:none}15%{transform:scale(1.08,.9)}45%{transform:translateY(-16px) scale(.95,1.06)}75%{transform:translateY(0) scale(1.06,.94)}}
+@keyframes avSpark{0%{opacity:0;transform:scale(.4)}35%{opacity:1;transform:scale(1.1)}100%{opacity:0;transform:scale(1.3)}}
+@media (prefers-reduced-motion:reduce){.a-bounce .avbody,.a-wiggle .avbody,.a-wave .avbody,.a-hop .avbody,.a-hop .avpet,.a-bounce .avpet,.a-sparkle .avbody{animation:none!important}.a-blink .aveyes{animation:avBlink .6s ease-in-out!important}}
 @keyframes sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
 .pop{position:absolute;z-index:15;left:50%;transform:translateX(-50%);width:min(320px,88vw);background:#fff;border-radius:20px;padding:14px 16px 16px;box-shadow:var(--shadow);border:2px solid var(--line);animation:popin .16s ease-out}
 .pop h3{margin:0 0 4px;font-size:18px}.pop p{margin:0 0 12px;color:var(--ink2);font-size:14.5px;line-height:1.35}
@@ -2110,7 +2126,7 @@ function renderPath() {
       if (n.state === 'current' && !mascotPlaced) {
         mascotPlaced = true;
         const left = x >= 160 ? x - 150 : x + 62;
-        pw.appendChild(el(`<div class="pathmascot" style="left:${left}px;top:${y - 60}px">${mascot(n.kind === 'test' ? 'think' : 'happy')}</div>`));
+        { const pm = el(`<div class="pathmascot" style="left:${left}px;top:${y - 60}px" role="button" aria-label="Your avatar: tap to play">${avatarSVG()}</div>`); pm.onclick = () => { SFX.tap(); playAvatarAnim(pm); }; pw.appendChild(pm); }
       }
     });
     ue.appendChild(pw); v.appendChild(ue);
@@ -3608,9 +3624,9 @@ const PETS = {
 };
 function avatarSVG(eq = S.avatar.eq, size = '') {
   const B = BODIES[eq.body] || BODIES.battery, a = B.a, [c, k] = COLORS[eq.color] || COLORS.mint, e = Math.min(12, a.hw * .48), dark = eq.color === 'midnight';
-  const face = `<g fill="${dark ? '#fff' : '#2E2A5A'}"><ellipse cx="${60 - e}" cy="${a.eye}" rx="4.3" ry="5.6"/><ellipse cx="${60 + e}" cy="${a.eye}" rx="4.3" ry="5.6"/></g><circle cx="${60 - e + 1.5}" cy="${a.eye - 2}" r="1.5" fill="${dark ? '#2E2A5A' : '#fff'}"/><circle cx="${60 + e + 1.5}" cy="${a.eye - 2}" r="1.5" fill="${dark ? '#2E2A5A' : '#fff'}"/><path d="M${60 - 6} ${a.eye + 10}q6 6 12 0" stroke="${dark ? '#fff' : '#2E2A5A'}" stroke-width="2.6" fill="none" stroke-linecap="round"/><g fill="#FF8FA3" opacity=".55"><ellipse cx="${60 - e - 7}" cy="${a.eye + 8}" rx="4.5" ry="3"/><ellipse cx="${60 + e + 7}" cy="${a.eye + 8}" rx="4.5" ry="3"/></g>`;
+  const face = `<g class="aveyes"><g fill="${dark ? '#fff' : '#2E2A5A'}"><ellipse cx="${60 - e}" cy="${a.eye}" rx="4.3" ry="5.6"/><ellipse cx="${60 + e}" cy="${a.eye}" rx="4.3" ry="5.6"/></g><circle cx="${60 - e + 1.5}" cy="${a.eye - 2}" r="1.5" fill="${dark ? '#2E2A5A' : '#fff'}"/><circle cx="${60 + e + 1.5}" cy="${a.eye - 2}" r="1.5" fill="${dark ? '#2E2A5A' : '#fff'}"/></g><path d="M${60 - 6} ${a.eye + 10}q6 6 12 0" stroke="${dark ? '#fff' : '#2E2A5A'}" stroke-width="2.6" fill="none" stroke-linecap="round"/><g fill="#FF8FA3" opacity=".55"><ellipse cx="${60 - e - 7}" cy="${a.eye + 8}" rx="4.5" ry="3"/><ellipse cx="${60 + e + 7}" cy="${a.eye + 8}" rx="4.5" ry="3"/></g>`;
   const L = s => eq[s] && ACC[eq[s]] ? ACC[eq[s]](a, e) : '';
-  return `<svg viewBox="0 -12 120 152" ${size} role="img" aria-label="Your Zapling avatar">${eq.bg && BGS[eq.bg] ? BGS[eq.bg] : ''}<ellipse cx="60" cy="134" rx="30" ry="4" fill="#2E2A5A" opacity=".08"/>${B.d(c, k)}${face}${L('eyes')}${L('ears')}${L('deco')}${L('hat')}${L('bling')}${eq.pet && PETS[eq.pet] ? PETS[eq.pet] : ''}</svg>`;
+  return `<svg viewBox="0 -12 120 152" ${size} role="img" aria-label="Your Zapling avatar">${eq.bg && BGS[eq.bg] ? BGS[eq.bg] : ''}<ellipse cx="60" cy="134" rx="30" ry="4" fill="#2E2A5A" opacity=".08"/><g class="avbody">${B.d(c, k)}${face}${L('eyes')}${L('ears')}${L('deco')}${L('hat')}${L('bling')}</g>${eq.pet && PETS[eq.pet] ? `<g class="avpet">${PETS[eq.pet]}</g>` : ''}<g class="avspark" fill="#FFC94D"><path d="M18 20l2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5z"/><path d="M102 8l2 4.5 4.5 2-4.5 2-2 4.5-2-4.5-4.5-2 4.5-2z"/><circle cx="104" cy="60" r="3"/></g></svg>`;
 }
 const SHOP = [
   ['Bodies', 'body', [['battery', 'Classic battery', 0], ['round', 'Round spark', 40], ['capsule', 'Tall capsule', 60], ['star', 'Superstar', 120]]],
@@ -3673,13 +3689,33 @@ function applyPlacement(n, level) {
   S.placement = { level, units, at: new Date().toISOString(), tokens: bonusT, xp: bonusX }; save();
   return { bonusT, bonusX };
 }
+
+/* ---------- Learn-page avatar idle animations (one timer) ---------- */
+const AV_ANIMS = ['bounce', 'wiggle', 'blink', 'wave', 'hop', 'sparkle'];
+let avLast = null, avTimer = null;
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function playAvatarAnim(elm, name) {
+  if (!elm) return; const pool = reducedMotion() ? ['blink'] : AV_ANIMS.filter(a => a !== avLast);
+  name = name || pick(pool); avLast = name;
+  AV_ANIMS.forEach(a => elm.classList.remove('a-' + a)); void elm.offsetWidth; elm.classList.add('a-' + name);
+  clearTimeout(elm._avt); elm._avt = setTimeout(() => elm.classList.remove('a-' + name), 1300);
+  return name;
+}
+function avatarIdle() {
+  clearTimeout(avTimer);
+  avTimer = setTimeout(() => {
+    const m = $('.pathmascot');
+    if (m && !document.hidden && $('#v-learn').classList.contains('on') && !$('.lesson') && !$('.onb')) playAvatarAnim(m);
+    avatarIdle();
+  }, 4000 + Math.random() * 3000);
+}
 /* =========================================================
    INIT
    ========================================================= */
 migrate(); ensurePrefs(); ensureShop(); regenHearts(); checkStreakOnLoad(); save();
 $$('.tab').forEach(b => b.onclick = () => { SFX.tap(); if (b.dataset.tab === 'review') RV = null; showTab(b.dataset.tab); });
 $('#btnSound').onclick = () => { S.sound = !S.sound; save(); renderTop(); SFX.tap(); };
-renderTop(); showTab('learn'); flushToasts(); mountSprigFab(); initGoal();
+renderTop(); showTab('learn'); flushToasts(); mountSprigFab(); initGoal(); avatarIdle();
 addEventListener('keydown', e => { if (e.key === 'Escape' && $('.sprigchat')) closeSprig(); });
 setInterval(() => { regenHearts(); renderHearts(); if (R && (R.phase === 'main' || R.phase === 'ooh')) setHead(); tickOOH(); }, 1000);
 addEventListener('visibilitychange', () => { if (!document.hidden) { regenHearts(); renderTop(); } });
