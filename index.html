@@ -3590,6 +3590,14 @@ function ensureShop() {
   S.avatar.owned = Array.isArray(S.avatar.owned) ? S.avatar.owned : [];
   ['battery', 'mint'].forEach(i => { if (!S.avatar.owned.includes(i)) S.avatar.owned.push(i); });
   S.avatar.eq = Object.assign({ body: 'battery', color: 'mint' }, S.avatar.eq || {});
+  // one-time migration: two retired bodies are refunded and unequipped
+  if (!S.avatar.migRetired1) {
+    S.avatar.migRetired1 = 1;
+    Object.entries({ kitty: 160, bunny: 220 }).forEach(([id, p]) => {
+      const i = S.avatar.owned.indexOf(id); if (i >= 0) { S.avatar.owned.splice(i, 1); S.tokens += p; }
+    });
+  }
+  if (!BODIES[S.avatar.eq.body]) S.avatar.eq.body = 'battery';
   // retroactive grant for lessons/tests completed before tokens existed (placed-out ones get the placement bonus instead)
   UNITS.forEach(u => {
     u.lessons.forEach(l => { const d = S.done[l]; if (d && !d.placed && !S.tokGranted[l]) { S.tokGranted[l] = 1; S.tokens += TOK_UNIT[u.id]; } });
@@ -3648,8 +3656,6 @@ const BODIES = {
   cloud: { a: { top: 56, eye: 94, hw: 32, neck: 112, nw: 28, chest: 118, arm: null, feet: 128 }, d: (c, k) => { const C = [[38, 96, 20], [58, 80, 26], [82, 94, 22], [48, 110, 18], [72, 110, 18], [60, 102, 24]]; return `${C.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${k}" stroke="${k}" stroke-width="6"/>`).join('')}${C.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`).join('')}${shine(48, 70, 5, 7)}`; } },
   led: { a: { top: 58, eye: 86, hw: 26, neck: 104, nw: 26, chest: 106, arm: [27, 98], feet: null }, d: (c, k) => `<circle cx="60" cy="84" r="44" fill="${c}" opacity=".2"/><path d="M48 122V137M72 122V133" stroke="#9AA3B5" stroke-width="3.5" stroke-linecap="round"/><path d="M34 116V82A26 26 0 0 1 86 82V116Z" fill="${c}" stroke="${k}" stroke-width="3" stroke-linejoin="round"/><rect x="29" y="112" width="62" height="11" rx="5.5" fill="${k}"/>${shine(44, 72, 4, 9)}` },
   cap: { a: { top: 40, eye: 70, hw: 24, neck: 94, nw: 24, chest: 106, arm: [25, 92], feet: null }, d: (c, k) => `<path d="M50 122V137M70 122V137" stroke="#9AA3B5" stroke-width="3.5" stroke-linecap="round"/><rect x="36" y="38" width="48" height="86" rx="21" fill="${c}" stroke="${k}" stroke-width="3"/><path d="M78 50V112" stroke="#fff" stroke-width="7" opacity=".35" stroke-linecap="round"/><path d="M76 66h5M76 84h5M76 102h5" stroke="${k}" stroke-width="2.4" stroke-linecap="round"/>${shine(45, 56, 4, 9)}` },
-  kitty: { a: { top: 56, eye: 88, hw: 36, neck: 108, nw: 30, chest: 115, arm: [38, 102], feet: 127 }, d: (c, k) => `<path d="M94 112q24-4 16-28" stroke="${k}" stroke-width="15" fill="none" stroke-linecap="round"/><path d="M94 112q24-4 16-28" stroke="${c}" stroke-width="9" fill="none" stroke-linecap="round"/><g stroke="${k}" stroke-width="3" stroke-linejoin="round"><path d="M28 78L32 40L56 58Z" fill="${c}"/><path d="M92 78L88 40L64 58Z" fill="${c}"/></g><path d="M35 66L37 49L48 58Z" fill="#FF9DB5"/><path d="M85 66L83 49L72 58Z" fill="#FF9DB5"/><ellipse cx="60" cy="90" rx="38" ry="36" fill="${c}" stroke="${k}" stroke-width="3"/>${shine(40, 72, 5, 9)}` },
-  bunny: { a: { top: 60, eye: 88, hw: 30, neck: 110, nw: 26, chest: 116, arm: [32, 104], feet: 127 }, d: (c, k) => `<g stroke="${k}" stroke-width="3"><ellipse cx="46" cy="42" rx="9.5" ry="25" fill="${c}" transform="rotate(-10 46 42)"/><ellipse cx="74" cy="42" rx="9.5" ry="25" fill="${c}" transform="rotate(10 74 42)"/></g><ellipse cx="46" cy="44" rx="4" ry="16" fill="#FF9DB5" transform="rotate(-10 46 44)"/><ellipse cx="74" cy="44" rx="4" ry="16" fill="#FF9DB5" transform="rotate(10 74 44)"/><ellipse cx="60" cy="92" rx="33" ry="35" fill="${c}" stroke="${k}" stroke-width="3"/>${shine(42, 76, 4, 8)}<g opacity=".55" fill="#fff"><path d="M54 113l8 5-8 5z"/><rect x="62" y="112" width="2.6" height="12" rx="1"/></g>` },
   robot: { a: { top: 46, eye: 76, hw: 28, neck: 102, nw: 28, chest: 112, arm: [30, 100], feet: 127 }, d: (c, k) => `<path d="M60 45V31" stroke="${k}" stroke-width="3"/><circle cx="60" cy="28" r="5.5" fill="#FF7F8E" stroke="${k}" stroke-width="2.5"/><rect x="32" y="44" width="56" height="82" rx="22" fill="${c}" stroke="${k}" stroke-width="3"/><rect x="39" y="56" width="42" height="40" rx="15" fill="#fff" opacity=".45"/><circle cx="32" cy="80" r="4.5" fill="${k}"/><circle cx="88" cy="80" r="4.5" fill="${k}"/><g fill="#fff" opacity=".6"><circle cx="52" cy="114" r="2.6"/><circle cx="60" cy="114" r="2.6"/><circle cx="68" cy="114" r="2.6"/></g>` },
 };
 function faceSVG(a, e, dark) {
@@ -3730,7 +3736,7 @@ function avatarSVG(eq = S.avatar.eq, size = '') {
     ${eq.pet && PETS[eq.pet] ? `<g class="avpet">${PETS[eq.pet]}</g>` : ''}<g class="avspark" fill="#FFC94D"><polygon points="${starPts(16, 18, 7, 2.6)}"/><polygon points="${starPts(104, 6, 5.5, 2)}"/><circle cx="106" cy="58" r="3"/></g></svg>`;
 }
 const SHOP = [
-  ['Bodies', 'body', [['battery', 'Classic battery', 0], ['mochi', 'Mochi bean', 25], ['round', 'Round spark', 40], ['cloud', 'Cloud puff', 50], ['capsule', 'Tall capsule', 60], ['led', 'LED drop', 80], ['cap', 'Capacitor buddy', 100], ['star', 'Superstar', 120], ['kitty', 'Kitty spark', 160], ['bunny', 'Diode bunny', 220], ['robot', 'Little robot', 300]]],
+  ['Bodies', 'body', [['battery', 'Classic battery', 0], ['mochi', 'Mochi bean', 25], ['round', 'Round spark', 40], ['cloud', 'Cloud puff', 50], ['capsule', 'Tall capsule', 60], ['led', 'LED drop', 80], ['cap', 'Capacitor buddy', 100], ['star', 'Superstar', 120], ['robot', 'Little robot', 300]]],
   ['Colors', 'color', [['mint', 'Mint', 0], ['coral', 'Coral', 10], ['sun', 'Sunny', 10], ['peri', 'Periwinkle', 15], ['sky', 'Sky', 15], ['pink', 'Bubblegum', 20], ['lilac', 'Lilac', 20], ['midnight', 'Midnight', 35]]],
   ['Hats', 'hat', [['party', 'Party hat', 25], ['beanie', 'Beanie', 30], ['beret', 'Beret', 35], ['bucket', 'Bucket hat', 40], ['hardhat', 'Hard hat', 60], ['bunnyears', 'Bunny ears', 75], ['tophat', 'Top hat', 80], ['flowercrown', 'Flower crown', 95], ['gradcap', 'Graduation cap', 120], ['crown', 'Crown', 150], ['wizard', 'Wizard hat', 200], ['boltcrown', 'Lightning crown', 350]]],
   ['Glasses', 'eyes', [['roundg', 'Round glasses', 20], ['square', 'Nerdy squares', 25], ['shades', 'Sunglasses', 45], ['heartg', 'Heart glasses', 50], ['goggles', 'Safety goggles', 55], ['starg', 'Star glasses', 65], ['monocle', 'Monocle', 90]]],
