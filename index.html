@@ -204,7 +204,8 @@ main{flex:1;padding-bottom:96px}
 .fbhead .ic svg{width:26px;height:26px}
 .fbhead b{font-size:19px}.fb.good b{color:var(--mintd)}.fb.bad b{color:var(--corald)}
 .fbhead .xp{margin-left:auto;font-weight:900;color:#8A5A00;background:var(--sunl);border-radius:999px;padding:4px 10px;font-size:14px}
-.why{background:#fff;border-radius:14px;padding:10px 12px;margin:0 0 10px;font-size:15px;line-height:1.45;display:none}
+.why{background:#fff;border-radius:14px;padding:10px 12px;margin:0 0 10px;font-size:15px;line-height:1.45;display:none;max-height:32vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.whylbl{display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:900;letter-spacing:.4px;color:var(--ink2);margin:0 0 4px}.whylbl svg{width:15px;height:15px}
 .why.on{display:block;animation:slideup .2s}
 .whybtn{border:0;background:rgba(255,255,255,.7);border-radius:12px;padding:8px 12px;font-weight:900;cursor:pointer;margin-bottom:10px;font-size:14px;display:inline-flex;align-items:center;gap:6px}
 @keyframes slideup{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
@@ -2294,11 +2295,10 @@ async function doCheck() {
   const head = step.graded === false ? 'Experiment complete!' : ok ? praise[Math.floor(Math.random() * praise.length)] : 'Not quite';
   const ans = !ok && CTRL.answer ? `<div style="font-weight:800;margin:-4px 0 10px;color:var(--corald)">Correct answer: <span style="color:var(--ink)">${CTRL.answer}</span></div>` : '';
   const f = footer(`<div class="fbhead"><span class="ic">${ok ? ICON.check() : ICON.cross()}</span><b>${head}</b>${gain ? `<span class="xp">+${gain} XP</span>` : ''}</div>${ans}
-    <button class="whybtn" id="whyBtn" aria-expanded="${!ok}">${ICON.why()} Why?</button><div class="why ${ok ? '' : 'on'}" id="whyBox">${step.why}</div>${!ok && step.graded !== false ? `<button class="askbtn askwrong" id="askWhy">${askIcon()}Ask why I got this wrong</button>` : ''}
+    <div class="whylbl">${ICON.why()} Why</div><div class="why on" id="whyBox">${step.why}</div>${!ok && step.graded !== false ? `<button class="askbtn askwrong" id="askWhy">${askIcon()}Ask why I got this wrong</button>` : ''}
     <button class="btn ${ok ? 'primary' : 'coral'}" id="btnNext">Continue</button>`);
   f.classList.add('fb', ok ? 'good' : 'bad');
   if ($('#askWhy')) $('#askWhy').onclick = () => { SFX.tap(); openSprig(curStepCtx(true)); };
-  $('#whyBtn').onclick = () => { const w = $('#whyBox'); w.classList.toggle('on'); $('#whyBtn').setAttribute('aria-expanded', w.classList.contains('on')); };
   $('#btnNext').onclick = () => {
     if (R.kind === 'lesson' && R.phase === 'main' && S.hearts <= 0 && R.idx < R.steps.length - 1) return outOfHearts();
     next();
