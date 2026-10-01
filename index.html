@@ -218,7 +218,7 @@ main{flex:1;padding-bottom:96px}
 .fc .front svg{width:110px;height:90px}
 .fc .back{background:linear-gradient(160deg,#fff,var(--peril));transform:rotateY(180deg);font-size:17px;line-height:1.45}
 .fc .back .term{font-weight:900;color:var(--perid);font-size:15px;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
-.fc .hint{position:absolute;bottom:12px;font-size:12px;font-weight:800;color:var(--ink2);display:flex;gap:4px;align-items:center}
+.fc .hint{margin-top:4px;font-size:12.5px;font-weight:700;color:#A6A3C7;text-align:center;letter-spacing:.2px}
 .dots{display:flex;gap:6px;justify-content:center;margin-bottom:8px}.dots i{width:8px;height:8px;border-radius:50%;background:var(--lock)}.dots i.on{background:var(--peri);width:20px;border-radius:9px}
 /* complete / results */
 .center{text-align:center}
@@ -2349,7 +2349,7 @@ function flashcardHTML(id, i, n) {
   const c = CARDS[id];
   return `${n > 1 ? `<div class="dots">${Array.from({ length: n }, (_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>` : ''}
   <div class="fc" id="fc" role="button" tabindex="0" aria-label="Flashcard: ${esc(c.term)}. Tap to flip.">
-    <div class="in"><div class="face front">${CARDART[c.art]()}<div class="term">${c.term}</div><div class="hint">${ICON.flip()} tap to flip</div></div>
+    <div class="in"><div class="face front">${CARDART[c.art]()}<div class="term">${c.term}</div><div class="hint">Tap to flip</div></div>
     <div class="face back"><div class="term">${c.term}</div><div>${c.def}</div></div></div></div>`;
 }
 function renderCards() {
