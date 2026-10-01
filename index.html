@@ -2016,26 +2016,72 @@ const activeToday = () => S.last === today();
 /* =========================================================
    SOUND, CONFETTI, TOAST, MODAL
    ========================================================= */
-let AC = null;
-function beep(notes, type = 'sine', dur = .1, vol = .07) {
-  if (!S.sound) return;
+/* ---------- sound module: everything synthesized with Web Audio, no files ---------- */
+const SND = { ctx: null, out: null, tick: 0, primed: false };
+function audio() {
+  if (!S.sound) return null;
   try {
-    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
-    if (AC.state === 'suspended') AC.resume();
-    const t0 = AC.currentTime + .01;
-    notes.forEach((f, i) => {
-      const o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.value = f;
-      const s = t0 + i * dur; g.gain.setValueAtTime(.0001, s); g.gain.exponentialRampToValueAtTime(vol, s + .015); g.gain.exponentialRampToValueAtTime(.0001, s + dur * 1.7);
-      o.connect(g); g.connect(AC.destination); o.start(s); o.stop(s + dur * 1.9);
-    });
-  } catch (e) { }
+    if (!SND.ctx) {
+      const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
+      SND.ctx = new C(); const comp = SND.ctx.createDynamicsCompressor();
+      SND.out = SND.ctx.createGain(); SND.out.gain.value = .5; // moderate master volume
+      SND.out.connect(comp); comp.connect(SND.ctx.destination);
+    }
+    if (SND.ctx.state !== 'running') { const p = SND.ctx.resume(); p && p.catch && p.catch(() => { }); }
+    return SND.ctx;
+  } catch (e) { return null; }
 }
-const SFX = {
-  good: () => beep([659, 988], 'sine', .09, .07), bad: () => beep([247, 196], 'triangle', .13, .07),
-  tap: () => beep([540], 'sine', .04, .025), done: () => beep([523, 659, 784, 1047], 'sine', .1, .075),
-  zap: () => beep([1400, 380, 1100, 240], 'square', .03, .025), level: () => beep([392, 523, 659, 784, 1047, 1319], 'triangle', .09, .07),
-  flip: () => beep([700, 900], 'sine', .04, .025),
+// one enveloped oscillator: freq, start offset (s), length (s), wave, peak, {to: glide target, a: attack}
+function tone(f, at, dur, type = 'sine', vol = .1, o = {}) {
+  const c = audio(); if (!c) return;
+  const t = c.currentTime + .015 + at, os = c.createOscillator(), g = c.createGain();
+  os.type = type; os.frequency.setValueAtTime(f, t); if (o.to) os.frequency.exponentialRampToValueAtTime(o.to, t + dur * .9);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + (o.a || .006)); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  os.connect(g); g.connect(SND.out); os.start(t); os.stop(t + dur + .05);
+}
+// filtered noise burst (whoosh / thunk texture)
+function hiss(at, dur, vol, f0, f1, q = 1.2) {
+  const c = audio(); if (!c) return;
+  const t = c.currentTime + .015 + at, n = Math.ceil(c.sampleRate * dur), buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  const src = c.createBufferSource(), bp = c.createBiquadFilter(), g = c.createGain(); src.buffer = buf;
+  bp.type = 'bandpass'; bp.Q.value = q; bp.frequency.setValueAtTime(f0, t); bp.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + dur * .35); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  src.connect(bp); bp.connect(g); g.connect(SND.out); src.start(t); src.stop(t + dur + .05);
+}
+const bell = (f, at, dur, vol) => { tone(f, at, dur, 'sine', vol); tone(f * 2, at, dur * .6, 'sine', vol * .22); tone(f * 3.01, at, dur * .3, 'sine', vol * .08); };
+const sparkle = (at, n, vol = .03) => { for (let i = 0; i < n; i++) tone([2093, 2349, 2637, 3136, 3520][(Math.random() * 5) | 0], at + i * .07 + Math.random() * .03, .16, 'sine', vol); };
+const fanfare = (notes, gap, chord, cAt, cLen, vol, sp) => {
+  notes.forEach((f, i) => bell(f, i * gap, .3, vol));
+  chord.forEach(f => { tone(f, cAt, cLen, 'triangle', vol * .55, { a: .02 }); tone(f * 2, cAt, cLen * .7, 'sine', vol * .2, { a: .02 }); });
+  sparkle(cAt + .05, sp);
 };
+const SFX = {
+  good: () => { bell(784, 0, .22, .12); bell(988, .07, .24, .12); bell(1568, .14, .34, .1); },          // bright rising G–B–G chime
+  bad: () => { tone(196, 0, .2, 'sine', .16, { to: 140, a: .012 }); tone(98, 0, .18, 'triangle', .07, { to: 80 }); }, // soft low bonk
+  tap: () => tone(880, 0, .05, 'sine', .05, { to: 620 }),                                           // tiny pop for select/tap
+  toggle: () => { tone(1900, 0, .018, 'triangle', .03); tone(620, .012, .04, 'sine', .045); },       // switch click
+  drag: () => tone(520, 0, .07, 'sine', .045, { to: 780 }),                                         // pick-up blip
+  drop: () => { tone(240, 0, .11, 'sine', .1, { to: 110 }); hiss(0, .06, .03, 900, 300); },          // soft thunk
+  tick: () => { const n = Date.now(); if (n - SND.tick < 70) return; SND.tick = n; tone(1500, 0, .02, 'sine', .018); }, // throttled slider tick
+  flip: () => hiss(0, .2, .06, 500, 2600, .8),                                                      // card whoosh
+  zap: () => { hiss(0, .12, .08, 3000, 800, .7); tone(1400, 0, .12, 'square', .02, { to: 200 }); },  // static spark
+  coin: () => { tone(988, 0, .08, 'square', .03); tone(1319, .07, .3, 'square', .03); bell(2637, .07, .25, .03); }, // token spend
+  reward: () => { [1319, 1568, 2093].forEach((f, i) => bell(f, i * .08, .25, .06)); sparkle(.22, 4, .022); }, // tokens earned
+  done: () => fanfare([523, 659, 784, 1047], .085, [523, 659, 784, 1047], .36, .8, .1, 6),        // lesson complete (~1.2 s)
+  test: () => { fanfare([392, 523, 659, 784, 1047, 1319], .075, [392, 523, 659, 784, 1047], .48, 1, .1, 9); tone(131, .48, 1, 'sine', .08, { a: .03 }); }, // unit test pass (~1.5 s)
+  level: () => fanfare([523, 784, 659, 1047, 784, 1319], .07, [659, 784, 1047, 1319], .44, .85, .09, 8), // level up / goal reached
+};
+// iOS Safari: audio may only start inside a user gesture, so create/resume on the first one (and prime with a silent buffer)
+['pointerdown', 'touchend', 'keydown'].forEach(ev => addEventListener(ev, () => {
+  if (!S.sound || (SND.primed && SND.ctx && SND.ctx.state === 'running')) return;
+  const c = audio(); if (!c) return;
+  if (!SND.primed) { try { const s = c.createBufferSource(); s.buffer = c.createBuffer(1, 1, 22050); s.connect(c.destination); s.start(0); SND.primed = true; } catch (e) { } }
+}, { capture: true, passive: true }));
+// returning to the tab (or iOS interruptions) can leave the context suspended
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.sound && SND.ctx && SND.ctx.state !== 'running') audio(); });
+addEventListener('input', e => { if (e.target && e.target.type === 'range') SFX.tick(); }, true);
+function setSound(on) { S.sound = on; save(); if (!on && SND.ctx) SND.ctx.suspend().catch(() => { }); renderTop(); if (on) SFX.toggle(); }
 function confetti(count = 150) {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const c = $('#confetti'), ctx = c.getContext('2d'), dpr = window.devicePixelRatio || 1;
@@ -2185,7 +2231,7 @@ function lessonShell() {
     if (v) closeLesson();
   };
   $('#lask').onclick = () => { SFX.tap(); openSprig(curStepCtx(false)); };
-  $('#lsound').onclick = () => { S.sound = !S.sound; save(); $('#lsound').innerHTML = S.sound ? ICON.soundOn() : ICON.soundOff(); renderTop(); };
+  $('#lsound').onclick = () => { setSound(!S.sound); $('#lsound').innerHTML = S.sound ? ICON.soundOn() : ICON.soundOff(); };
 }
 function closeLesson() { Anim.clear(); $('.lesson')?.remove(); document.body.style.overflow = ''; R = null; renderTop(); showTab('learn'); flushToasts(); }
 function flushToasts() { pendingToasts.forEach(([m, i], k) => setTimeout(() => toast(m, i), k * 2800)); pendingToasts = []; }
@@ -2344,7 +2390,7 @@ function complete() {
     ${bumped ? `<p class="status ok" style="margin:0 auto 8px">${S.streak === 1 ? 'Streak started! Come back tomorrow.' : 'Streak extended!'}</p>` : ''}
     <p class="small">${first ? `+${LESSONS[R.id].cards.length} flashcards added to your deck` : 'Practice makes perfect!'}</p></div>`;
   footer(`<button class="btn primary" id="btnNext">Continue</button>`);
-  confetti(); SFX.done();
+  confetti(); SFX.done(); if (tok) setTimeout(SFX.reward, 1250);
   $('#btnNext').onclick = () => { closeLesson(); if (leveled) setTimeout(levelUp, 250); };
 }
 async function levelUp() {
@@ -2378,7 +2424,7 @@ function testResults() {
     ${wrongTags.length ? `<div class="reviewlist"><h4>Topics to review</h4><ul style="margin:0;padding-left:20px">${wrongTags.map(t => `<li>Lesson ${LABEL[t]}: ${esc(LESSONS[t].title)} <span class="small">(${R.results.filter(r => !r.ok && r.step.tag === t).length} missed)</span></li>`).join('')}</ul></div>` : `<div class="reviewlist"><h4>Perfect score!</h4><span class="small">You nailed every topic in Unit ${U.n}.</span></div>`}
     <div style="width:110px;margin:8px auto 0">${mascot(pass ? 'cheer' : 'think')}</div></div>`;
   footer(pass ? `<button class="btn primary" id="btnNext">Back to path</button>` : `<div class="row"><button class="btn ghost" id="btnBack">Back to path</button><button class="btn coral" id="btnRetry">Retake test</button></div>`);
-  if (pass) { confetti(200); SFX.level(); $('#btnNext').onclick = () => { closeLesson(); if (leveled) setTimeout(levelUp, 250); setTimeout(() => (NU && $('#unit-' + NU.id))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 400); }; }
+  if (pass) { confetti(200); SFX.test(); if (tokT) setTimeout(SFX.reward, 1600); $('#btnNext').onclick = () => { closeLesson(); if (leveled) setTimeout(levelUp, 250); setTimeout(() => (NU && $('#unit-' + NU.id))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 400); }; }
   else { SFX.bad(); $('#btnBack').onclick = closeLesson; $('#btnRetry').onclick = () => startTest(R.id); }
 }
 /* =========================================================
@@ -2452,7 +2498,7 @@ function trayDnD(tray, dropEl, onPick) {
       const sx = e.clientX, sy = e.clientY; let ghost = null;
       try { m.setPointerCapture(e.pointerId); } catch (_) { }
       const mv = ev => {
-        if (!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 6) { ghost = el(`<div class="ghostdrag" style="width:80px">${m.querySelector('svg').outerHTML}</div>`); document.body.appendChild(ghost); }
+        if (!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 6) { ghost = el(`<div class="ghostdrag" style="width:80px">${m.querySelector('svg').outerHTML}</div>`); document.body.appendChild(ghost); SFX.drag(); }
         if (ghost) { ghost.style.left = ev.clientX + 'px'; ghost.style.top = ev.clientY + 'px'; }
       };
       const up = ev => {
@@ -2536,7 +2582,7 @@ RENDER.sim_switch = (step, st, ready) => {
   const say = statusEl(st, 'Switch open: no current');
   const tg = el(`<div class="simbar"><div class="flowtoggle" role="group" aria-label="Flow view"><button class="on" data-m="conv">Conventional current</button><button data-m="elec">Electron flow</button></div></div>`); st.appendChild(tg);
   const upd = () => { c.setSwitch(closed); c.setBulb(closed ? .95 : 0); c.flow.set(closed, 60); say(closed ? (mode === 'conv' ? 'Current flows + → bulb → − (conventional)' : 'Electrons drift − → bulb → + (electron flow)') : 'Switch open: no current anywhere', closed ? 'ok' : ''); };
-  $('.swhit', c.svg).onclick = () => { closed = !closed; SFX.tap(); upd(); if (closed) ready(true); };
+  $('.swhit', c.svg).onclick = () => { closed = !closed; SFX.toggle(); upd(); if (closed) ready(true); };
   $$('button', tg).forEach(b => b.onclick = () => { mode = b.dataset.m; $$('button', tg).forEach(x => x.classList.toggle('on', x === b)); c.flow.mode(mode); SFX.tap(); upd(); });
   return { ready: false, check: () => true };
 };
@@ -2576,8 +2622,8 @@ RENDER.sim_fix = (step, st, ready) => {
   const ids = ['rubber', 'plastic', 'copper', 'glass'];
   const tray = el(`<div class="tray" style="grid-template-columns:repeat(4,1fr)">${ids.map(id => `<button class="mat" data-id="${id}">${matIcon(id)}<span>${MATS[id].name}</span></button>`).join('')}</div>`); st.appendChild(tray);
   const upd = () => { const k = MATS[mat].k, on = closed && k > 0; c.setSlot(0, mat); c.setSwitch(closed); c.setBulb(on ? k : 0); c.flow.set(on, 60); $$('.mat', tray).forEach(x => x.classList.toggle('inuse', x.dataset.id === mat)); say(on ? 'The bulb is lit!' : 'Still dark…', on ? 'ok' : ''); };
-  trayDnD(tray, () => $('.dropzone', c.svg), id => { mat = id; SFX.tap(); upd(); });
-  $('.swhit', c.svg).onclick = () => { closed = !closed; SFX.tap(); upd(); };
+  trayDnD(tray, () => $('.dropzone', c.svg), id => { mat = id; SFX.drop(); upd(); });
+  $('.swhit', c.svg).onclick = () => { closed = !closed; SFX.toggle(); upd(); };
   upd();
   return { ready: true, check: () => closed && MATS[mat].k >= .8, answer: 'Copper wire in the gap and the switch closed' };
 };
@@ -2739,14 +2785,14 @@ function renderProfile() {
     <p class="small" style="margin:10px 0 0">Do one lesson a day to grow your streak. Every 7 days earns a streak freeze (max 2), which saves your streak if you miss a day.</p></div>`));
   v.appendChild(el(`<div class="panel"><h3>Course</h3><div class="setrow"><div class="l">Hearts<small>Wrong lesson answers cost 1. One refills every 10 minutes. Unit tests, flashcards and review rounds are free.</small></div><b>${S.hearts} / ${MAX_HEARTS}${S.hearts < MAX_HEARTS ? ` · ${mmss(nextHeartMs())}` : ''}</b></div><div class="setrow"><div class="l">Lessons completed</div><b>${doneL} / ${allL.length}</b></div><div class="setrow"><div class="l">Unit tests passed</div><b>${passed} / ${UNITS.length}</b></div><div class="setrow"><div class="l">Flashcards earned</div><b>${Object.keys(S.cards).length} / ${Object.keys(CARDS).length}</b></div></div>`));
   const sp = el(`<div class="panel"><h3>Settings</h3>
-    <div class="setrow"><div class="l">Sound effects<small>Little chimes for right and wrong answers</small></div><button class="switch ${S.sound ? 'on' : ''}" id="swSound" role="switch" aria-checked="${S.sound}" aria-label="Sound effects"></button></div>
+    <div class="setrow"><div class="l">Sound effects<small>Chimes, taps and celebrations</small></div><button class="switch ${S.sound ? 'on' : ''}" id="swSound" role="switch" aria-checked="${S.sound}" aria-label="Sound effects"></button></div>
     <div class="setrow"><div class="l">Reset progress<small>Erase XP, streak, lessons and cards on this device</small></div><button class="btn coral" id="btnReset" style="width:auto;padding:10px 16px">Reset</button></div></div>`);
   v.appendChild(sp);
   $('#profAv').onclick = () => showTab('shop');
   v.appendChild(goalPanel());
   v.appendChild(aiPanel());
   v.appendChild(el(`<p class="small center" style="margin:4px 20px 30px">Zapling prototype · Units 1–6 · progress is saved in this browser only.</p>`));
-  $('#swSound').onclick = () => { S.sound = !S.sound; save(); renderTop(); renderProfile(); SFX.tap(); };
+  $('#swSound').onclick = () => { setSound(!S.sound); renderProfile(); };
   $('#btnReset').onclick = async () => {
     const ok = await modal({ art: mascot('sad'), title: 'Reset all progress?', text: 'This erases your XP, streak, lessons, test scores and flashcards. It can\'t be undone.', buttons: [['Keep my progress', 'primary', false], ['Yes, reset', 'coral', true]] });
     if (!ok) return; localStorage.removeItem(KEY); S = DEFAULT(); save(); renderTop(); showTab('learn'); toast('Progress reset. Fresh start!', ICON.star());
@@ -2782,7 +2828,7 @@ RENDER.sim_rewire = (step, st, ready) => {
     }
     box.innerHTML = svgBox(g, `Two bulbs in ${mode}`, 240);
     $$('.cb', box).forEach(c => c.onclick = () => {
-      if (locked) return; const id = c.dataset.id; out[id] = !out[id]; if (out[id]) unscrewed = true; SFX.tap(); draw();
+      if (locked) return; const id = c.dataset.id; out[id] = !out[id]; if (out[id]) unscrewed = true; SFX.toggle(); draw();
       if (step.need === 'unscrew' && unscrewed) ready(true);
     });
     const litN = mode === 'series' ? (anyOut ? 0 : 2) : (out.a ? 0 : 1) + (out.b ? 0 : 1);
@@ -2807,7 +2853,7 @@ RENDER.sim_req = (step, st, ready) => {
   };
   const tray = el(`<div class="tray">${step.r2.map(v => `<button class="mat" data-id="${v}"><svg viewBox="-30 -12 60 24" aria-hidden="true">${SYMS.res()}</svg><span>R2 = ${v} Ω</span></button>`).join('')}</div>`);
   st.appendChild(tray);
-  trayDnD(tray, () => box, id => { if (locked) return; r2 = +id; $$('.mat', tray).forEach(x => x.classList.toggle('inuse', x.dataset.id === id)); SFX.tap(); draw(); ready(true); });
+  trayDnD(tray, () => box, id => { if (locked) return; r2 = +id; $$('.mat', tray).forEach(x => x.classList.toggle('inuse', x.dataset.id === id)); SFX.drop(); draw(); ready(true); });
   segToggle(st, [['series', 'Series'], ['parallel', 'Parallel']], mode, v => { if (locked) return; mode = v; draw(); }, 'Connection');
   draw();
   let ans = ''; step.r2.forEach(b => ['series', 'parallel'].forEach(m => { if (!ans && Math.abs(reqOf(m, b) - step.target) < 1e-6) ans = `R2 = ${b} Ω in ${m}`; }));
@@ -2941,14 +2987,14 @@ RENDER.sim_probe = (step, st, ready) => {
     const toSvg = e => { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); };
     const snap = (c, x, y) => {
       let best = null, bd = 32; Object.entries(N).forEach(([n, [nx, ny]]) => { const d = Math.hypot(nx - x, ny - y); if (d < bd) { bd = d; best = n; } });
-      if (best) { const [nx, ny] = N[best]; Object.assign(pos[c], { x: nx, y: ny, n: best }); SFX.tap(); } else Object.assign(pos[c], { x, y, n: null });
+      if (best) { const [nx, ny] = N[best]; Object.assign(pos[c], { x: nx, y: ny, n: best }); SFX.drop(); } else Object.assign(pos[c], { x, y, n: null });
     };
     $$('.probe', svg).forEach(g => {
       const c = g.dataset.p; if (c === 'black' && step.blackFixed) { g.style.cursor = 'default'; return; }
       g.onpointerdown = e => {
         if (locked) return; e.preventDefault(); e.stopPropagation(); const s0 = toSvg(e); let moved = false;
         try { g.setPointerCapture(e.pointerId); } catch (_) { }
-        g.onpointermove = ev => { const p = toSvg(ev); if (!moved && Math.hypot(p.x - s0.x, p.y - s0.y) < 5) return; moved = true; g.setAttribute('transform', `translate(${p.x},${p.y})`); };
+        g.onpointermove = ev => { const p = toSvg(ev); if (!moved && Math.hypot(p.x - s0.x, p.y - s0.y) < 5) return; if (!moved) SFX.drag(); moved = true; g.setAttribute('transform', `translate(${p.x},${p.y})`); };
         g.onpointerup = ev => { g.onpointermove = g.onpointerup = null; if (moved) { const p = toSvg(ev); snap(c, p.x, p.y); } active = c; draw(); };
       };
     });
@@ -2995,7 +3041,7 @@ RENDER.sim_superpos = (step, st, ready) => {
     const lab = { '11': 'Both on', '10': 'V1 alone', '01': 'V2 alone', '00': 'Both off' }[key];
     say(`${lab}: X = ${X} V${seen.has('10') && seen.has('01') ? ' · You\'ve seen each alone: 3 V and 2 V' : ''}`, key === '11' ? 'ok' : '');
   };
-  $$('button', bar).forEach(b => b.onclick = () => { on[b.dataset.s] = b.dataset.on === '1'; $$(`button[data-s="${b.dataset.s}"]`, bar).forEach(x => x.classList.toggle('on', x === b)); SFX.tap(); upd(); });
+  $$('button', bar).forEach(b => b.onclick = () => { on[b.dataset.s] = b.dataset.on === '1'; $$(`button[data-s="${b.dataset.s}"]`, bar).forEach(x => x.classList.toggle('on', x === b)); SFX.toggle(); upd(); });
   upd();
   st.insertAdjacentHTML('beforeend', `<div class="kicker" style="margin-top:4px">X with both batteries on is…</div>`);
   const ch = choice(step, st, ready, step.opts, step.a, false);
@@ -3766,7 +3812,7 @@ function renderShop() {
   if ($('#shopBuy')) $('#shopBuy').onclick = async () => {
     const ok = await modal({ art: avatarSVG(prev), title: `Buy ${sel.name}?`, text: `This costs <b>${sel.price} tokens</b>. You have ${S.tokens}.`, buttons: [['Buy it', 'primary', true], ['Not now', 'ghost', false]] });
     if (!ok || S.tokens < sel.price || owned(sel.id)) return;
-    S.tokens -= sel.price; S.avatar.owned.push(sel.id); S.avatar.eq[sel.slot] = sel.id; save(); SFX.level(); confetti(); renderTop(); renderShop(); toast(`${sel.name} is yours!`, ICON.star());
+    S.tokens -= sel.price; S.avatar.owned.push(sel.id); S.avatar.eq[sel.slot] = sel.id; save(); SFX.coin(); confetti(); renderTop(); renderShop(); toast(`${sel.name} is yours!`, ICON.star());
   };
   if ($('#shopOn')) $('#shopOn').onclick = () => { S.avatar.eq[sel.slot] = sel.id; save(); SFX.tap(); renderShop(); };
   if ($('#shopOff')) $('#shopOff').onclick = () => { delete S.avatar.eq[sel.slot]; save(); SFX.tap(); SHOPSEL = null; renderShop(); };
@@ -3796,7 +3842,7 @@ function avatarIdle() {
    ========================================================= */
 migrate(); ensurePrefs(); ensureShop(); regenHearts(); checkStreakOnLoad(); save();
 $$('.tab').forEach(b => b.onclick = () => { SFX.tap(); if (b.dataset.tab === 'review') RV = null; showTab(b.dataset.tab); });
-$('#btnSound').onclick = () => { S.sound = !S.sound; save(); renderTop(); SFX.tap(); };
+$('#btnSound').onclick = () => setSound(!S.sound);
 renderTop(); showTab('learn'); flushToasts(); mountSprigFab(); initGoal(); avatarIdle();
 addEventListener('keydown', e => { if (e.key === 'Escape' && $('.sprigchat')) closeSprig(); });
 setInterval(() => { regenHearts(); renderHearts(); if (R && (R.phase === 'main' || R.phase === 'ooh')) setHead(); tickOOH(); }, 1000);
