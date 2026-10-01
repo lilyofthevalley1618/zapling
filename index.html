@@ -262,6 +262,9 @@ main{flex:1;padding-bottom:96px}
 .minicard .t{font-weight:900;font-size:15px}
 .minicard .d{font-size:12px;color:var(--ink2);font-weight:700;margin-top:auto;display:flex;justify-content:space-between;align-items:center}
 .boxdots{display:flex;gap:3px}.boxdots i{width:7px;height:7px;border-radius:50%;background:var(--lock)}.boxdots i.on{background:var(--mint)}
+.deckbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-4px 0 12px}.deckbar .btn{width:auto;padding:8px 18px;font-size:14px;flex:none}.deckbar .status svg{width:16px;height:16px}
+.fcdef{font-size:17px;line-height:1.45;box-shadow:none;border:2px solid var(--line)}
+.fcin{width:100%;box-sizing:border-box;font:inherit;font-size:18px;font-weight:700;padding:14px 16px;border:2px solid var(--line);border-radius:16px;background:#fff;color:var(--ink);outline:none}.fcin:focus{border-color:var(--peri)}
 .minicard.due{border-color:var(--sun);background:var(--sunl)}
 .empty{text-align:center;color:var(--ink2);padding:18px 8px}
 .empty svg{width:110px}
@@ -2724,6 +2727,7 @@ function dueCards() { const t = today(); return Object.keys(S.cards).filter(id =
 let RV = null;
 function renderReview() {
   const v = $('#v-review'); v.innerHTML = '';
+  if (typeof FT !== 'undefined' && FT) return renderFcTest();
   if (RV) return renderReviewCard();
   const earned = Object.keys(S.cards).filter(id => CARDS[id]), due = dueCards(), total = Object.keys(CARDS).length;
   v.appendChild(el(`<div class="pagehead"><span style="width:56px">${mascot('think')}</span><div><h1>Flashcards</h1><p>${earned.length} of ${total} cards earned · finish lessons to earn more</p></div></div>`));
@@ -2738,7 +2742,8 @@ function renderReview() {
   if (earned.length) {
     UNITS.forEach(u => {
       const ids = earned.filter(id => u.lessons.includes(CARDS[id].lesson)); if (!ids.length) return;
-      const pn = el(`<div class="panel"><h3>Unit ${u.n}: ${esc(u.title)}</h3><div class="cardgrid"></div></div>`);
+      const pn = el(`<div class="panel"><h3>Unit ${u.n}: ${esc(u.title)}</h3>${deckBar(u, ids)}<div class="cardgrid"></div></div>`);
+      $('.fctest', pn).onclick = () => startFcTest(u.id);
       ids.forEach(id => { const s = S.cards[id], isDue = s.due <= today();
         const b = el(`<button class="minicard ${isDue ? 'due' : ''}"><span class="t">${CARDS[id].term}</span><span class="small">Lesson ${LABEL[CARDS[id].lesson]}</span><span class="d"><span class="boxdots">${[1, 2, 3, 4, 5].map(k => `<i class="${k <= s.box ? 'on' : ''}"></i>`).join('')}</span><span>${isDue ? 'due' : 'in ' + diffDays(today(), s.due) + 'd'}</span></span></button>`);
         b.onclick = () => go([id]); $('.cardgrid', pn).appendChild(b); });
@@ -2762,7 +2767,7 @@ function renderReviewCard() {
     const s = S.cards[id] || (S.cards[id] = { box: 1, due: today() });
     if (ok) { s.box = Math.min(5, s.box + 1); s.due = addDays(today(), BOX_DAYS[s.box]); RV.known++; if (addXp(2)) setTimeout(levelUp, 300); SFX.good(); }
     else { s.box = 1; s.due = addDays(today(), 1); SFX.bad(); }
-    save(); RV.i++; renderReviewCard(); renderTop();
+    deckSeen(id); save(); RV.i++; renderReviewCard(); renderTop();
   };
   $('#rvyes').onclick = () => grade(true); $('#rvno').onclick = () => grade(false);
   $('#rvquit').onclick = () => { RV = null; renderReview(); };
@@ -3473,7 +3478,7 @@ function gameOver() {
   $('#gstage').innerHTML = `<div class="center" style="padding-top:10px">${mascot(GM.right >= GM.wrong ? 'cheer' : 'think', 'style="width:120px"')}<div class="bigtitle">${rec ? 'New best!' : 'Time!'}</div>
     <div class="statrow"><div class="stat" style="border-color:var(--mint)"><div class="h" style="background:var(--mint)">Score</div><div class="v">${GM.score}</div></div><div class="stat" style="border-color:var(--sun)"><div class="h" style="background:var(--sund)">Best</div><div class="v">${G.best[g.id] || 0}</div></div><div class="stat" style="border-color:var(--peri)"><div class="h" style="background:var(--peri)">XP</div><div class="v">+${xp}</div></div></div>
     <p class="small">${GM.right} right${total ? ` of ${total}` : ''}${G.xd.xp >= GAME_XP_DAY ? ' · Daily game XP maxed: play for fun and best scores!' : ''}</p>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px"><button class="btn primary" id="gagain">Play again</button><button class="btn ghost" id="gback">Back to games</button></div></div>`;
+    <h2 class="q" style="margin:16px 0 10px">Play again?</h2><div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn ghost" id="gback">No</button><button class="btn primary" id="gagain">Yes</button></div></div>`;
   $('#gagain').onclick = () => playGame(g); $('#gback').onclick = quitGame;
   SFX.done(); if (rec && GM.score) confetti(); if (lvUp) toast('Level up!', ICON.star());
 }
@@ -3628,7 +3633,7 @@ function initGoal() {
    ========================================================= */
 ICON.token = (c = '') => `<svg viewBox="0 0 28 28" aria-hidden="true" class="${c}"><circle cx="14" cy="14" r="11" fill="#FFC94D" stroke="#E3A31A" stroke-width="2.5"/><path d="M15.5 7.5 10 15h4l-1.5 5.5L18 13h-4z" fill="#fff" stroke="#E3A31A" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
 ICON.shop = () => `<svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 11h18l-1.6 11.2a2 2 0 0 1-2 1.8H8.6a2 2 0 0 1-2-1.8z" fill="currentColor"/><path d="M9.5 11V9a4.5 4.5 0 0 1 9 0v2" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="14" cy="17" r="2.2" fill="#fff"/></svg>`;
-const TOK_UNIT = { u1: 5, u2: 5, u3: 6, u4: 6, u5: 8, u6: 8 }, TOK_TEST = 15, TOK_PRACTICE = 1, TOK_PRACTICE_DAY = 5, TOK_PLACED = 10, XP_PLACED = 20;
+const TOK_UNIT = { u1: 10, u2: 10, u3: 12, u4: 12, u5: 15, u6: 15 }, TOK_UNIT_OLD = { u1: 5, u2: 5, u3: 6, u4: 6, u5: 8, u6: 8 }, TOK_TEST = 15, TOK_PRACTICE = 1, TOK_PRACTICE_DAY = 5, TOK_PLACED = 10, XP_PLACED = 20;
 function ensureShop() {
   if (typeof S.tokens !== 'number' || !isFinite(S.tokens)) S.tokens = 0;
   if (!S.tokGranted || typeof S.tokGranted !== 'object') S.tokGranted = {};
@@ -3644,6 +3649,8 @@ function ensureShop() {
     });
   }
   if (!BODIES[S.avatar.eq.body]) S.avatar.eq.body = 'battery';
+  // one-time top-up: lessons already paid at the old 5/6/8 rate get the difference
+  if (!S.tokMig2) { S.tokMig2 = 1; UNITS.forEach(u => u.lessons.forEach(l => { if (S.tokGranted[l] && S.done[l] && !S.done[l].placed) S.tokens += TOK_UNIT[u.id] - TOK_UNIT_OLD[u.id]; })); }
   // retroactive grant for lessons/tests completed before tokens existed (placed-out ones get the placement bonus instead)
   UNITS.forEach(u => {
     u.lessons.forEach(l => { const d = S.done[l]; if (d && !d.placed && !S.tokGranted[l]) { S.tokGranted[l] = 1; S.tokens += TOK_UNIT[u.id]; } });
@@ -3836,6 +3843,104 @@ function avatarIdle() {
     if (m) playAvatarAnim(m);
     avatarIdle();
   }, 4000 + Math.random() * 3000);
+}
+/* =========================================================
+   FLASHCARD DECK REWARD + PER-UNIT FLASHCARD TEST
+   S.deckRw[unit] = { d, seen[], days[], paid }   S.fcTest[unit] = { d, best }
+   ========================================================= */
+const DECK_TOK = 5, DECK_DAYS = 3, FCT_XP = 5, FCT_N = 8;
+const unitCards = u => Object.keys(CARDS).filter(id => u.lessons.includes(CARDS[id].lesson));
+const cardUnit = id => UNITS.find(u => u.lessons.includes(CARDS[id].lesson));
+function deckRec(uid) { S.deckRw = S.deckRw || {}; return S.deckRw[uid] || (S.deckRw[uid] = { d: null, seen: [], days: [], paid: 0 }); }
+// called whenever a card is graded in review: a "full review" = every card of the unit's deck seen on one day
+function deckSeen(id) {
+  const u = cardUnit(id); if (!u) return; const r = deckRec(u.id); if (r.paid) return;
+  const t = today(); if (r.d !== t) { r.d = t; r.seen = []; }
+  if (!r.seen.includes(id)) r.seen.push(id);
+  if (unitCards(u).every(c => r.seen.includes(c)) && !r.days.includes(t)) {
+    r.days.push(t);
+    if (r.days.length >= DECK_DAYS) { r.paid = 1; S.tokens += DECK_TOK; setTimeout(() => { SFX.coin(); toast(`+${DECK_TOK} tokens: Unit ${u.n} deck fully reviewed ${DECK_DAYS} times!`, ICON.token()); renderTop(); }, 450); }
+    else setTimeout(() => toast(`Full review of the Unit ${u.n} deck: ${r.days.length}/${DECK_DAYS}`, ICON.star()), 450);
+  }
+}
+function deckBar(u, ids) {
+  const r = deckRec(u.id), all = unitCards(u).length;
+  const hint = r.paid ? `<span class="status ok">${ICON.token()} Deck reward earned</span>` : `<span class="small" title="Review every card in this deck on ${DECK_DAYS} different days for +${DECK_TOK} tokens">Full reviews: ${Math.min(r.days.length, DECK_DAYS)}/${DECK_DAYS}${ids.length < all ? ` · earn all ${all} cards first` : ` · +${DECK_TOK} tokens`}</span>`;
+  return `<div class="deckbar">${hint}<button class="btn ghost fctest" data-u="${u.id}">Test</button></div>`;
+}
+
+/* ---------- lenient answer matching ---------- */
+const FC_STOP = new Set('a an the of and or to is are it its um uh er hmm just basically so well i think maybe kind sort that this'.split(' '));
+function fcNorm(s) {
+  const w = String(s).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+  const k = w.filter(x => !FC_STOP.has(x)); return (k.length ? k : w).join(' ');
+}
+function lev(a, b) {
+  if (a === b) return 0; let p = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) { const c = [i]; for (let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); p = c; }
+  return p[b.length];
+}
+// returns 'exact' | 'close' | false
+function fuzzyMatch(input, answer) {
+  const inp = fcNorm(input); if (!inp) return false;
+  const paren = (answer.match(/\(([^)]*)\)/) || [])[1] || '';
+  const cands = [answer, answer.replace(/\([^)]*\)/g, ' ')].concat(fcNorm(paren).length >= 2 ? [paren] : []).map(fcNorm).filter(Boolean);
+  if (cands.includes(inp)) return 'exact';
+  const iw = inp.split(' ');
+  for (const c of cands) {
+    if (1 - lev(inp, c) / Math.max(inp.length, c.length) >= .75) return 'close';
+    const kw = c.split(' ').filter(x => x.length >= 3);
+    if (kw.length && kw.every(k => iw.some(w => lev(w, k) <= (k.length <= 4 ? 0 : k.length <= 7 ? 1 : 2)))) return 'close';
+  }
+  return false;
+}
+
+/* ---------- the test ---------- */
+let FT = null;
+function startFcTest(uid) {
+  const u = UNITS.find(x => x.id === uid), pool = unitCards(u), have = pool.filter(id => S.cards[id]);
+  const ids = shuffle(have.length ? have : pool).slice(0, FCT_N);
+  FT = { u, i: 0, right: 0, done: false, qs: ids.map((id, k) => {
+    const kind = k % 2 ? 'fr' : 'mc'; if (kind === 'fr') return { id, kind };
+    let others = shuffle(pool.filter(x => x !== id)); if (others.length < 3) others = others.concat(shuffle(Object.keys(CARDS).filter(x => x !== id && !others.includes(x))));
+    return { id, kind, opts: shuffle([id, ...others.slice(0, 3)]) };
+  }) };
+  SFX.tap(); showTab('review'); renderReview(); scrollTo(0, 0);
+}
+function renderFcTest() {
+  const v = $('#v-review'); v.innerHTML = '';
+  if (FT.i >= FT.qs.length) return fcTestEnd(v);
+  const q = FT.qs[FT.i], c = CARDS[q.id];
+  const w = el(`<div style="padding:14px 16px"><div class="kicker">Unit ${FT.u.n} flashcard test · ${FT.i + 1} of ${FT.qs.length}</div>
+    <h2 class="q">${q.kind === 'mc' ? 'Which term matches?' : 'Type the term that matches'}</h2>
+    <div class="panel fcdef" style="margin:0 0 14px">${esc(c.def)}</div>
+    ${q.kind === 'mc' ? `<div class="opts" style="display:flex;flex-direction:column;gap:10px">${q.opts.map(o => `<button class="opt" data-o="${o}">${CARDS[o].term}</button>`).join('')}</div>`
+      : `<input class="fcin" id="fcin" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Your answer" placeholder="Your answer"><button class="btn primary" id="fccheck" style="margin-top:10px">Check</button>`}
+    <div id="fcfb" style="margin-top:12px"></div><button class="btn ghost" id="fcquit" style="margin-top:14px">End test</button></div>`);
+  v.appendChild(w);
+  const after = (ok, close) => {
+    ok ? (FT.right++, SFX.good()) : SFX.bad();
+    $('#fcfb').innerHTML = `<p class="status ${ok ? 'ok' : 'bad'}" style="margin:0 0 8px">${ok ? (close ? 'Close enough! ' : 'Correct! ') : 'Not quite. '}</p><p class="body" style="margin:0 0 10px">Answer: <b>${c.term}</b></p><button class="btn primary" id="fcnext">${FT.i + 1 < FT.qs.length ? 'Next' : 'See score'}</button>`;
+    $('#fcnext').onclick = () => { FT.i++; renderFcTest(); scrollTo(0, 0); }; $('#fcnext').focus();
+  };
+  if (q.kind === 'mc') $$('.opt', w).forEach(b => b.onclick = () => {
+    if (w.dataset.done) return; w.dataset.done = 1; const ok = b.dataset.o === q.id;
+    $$('.opt', w).forEach(x => { x.disabled = true; if (x.dataset.o === q.id) x.classList.add('right'); }); if (!ok) b.classList.add('wrong'); after(ok, false);
+  });
+  else {
+    const go = () => { const val = $('#fcin').value; if (w.dataset.done || !val.trim()) return; w.dataset.done = 1; $('#fcin').disabled = true; $('#fccheck').remove(); const m = fuzzyMatch(val, c.term); after(!!m, m === 'close'); };
+    $('#fccheck').onclick = go; $('#fcin').onkeydown = e => { if (e.key === 'Enter') go(); };
+  }
+  $('#fcquit').onclick = () => { FT = null; renderReview(); };
+}
+function fcTestEnd(v) {
+  const n = FT.qs.length, k = FT.right, u = FT.u; S.fcTest = S.fcTest || {};
+  const r = S.fcTest[u.id] || (S.fcTest[u.id] = { d: null, best: 0 });
+  if (!FT.done) { FT.done = true; FT.xp = r.d !== today() ? FCT_XP : 0; if (FT.xp) { r.d = today(); if (addXp(FT.xp)) setTimeout(levelUp, 300); } r.best = Math.max(r.best, Math.round(k / n * 100)); save(); renderTop(); SFX.done(); if (k === n) confetti(80); }
+  v.appendChild(el(`<div class="panel center" style="margin-top:18px">${mascot(k >= n / 2 ? 'cheer' : 'think', 'style="width:110px"')}<div class="bigtitle">${k} / ${n} correct</div>
+    <p class="body" style="color:var(--ink2)">${FT.xp ? `+${FT.xp} XP` : 'XP for this unit\'s test already earned today'} · best ${r.best}%</p>
+    <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px"><button class="btn ghost" id="fcdone">Done</button><button class="btn primary" id="fcagain">Try again</button></div></div>`));
+  $('#fcdone').onclick = () => { FT = null; renderReview(); }; $('#fcagain').onclick = () => startFcTest(u.id);
 }
 /* =========================================================
    INIT
