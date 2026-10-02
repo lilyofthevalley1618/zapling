@@ -403,6 +403,7 @@ body:has(#v-games.on) #askFab{display:none}
 .mbadge{position:absolute;right:-4px;top:-6px;width:26px;height:26px;border-radius:50%;background:var(--sun);color:#fff;border:3px solid #fff;font-size:14px;line-height:20px;text-align:center;font-weight:900;box-shadow:0 2px 0 var(--sund);z-index:2}
 .mastnote{margin:4px 16px 0;align-self:center;font-size:12.5px;font-weight:800;color:#8A5A00;background:var(--sunl);border-radius:999px;padding:4px 12px}
 .mastnote.end{display:inline-block;margin:6px auto 4px}.mastnote.ok{color:var(--mintd);background:var(--mintl)}
+.tapk [data-k]{cursor:pointer}.tapk [data-k] .hz{fill-opacity:0;stroke:#7C83FD;stroke-width:2.5;stroke-dasharray:5 4;stroke-opacity:.35}.tapk [data-k].on .hz{fill-opacity:.18;stroke-opacity:1}.tapk [data-k].ok .hz{fill:#2EC4A0;fill-opacity:.25;stroke:#1C9E80;stroke-opacity:1}.tapk [data-k].bad .hz{fill:#FF7F6E;fill-opacity:.2;stroke:#E0604F;stroke-opacity:1}
 </style>
 </head>
 <body>
@@ -2508,6 +2509,195 @@ function migrate6() {
   S.tokMig2 = 1; S.mig6 = 1; S.v = 4;
 }
 /* =========================================================
+   UNIT 7: Capacitors, Transistors & Timing (L33-L37, T7)
+   Sims: rc (charging curve), n555 (blinker), npn (transistor switch / night light), tap (tap a pin or part). See 05g.
+   ========================================================= */
+const g3 = x => String(+(+x).toPrecision(3));
+const fmtC = c => c >= 1e-3 ? g3(c * 1e3) + ' mF' : c >= 1e-6 ? g3(c * 1e6) + ' µF' : c >= 1e-9 ? g3(c * 1e9) + ' nF' : g3(c * 1e12) + ' pF';
+const fmtT = t => t >= 1 ? g3(t) + ' s' : g3(t * 1000) + ' ms';
+const fmtI = i => i >= 1e-3 ? g3(i * 1000) + ' mA' : g3(i * 1e6) + ' µA';
+const U7_BETA = 200, U7_RC = 470;
+
+/* ---------- drawing ---------- */
+const zigV = (x, y1, y2, c = INK) => { const m = (y1 + y2) / 2, h = Math.min(34, (y2 - y1) * .6), a = m - h / 2, s = h / 6; return `<path d="M${x} ${y1}V${a}${[1, 2, 3, 4, 5, 6].map(i => `L${x + (i % 2 ? 8 : -8)} ${a + s * i - s / 2}`).join('')}L${x} ${a + h}V${y2}" fill="none" stroke="${c}" stroke-width="2.6" stroke-linejoin="round"/>`; };
+const zigH = (x1, x2, y, c = INK) => { const m = (x1 + x2) / 2, w = Math.min(36, (x2 - x1) * .6), a = m - w / 2, s = w / 6; return `<path d="M${x1} ${y}H${a}${[1, 2, 3, 4, 5, 6].map(i => `L${a + s * i - s / 2} ${y + (i % 2 ? -8 : 8)}`).join('')}L${a + w} ${y}H${x2}" fill="none" stroke="${c}" stroke-width="2.6" stroke-linejoin="round"/>`; };
+const wl = d => `<path d="${d}" fill="none" stroke="${WIRE}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+const jdot = (x, y) => `<circle cx="${x}" cy="${y}" r="3.6" fill="${INK}"/>`;
+const hz = (x, y, w, h) => `<rect class="hz" x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="#7C83FD" fill-opacity="0"/>`;
+const tapG = (k, inner, box, tap) => tap ? `<g data-k="${k}">${hz(...box)}${inner}</g>` : inner;
+// NPN symbol: base lead enters from the left at (x-30, y); collector exits up at (x+12, y-30); emitter exits down at (x+12, y+30)
+function npnSym(x, y, o = {}) {
+  const L = o.letters !== false;
+  return `<circle cx="${x + 2}" cy="${y}" r="24" fill="#fff" stroke="${INK}" stroke-width="2.4"/><path d="M${x - 8} ${y - 13}V${y + 13}" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>
+    ${tapG('b', `<path d="M${x - 30} ${y}H${x - 8}" stroke="${INK}" stroke-width="2.6"/>`, [x - 34, y - 12, 26, 24], o.tap)}
+    ${tapG('c', `<path d="M${x - 8} ${y - 6}L${x + 12} ${y - 20}V${y - 30}" fill="none" stroke="${INK}" stroke-width="2.6"/>`, [x - 2, y - 36, 26, 26], o.tap)}
+    ${tapG('e', `<path d="M${x - 8} ${y + 6}L${x + 12} ${y + 20}V${y + 30}" fill="none" stroke="${INK}" stroke-width="2.6"/><path d="M${x + 12} ${y + 20}l-9 -1.5l4.5 -6.5z" fill="${INK}"/>`, [x - 2, y + 10, 26, 26], o.tap)}
+    ${L ? lbl(x - 24, y - 6, 'B', '#6B6899', 10) + lbl(x + 24, y - 24, 'C', '#6B6899', 10) + lbl(x + 24, y + 30, 'E', '#6B6899', 10) : ''}`;
+}
+const ledDown = (x, y1, y2, b = 0, col = '#FF3355') => { const m = (y1 + y2) / 2; return `${b > .02 ? `<circle cx="${x}" cy="${m}" r="${12 + 10 * Math.min(1, b)}" fill="${col}" opacity="${(.2 + .45 * Math.min(1, b)).toFixed(2)}" filter="url(#u7glow)"/>` : ''}<path d="M${x} ${y1}V${m - 9}M${x} ${m + 9}V${y2}" stroke="${INK}" stroke-width="2.6"/><path d="M${x - 10} ${m - 9}H${x + 10}L${x} ${m + 8}Z" fill="${b > .02 ? col : '#FFB3BD'}" stroke="${INK}" stroke-width="2"/><path d="M${x - 10} ${m + 9}H${x + 10}" stroke="${INK}" stroke-width="2.6"/><path d="M${x + 12} ${m - 6}l8 -6M${x + 14} ${m + 1}l8 -6" stroke="#E0604F" stroke-width="1.8"/>`; };
+const ldrSym = (x, y, r = 15) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#FFF6E5" stroke="${INK}" stroke-width="2.2"/><path d="M${x - 9} ${y - 3}h4v6h4v-6h4v6h4" fill="none" stroke="#E0604F" stroke-width="2" stroke-linejoin="round"/><path d="M${x - 26} ${y - 22}l9 9M${x - 18} ${y - 26}l9 9" stroke="#E3A31A" stroke-width="2" stroke-linecap="round"/>`;
+const gndSym = (x, y) => `<path d="M${x - 12} ${y}H${x + 12}M${x - 7} ${y + 5}H${x + 7}M${x - 3} ${y + 10}H${x + 3}" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>`;
+// transistor switch / night light schematic. o: {div, Rtop, Rl, light, Rb, on, Vin, Vcc, r (npnCalc result), tap}
+function npnCircuit(o) {
+  const r = o.r || { Ic: 0, Isat: 1 }, b = r.Ic / .015, T = !!o.tap, Vcc = o.Vcc || 9;
+  let s = `<defs><filter id="u7glow" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="4"/></filter></defs>`;
+  s += wl(`M24 24H316`) + lbl(28, 16, `+${Vcc} V`, '#E0604F', 12, 'start') + wl(`M24 214H316`) + gndSym(170, 214) + lbl(304, 208, '0 V', '#6B6899', 11, 'end');
+  // collector branch
+  s += tapG('rc', zigV(260, 24, 78) + lbl(276, 55, ohmsTxt(o.Rc || U7_RC), '#6B6899', 10.5, 'start'), [244, 30, 70, 46], T);
+  s += tapG('led', ledDown(260, 78, 122, b), [244, 80, 60, 42], T);
+  s += wl(`M260 122V130`);
+  s += tapG('q', npnSym(248, 160), [218, 132, 62, 58], T);
+  s += wl(`M260 190V214`);
+  // base resistor
+  s += tapG('rb', zigH(150, 218, 160) + lbl(184, 146, ohmsTxt(o.Rb), '#6B6899', 10.5), [150, 136, 66, 36], T);
+  if (o.div) {
+    s += tapG('rtop', zigV(90, 24, 160) + lbl(104, 96, ohmsTxt(o.Rtop), '#6B6899', 10.5, 'start'), [74, 40, 70, 100], T);
+    s += wl(`M90 160H150`) + jdot(90, 160) + wl(`M90 160V172`);
+    s += tapG('ldr', ldrSym(90, 190) + lbl(112, 194, o.light ? o.light : ohmsTxt(o.Rl), '#6B6899', 10.5, 'start'), [66, 172, 80, 40], T);
+    s += wl(`M90 205V214`);
+    if (r.Vth != null) s += lbl(56, 156, `${g3(r.state === 'off' ? r.Vth : .7)} V`, '#5A61D8', 10);
+  } else {
+    s += `<rect x="20" y="138" width="48" height="44" rx="8" fill="#5AB8F0" stroke="#2A7FB8" stroke-width="2"/>${lbl(44, 158, (o.Vin || 5) + ' V', '#fff', 11)}${lbl(44, 172, 'signal', '#fff', 9)}`;
+    s += wl(`M44 182V214`) + wl(`M68 150H86`) + jdot(86, 150) + jdot(126, 160) + wl(`M126 160H150`);
+    s += tapG('sw', o.on ? `<path d="M86 150L126 160" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>` : `<path d="M86 150L122 128" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`, [80, 120, 54, 46], T);
+    s += lbl(106, 186, o.on ? 'switch ON' : 'switch OFF', '#6B6899', 10);
+  }
+  return `<svg viewBox="0 0 340 232" role="img" aria-label="Transistor switch circuit"><rect width="340" height="232" rx="18" fill="${BG}"/>${s}</svg>`;
+}
+function npnCalc(o) { // simplified: Vbe = 0.7 V, β = 200, LED drop 2 V, Vce(sat) = 0.2 V
+  let Vth = o.Vin, Rth = 0;
+  if (o.Rl != null) { Vth = o.Vcc * o.Rl / (o.Rtop + o.Rl); Rth = o.Rtop * o.Rl / (o.Rtop + o.Rl); }
+  if (o.on === false) Vth = 0;
+  const beta = o.beta || U7_BETA, Ib = Math.max(0, (Vth - .7) / (Rth + o.Rb)), Isat = Math.max(0, ((o.Vcc || 9) - 2 - .2) / (o.Rc || U7_RC)), Ic = Math.min(beta * Ib, Isat);
+  return { Ib, Ic, Isat, Vth, state: Ib <= 1e-8 ? 'off' : beta * Ib >= Isat ? 'saturated' : 'partly on' };
+}
+function rcPlot(Vs, tau, tmax, mode = 'charge') {
+  const X = t => 46 + t / tmax * 276, Y = v => 182 - v / Vs * 150, f = t => mode === 'charge' ? Vs * (1 - Math.exp(-t / tau)) : Vs * Math.exp(-t / tau);
+  let pts = []; for (let i = 0; i <= 80; i++) { const t = tmax * i / 80; pts.push(`${X(t).toFixed(1)} ${Y(f(t)).toFixed(1)}`); }
+  const pct = mode === 'charge' ? .632 : .368;
+  let s = `<path d="M46 26V182H324" fill="none" stroke="#B9B4D6" stroke-width="2"/>${lbl(40, 30, Vs + ' V', '#6B6899', 10, 'end')}${lbl(40, 186, '0', '#6B6899', 10, 'end')}${lbl(46, 200, '0 s', '#6B6899', 10)}${lbl(322, 200, fmtT(tmax), '#6B6899', 10, 'end')}${lbl(185, 214, 'time', '#6B6899', 10)}`;
+  s += `<path d="M46 ${Y(Vs * pct)}H324" stroke="#FFC94D" stroke-width="1.8" stroke-dasharray="5 4"/>${lbl(326, Y(Vs * pct) + 4, Math.round(pct * 100) + '%', '#C9831A', 10, 'end')}`;
+  if (tau <= tmax) s += `<path d="M${X(tau)} 26V182" stroke="#7C83FD" stroke-width="1.8" stroke-dasharray="5 4"/>${lbl(X(tau) + 3, 40, 'τ', '#5A61D8', 13, 'start')}<circle cx="${X(tau)}" cy="${Y(f(tau))}" r="5" fill="#7C83FD"/>`;
+  if (5 * tau <= tmax) s += `<path d="M${X(5 * tau)} 26V182" stroke="#2EC4A0" stroke-width="1.8" stroke-dasharray="5 4"/>${lbl(X(5 * tau) + 3, 54, '5τ', '#1C9E80', 12, 'start')}`;
+  s += `<path d="M${pts.join('L')}" fill="none" stroke="${mode === 'charge' ? '#FF7F6E' : '#5AB8F0'}" stroke-width="3.4" stroke-linejoin="round"/>`;
+  return `<svg viewBox="0 0 340 222" role="img" aria-label="Capacitor ${mode} curve, time constant ${fmtT(tau)}"><rect width="340" height="222" rx="18" fill="${BG}"/>${lbl(52, 20, `capacitor voltage (${mode === 'charge' ? 'charging' : 'discharging'})`, '#6B6899', 10.5, 'start')}${s}</svg>`;
+}
+const capEl = (o = {}) => `<svg viewBox="0 0 340 200" role="img" aria-label="Electrolytic and ceramic capacitors"><rect width="340" height="200" rx="18" fill="${BG}"/>
+  <rect x="64" y="28" width="64" height="96" rx="12" fill="#5A61D8" stroke="#2E2A5A" stroke-width="2.4"/><rect x="${o.flip ? 64 : 106}" y="28" width="22" height="96" fill="#B9C3FF"/><text x="${o.flip ? 75 : 117}" y="64" text-anchor="middle" font-size="16" font-weight="900" fill="#2E2A5A">−</text><text x="${o.flip ? 75 : 117}" y="96" text-anchor="middle" font-size="16" font-weight="900" fill="#2E2A5A">−</text>
+  ${tapG(o.flip ? 'r' : 'l', `<path d="M80 124V${o.flip ? 172 : 186}" stroke="#9AA3B5" stroke-width="4" stroke-linecap="round"/>`, [64, 126, 34, 64], o.tap)}
+  ${tapG(o.flip ? 'l' : 'r', `<path d="M112 124V${o.flip ? 186 : 172}" stroke="#9AA3B5" stroke-width="4" stroke-linecap="round"/>`, [96, 126, 34, 64], o.tap)}
+  ${lbl(96, 20, 'electrolytic 470 µF', '#6B6899', 11)}
+  <ellipse cx="248" cy="80" rx="34" ry="30" fill="#FFC94D" stroke="#C9831A" stroke-width="2.4"/>${lbl(248, 85, '104', '#8A5A00', 13)}<path d="M236 108V170M260 108V170" stroke="#9AA3B5" stroke-width="4" stroke-linecap="round"/>${lbl(248, 190, 'ceramic 100 nF', '#6B6899', 11)}</svg>`;
+const sqWave = (duty, n = 3, w = 340) => { const P = 276 / n, hi = P * duty; let d = 'M32 150'; for (let i = 0; i < n; i++) { const x = 32 + i * P; d += `V40H${(x + hi).toFixed(1)}V150H${(x + P).toFixed(1)}`; } return `<svg viewBox="0 0 ${w} 180" role="img" aria-label="555 output square wave"><rect width="${w}" height="180" rx="18" fill="${BG}"/><path d="M32 30V150H316" fill="none" stroke="#B9B4D6" stroke-width="2"/><path d="${d}" fill="none" stroke="#FF7F6E" stroke-width="3.4" stroke-linejoin="round"/>${lbl(32 + hi / 2, 34, 'high', '#C9831A', 10)}${lbl(32 + hi + (P - hi) / 2, 166, 'low', '#5A61D8', 10)}${lbl(316, 24, 'duty ' + Math.round(duty * 100) + '%', '#6B6899', 11, 'end')}</svg>`; };
+const chip555 = (o = {}) => `<svg viewBox="0 0 340 150" role="img" aria-label="555 timer chip"><rect width="340" height="150" rx="18" fill="${BG}"/><rect x="110" y="30" width="120" height="90" rx="8" fill="#4A4580"/><circle cx="124" cy="44" r="5" fill="#9E99C2"/>${lbl(170, 82, '555', '#fff', 22)}
+  ${['GND', 'TRIG', 'OUT', 'RESET'].map((t, i) => `<rect x="94" y="${38 + i * 20}" width="16" height="6" fill="#9AA3B5"/>${lbl(90, 44 + i * 20, `${i + 1} ${t}`, '#6B6899', 9.5, 'end')}`).join('')}
+  ${['VCC', 'DIS', 'THR', 'CTRL'].map((t, i) => `<rect x="230" y="${38 + i * 20}" width="16" height="6" fill="#9AA3B5"/>${lbl(250, 44 + i * 20, `${8 - i} ${t}`, '#6B6899', 9.5, 'start')}`).join('')}</svg>`;
+Object.assign(CARDART, {
+  u7cap: () => `<svg viewBox="0 0 110 90"><rect x="30" y="12" width="34" height="52" rx="7" fill="#5A61D8"/><rect x="52" y="12" width="12" height="52" fill="#B9C3FF"/><path d="M40 64V84M56 64V78" stroke="#9AA3B5" stroke-width="3.5" stroke-linecap="round"/><ellipse cx="84" cy="44" rx="14" ry="12" fill="#FFC94D" stroke="#C9831A" stroke-width="2"/><path d="M80 56V80M88 56V80" stroke="#9AA3B5" stroke-width="3" stroke-linecap="round"/></svg>`,
+  u7rc: () => `<svg viewBox="0 0 110 90"><path d="M14 10V78H104" fill="none" stroke="#B9B4D6" stroke-width="2"/><path d="M14 78C30 30 50 18 104 14" fill="none" stroke="#FF7F6E" stroke-width="4"/><path d="M36 10V78" stroke="#7C83FD" stroke-width="2" stroke-dasharray="4 3"/>${lbl(42, 30, 'τ', '#5A61D8', 13, 'start')}</svg>`,
+  u7npn: () => `<svg viewBox="0 0 110 90">${npnSym(52, 45)}</svg>`,
+  u7chip: () => `<svg viewBox="0 0 110 90"><rect x="25" y="20" width="60" height="50" rx="5" fill="#4A4580"/>${lbl(55, 52, '555', '#fff', 15)}${[0, 1, 2, 3].map(i => `<rect x="${30 + i * 14}" y="10" width="5" height="10" fill="#9AA3B5"/><rect x="${30 + i * 14}" y="70" width="5" height="10" fill="#9AA3B5"/>`).join('')}</svg>`,
+  u7night: () => `<svg viewBox="0 0 110 90"><path d="M70 14a26 26 0 1 0 22 40a22 22 0 1 1 -22 -40z" fill="#5A61D8"/>${ldrSym(36, 50, 13)}</svg>`,
+});
+
+/* ---------- cards ---------- */
+Object.assign(CARDS, {
+  capc: { term: 'Capacitor', art: 'u7cap', def: 'Two metal plates with an insulator between them. It stores charge: Q = C × V. Once charged it blocks steady DC.', lesson: 'L33' },
+  farad: { term: 'Farad (F) and prefixes', art: 'u7cap', def: 'The unit of capacitance. Real parts are tiny: 1 µF = 0.000001 F, 1 nF = 0.001 µF, 1 pF = 0.001 nF.', lesson: 'L33' },
+  electro: { term: 'Electrolytic capacitor', art: 'u7cap', def: 'Big values (µF–mF) but POLARIZED: the stripe marks the − leg (also the shorter one). Reversed, it can bulge or pop.', lesson: 'L33' },
+  ceramic: { term: 'Ceramic capacitor', art: 'u7cap', def: 'Small, non-polarized (either way round), pF to a few µF. Code 104 = 10 × 10⁴ pF = 100 nF.', lesson: 'L33' },
+  tau: { term: 'Time constant τ = R × C', art: 'u7rc', def: 'How fast an RC circuit charges or discharges. 10 kΩ × 100 µF = 1 s.', lesson: 'L34' },
+  rc63: { term: 'The 63% rule', art: 'u7rc', def: 'After 1 τ a charging capacitor reaches about 63% of the supply; a discharging one falls to about 37%.', lesson: 'L34' },
+  rc5: { term: 'The 5τ rule', art: 'u7rc', def: 'After about 5 τ the capacitor is effectively full (or empty): over 99% of the way.', lesson: 'L34' },
+  npn: { term: 'NPN transistor (switch)', art: 'u7npn', def: 'A small current into the base lets a much bigger current flow from collector to emitter. I_C up to β × I_B.', lesson: 'L35' },
+  ebc: { term: 'E, B, C pins', art: 'u7npn', def: 'Emitter (arrow, goes to ground in a low-side switch), Base (the control input), Collector (to the load, like an LED + resistor).', lesson: 'L35' },
+  rbase: { term: 'Base resistor', art: 'u7npn', def: 'Limits base current: R_B = (V_in − 0.7 V) ÷ I_B. Pick I_B a few times bigger than I_C ÷ β so the transistor saturates.', lesson: 'L35' },
+  satur: { term: 'Saturated vs. off', art: 'u7npn', def: 'Saturated = fully on (V_CE ≈ 0.2 V, the load gets nearly full voltage). Off = no base current, no collector current.', lesson: 'L35' },
+  c555: { term: '555 astable', art: 'u7chip', def: 'The 555 timer chip with R1, R2 and C wired so it oscillates by itself: the output flips high and low forever, a blinker.', lesson: 'L36' },
+  f555: { term: '555 frequency', art: 'u7chip', def: 'f ≈ 1.44 ÷ ((R1 + 2·R2) × C). Bigger R or C means slower blinking.', lesson: 'L36' },
+  duty: { term: 'Duty cycle', art: 'u7chip', def: 'The share of each cycle the output is high: (R1 + R2) ÷ (R1 + 2·R2). The basic 555 astable is always above 50%.', lesson: 'L36' },
+  nightl: { term: 'Auto night light', art: 'u7night', def: 'Fixed resistor on top, LDR on the bottom, the divider drives a transistor\'s base: dark → LDR resistance up → base voltage up → LED on.', lesson: 'L37' },
+});
+
+/* ---------- lessons ---------- */
+const sq = (id, kind, q, why, x) => Object.assign({ type: 'sim', kind, id, q, why, graded: true }, x);
+const RSER = [1000, 2200, 4700, 10000, 22000, 47000, 100000], CSER = [1e-6, 4.7e-6, 10e-6, 22e-6, 47e-6, 100e-6, 220e-6, 470e-6];
+const RB = [470, 1000, 4700, 10000, 47000, 100000, 470000];
+const LIGHT = [[1000, 'bright sun (1 kΩ)'], [5000, 'room light (5 kΩ)'], [20000, 'dusk (20 kΩ)'], [100000, 'dark (100 kΩ)']];
+const R1S = [1000, 2200, 4700, 10000], R2S = [1000, 4700, 10000, 22000, 47000, 100000], C5S = [1e-6, 4.7e-6, 10e-6, 22e-6, 47e-6, 100e-6];
+const f555 = (R1, R2, C) => 1.44 / ((R1 + 2 * R2) * C), d555 = (R1, R2) => (R1 + R2) / (R1 + 2 * R2);
+Object.assign(LESSONS, {
+  L33: { title: 'Capacitors: storing charge', goal: 'Farads and prefixes, Q = C × V, electrolytic vs. ceramic, and polarity safety.', cards: ['capc', 'farad', 'electro', 'ceramic'], steps: [
+    cpt('A tiny charge tank', `<p class="body">A <b>capacitor</b> is two metal plates with an insulator between them. Connect it to a battery and charge piles up on the plates until its voltage matches the battery.</p><div class="def"><b>Q = C × V</b>: charge (coulombs) = capacitance (farads) × voltage.<br>Once it's full, <b>no steady current</b> flows through it: it blocks DC.</div>`, CARDART.u7cap, 'A farad is huge. Real parts are measured in µF (millionths), nF and pF.'),
+    mcq('c33q1', '<b>470 µF</b> written in farads is…', ['0.00047 F', '0.47 F', '470 000 F'], 'µ means one millionth: 470 × 0.000001 = 0.00047 F.'),
+    mcq('c33q2', 'A ceramic cap is marked <b>104</b> (pF code: 10 then 4 zeros). Its value is…', ['100 nF (0.1 µF)', '104 pF', '10 µF'], '10 × 10⁴ pF = 100 000 pF = 100 nF = 0.1 µF.'),
+    cpt('Two common kinds, one big rule', `<p class="body"><b>Ceramic</b> caps are small and work either way round (pF to a few µF).</p><p class="body"><b>Electrolytic</b> caps hold far more (µF to mF) but are <b>polarized</b>: the <b>stripe</b> marks the <b>− leg</b>, which is also the shorter leg.</p><div class="def">Put an electrolytic in backwards, or above its voltage rating, and it can heat up, bulge or even pop. Big ones can also stay charged after power is off.</div>`, () => capEl()),
+    sq('c33q3', 'tap', 'Tap the <b>− leg</b> of the electrolytic capacitor.', 'The stripe of − signs sits over the right-hand leg, and that leg is shorter: it\'s the negative lead.', { svg: () => capEl({ tap: true }), answerKey: 'r', names: { l: 'left leg', r: 'right leg (under the stripe)' }, answer: 'The right leg, under the stripe' }),
+    tfq('c33q4', 'A ceramic capacitor must go in a particular way round, like an LED.', false, 'Ceramics are non-polarized. Electrolytics (and tantalums) are the ones with a + and − leg.'),
+    mcq('c33q5', 'How much charge does a <b>470 µF</b> cap hold at <b>9 V</b>?', ['About 4.2 mC (0.0042 C)', 'About 52 C', 'About 0.47 C'], 'Q = C × V = 0.00047 F × 9 V ≈ 0.0042 C = 4.2 mC.'),
+    mcq('c33q6', 'For a 9 V circuit you should pick an electrolytic rated…', ['16 V or more', 'Exactly 9 V', '6.3 V, since smaller is safer'], 'Give the voltage rating headroom (about 1.5× or more). Running at or above the rating stresses the cap.'),
+    mcq('c33q7', 'Two caps hold the same charge. Cap A is at 5 V, cap B at 10 V. Compared with A, B has…', ['Half the capacitance', 'Double the capacitance', 'The same capacitance'], 'C = Q ÷ V. Same Q, twice the V → half the C.'),
+  ] },
+  L34: { title: 'RC charging & discharging', goal: 'τ = R × C, the 63% and 5τ rules, and shaping a charging curve.', cards: ['tau', 'rc63', 'rc5'], steps: [
+    cpt('Filling through a resistor', `<p class="body">Charge a capacitor <b>through a resistor</b> and it doesn't fill instantly. It rises fast at first, then slower and slower.</p><div class="def"><b>τ (tau) = R × C</b> sets the pace (Ω × F = seconds).<br>After <b>1 τ</b>: about <b>63%</b> full. After <b>5 τ</b>: practically full (over 99%).</div>`, () => rcPlot(9, 1, 6), 'Discharging is the mirror image: after 1 τ only about 37% is left.'),
+    sq('c34q1', 'rc', 'Set R and C so the time constant is <b>1 second</b> (0.9–1.1 s).', 'τ = R × C. 10 kΩ × 100 µF = 1 s; so does 100 kΩ × 10 µF or 22 kΩ × 47 µF (≈ 1.03 s).', { Rs: RSER, Cs: CSER, r0: 0, c0: 0, tmax: 6, ok: t => t >= .9 && t <= 1.1, answer: 'For example 10 kΩ and 100 µF' }),
+    mcq('c34q2', '10 kΩ and 47 µF. What is τ?', ['0.47 s', '4.7 s', '47 ms'], '10 000 × 0.000047 = 0.47 s.'),
+    mcq('c34q3', 'A 9 V supply charges a cap through a resistor. Its voltage after <b>1 τ</b>?', ['About 5.7 V', 'About 3.3 V', 'About 9 V'], '63% of 9 V ≈ 5.7 V.'),
+    sq('c34q4', 'rc', 'Discharge: make the capacitor <b>empty out (5τ) in 1–2 seconds</b>.', '5τ between 1 and 2 s means τ between 0.2 and 0.4 s, e.g. 4.7 kΩ × 47 µF ≈ 0.22 s or 10 kΩ × 22 µF = 0.22 s.', { mode: 'discharge', Rs: RSER, Cs: CSER, r0: 6, c0: 7, tmax: 4, ok: t => 5 * t >= 1 && 5 * t <= 2, answer: 'τ between 0.2 and 0.4 s, e.g. 10 kΩ × 22 µF' }),
+    tfq('c34q5', 'Doubling R doubles the time constant.', true, 'τ = R × C, so τ scales directly with R (and with C).'),
+    mcq('c34q6', 'After <b>2 τ</b> of charging from 9 V, the cap is at about…', ['7.8 V (86%)', '6.3 V (70%)', '9 V (100%)'], 'Each τ closes 63% of the remaining gap: 63% then 63% of the last 37% → 86%. 0.86 × 9 ≈ 7.8 V.'),
+    mcq('c34q7', 'An LED fades out as a <b>1000 µF</b> cap discharges through <b>2.2 kΩ</b>. Roughly how long until it\'s fully out?', ['About 11 s (5τ)', 'About 2.2 s', 'About 0.5 s'], 'τ = 2200 × 0.001 = 2.2 s; fully discharged ≈ 5τ = 11 s.'),
+  ] },
+  L35: { title: 'Transistors as switches', goal: 'NPN pins, a transistor driving an LED, base-resistor sizing, saturation vs. off.', cards: ['npn', 'ebc', 'rbase', 'satur'], steps: [
+    cpt('A switch you control with a trickle', `<p class="body">An <b>NPN transistor</b> has three pins: <b>E</b>mitter, <b>B</b>ase and <b>C</b>ollector. A small current into the <b>base</b> lets a much bigger current flow from <b>collector to emitter</b>.</p><div class="def">As a switch: emitter to <b>ground</b>, the load (resistor + LED) between <b>+</b> and the <b>collector</b>, and the control signal into the base through a <b>base resistor</b>.</div>`, () => npnCircuit({ Rb: 10000, on: true, r: npnCalc({ Vin: 5, Rb: 10000, Vcc: 9, on: true }) }), 'The arrow is on the emitter and points out: that\'s how you spot E on the symbol.'),
+    sq('c35q1', 'tap', 'Tap the transistor\'s <b>base</b> lead.', 'The base is the lead that meets the flat bar. The collector and emitter join the bar at an angle; the emitter has the arrow.', { svg: () => `<svg viewBox="0 0 340 150"><rect width="340" height="150" rx="18" fill="${BG}"/>${npnSym(170, 75, { tap: true, letters: false })}</svg>`, answerKey: 'b', names: { b: 'the lead into the bar', c: 'the top lead (no arrow)', e: 'the lead with the arrow' }, answer: 'The lead going straight into the bar (left)' }),
+    sq('c35q2', 'npn', 'Flip the input switch so the transistor <b>turns the LED on</b>.', 'With the switch on, 5 V pushes current through the 10 kΩ base resistor into the base, so the transistor saturates and the LED lights.', { sw: true, Rb: 10000, ok: r => r.state === 'saturated', answer: 'Switch ON' }),
+    cpt('Sizing the base resistor', `<p class="body">The transistor multiplies base current by its gain <b>β</b> (about <b>200</b> here). To switch an LED fully on, the base needs at least <b>I<sub>C</sub> ÷ β</b>, plus a safety margin.</p><div class="def"><b>R<sub>B</sub> = (V<sub>in</sub> − 0.7 V) ÷ I<sub>B</sub></b><br>Too big R<sub>B</sub>: not enough base current, the transistor is only <b>partly on</b> and the LED is dim.<br>Fully on = <b>saturated</b>: V<sub>CE</sub> ≈ 0.2 V.</div>`, CARDART.u7npn),
+    sq('c35q3', 'npn', 'Pick a base resistor that <b>saturates</b> the transistor while keeping base current between <b>0.2 and 1 mA</b>.', '(5 − 0.7) ÷ R_B: 4.7 kΩ gives about 0.9 mA and 10 kΩ about 0.43 mA. 1 kΩ wastes 4.3 mA; 47 kΩ only just saturates with no margin, and 100 kΩ (0.043 mA) can\'t saturate it.', { sw: true, on0: true, Rbs: RB, rb0: 6, ok: r => r.state === 'saturated' && r.Ib >= .0002 && r.Ib <= .001, answer: '4.7 kΩ or 10 kΩ' }),
+    mcq('c35q4', 'An LED needs I<sub>C</sub> = 20 mA, β = 200. With a 10× margin, I<sub>B</sub> = 1 mA. From a 5 V input, R<sub>B</sub>?', ['About 4.3 kΩ', 'About 250 Ω', 'About 43 kΩ'], 'I_B = 10 × (20 mA ÷ 200) = 1 mA. (5 − 0.7) ÷ 0.001 = 4300 Ω.'),
+    tfq('c35q5', 'With the base at 0 V, an NPN switch is off and the LED stays dark.', true, 'No base current → no collector current.'),
+    mcq('c35q6', 'Your transistor-driven LED is <b>dim</b>, and V<sub>CE</sub> measures 3 V. The most likely fix?', ['Use a smaller base resistor so more base current flows', 'Use a bigger base resistor', 'Swap the LED for a brighter one'], 'V_CE ≫ 0.2 V means the transistor isn\'t saturated: it needs more base current.'),
+  ] },
+  L36: { title: 'The 555 timer blinker', goal: 'Astable mode: how R1, R2 and C set the blink rate and duty cycle.', cards: ['c555', 'f555', 'duty'], steps: [
+    cpt('A chip that blinks by itself', `<p class="body">The <b>555 timer</b> is an 8-pin chip. In <b>astable</b> mode, a capacitor charges through <b>R1 + R2</b> and discharges through <b>R2</b>, over and over. The output is <b>high while charging</b> and low while discharging.</p><div class="def"><b>f ≈ 1.44 ÷ ((R1 + 2·R2) × C)</b><br>Pin 8 to +, pin 1 to ground, pin 3 is the output.</div>`, () => chip555(), 'Bigger resistors or a bigger capacitor = slower blinking.'),
+    sq('c36q1', 'n555', 'Tune the blinker to about <b>1 blink per second</b> (0.8–1.25 Hz).', 'f = 1.44 ÷ ((R1 + 2·R2) × C). With these parts, 4.7 kΩ + 4.7 kΩ + 100 µF gives 1.02 Hz, and 10 kΩ + 22 kΩ + 22 µF gives 1.21 Hz.', { r1: 0, r2: 0, c0: 0, ok: f => f >= .8 && f <= 1.25, answer: 'For example R1 = 4.7 kΩ, R2 = 4.7 kΩ, C = 100 µF (≈ 1 Hz)' }),
+    mcq('c36q2', 'R1 = 1 kΩ, R2 = 10 kΩ, C = 47 µF. Blink frequency?', ['About 1.5 Hz', 'About 3 Hz', 'About 0.15 Hz'], '1.44 ÷ ((1k + 20k) × 47 µF) = 1.44 ÷ 0.987 ≈ 1.46 Hz.'),
+    cpt('High time, low time, duty', `<p class="body">High time ≈ 0.693 × (R1 + R2) × C. Low time ≈ 0.693 × R2 × C.</p><div class="def"><b>Duty cycle</b> = high ÷ (high + low) = (R1 + R2) ÷ (R1 + 2·R2).<br>Because R1 only adds to the high time, the basic circuit is always <b>above 50%</b>. Make R2 much bigger than R1 to get close to 50%.</div>`, () => sqWave(.66)),
+    sq('c36q3', 'n555', 'Make it blink <b>at least 2 Hz</b> with a duty cycle <b>under 60%</b>.', 'Duty under 60% needs R2 much bigger than R1 (e.g. R1 1 kΩ, R2 10 kΩ → 52%). Then pick C so f ≥ 2 Hz: 22 µF gives 3.1 Hz.', { r1: 3, r2: 0, c0: 5, ok: (f, d) => f >= 2 && d < .6, answer: 'R1 = 1 kΩ, R2 = 10 kΩ, C = 22 µF (≈ 3 Hz, 52%)' }),
+    mcq('c36q4', 'You double C and change nothing else. The blink frequency…', ['Halves', 'Doubles', 'Stays the same'], 'f is proportional to 1 ÷ C.'),
+    tfq('c36q5', 'In astable mode, the 555 output is high while the capacitor is charging.', true, 'Charging through R1 + R2 = output high; discharging through R2 = output low.'),
+    mcq('c36q6', 'R1 = 1 kΩ, R2 = 10 kΩ. Which C gives about <b>0.5 Hz</b>?', ['About 137 µF (use 150 µF)', 'About 14 µF', 'About 1.4 mF'], 'C = 1.44 ÷ (f × (R1 + 2·R2)) = 1.44 ÷ (0.5 × 21 000) ≈ 137 µF.'),
+  ] },
+  L37: { title: 'Capstone: auto night light', goal: 'An LDR divider into a transistor driving an LED, then find the faults.', cards: ['nightl'], steps: [
+    cpt('Light in, LED out', `<p class="body">Combine Unit 6's light sensor with a transistor switch: a <b>fixed resistor on top</b>, the <b>LDR on the bottom</b>, and the middle of that divider feeds the base through R<sub>B</sub>.</p><div class="def">Bright: LDR ≈ a few kΩ → divider voltage below 0.7 V → transistor <b>off</b>.<br>Dark: LDR ≈ 100 kΩ → divider voltage rises → base current → LED <b>on</b>.</div>`, () => npnCircuit({ div: true, Rtop: 100000, Rl: 100000, light: 'dark', Rb: 1000, r: npnCalc({ Vcc: 9, Rtop: 100000, Rl: 100000, Rb: 1000 }) })),
+    sq('c37q1', 'npn', 'Slide the light level until the night light switches <b>fully on</b>.', 'Only in the dark (LDR ≈ 100 kΩ) does the divider push enough base current to saturate the transistor.', { div: true, Rtop: 100000, Rb: 1000, ldrs: LIGHT, l0: 0, ok: r => r.state === 'saturated', answer: 'Dark (LDR 100 kΩ)' }),
+    sq('c37q2', 'npn', 'Pick the top resistor so the LED is <b>off in room light</b> (LDR 5 kΩ) but <b>fully on in the dark</b> (LDR 100 kΩ).', 'At 5 kΩ the base voltage must stay under 0.7 V: 9 × 5 ÷ (R + 5) < 0.7 needs R > 59 kΩ. At 100 kΩ it must saturate: 100 kΩ works; 220 kΩ leaves the LED dim in the dark.', { div: true, Rtops: [10000, 22000, 47000, 100000, 220000, 470000], rt0: 0, ldrs: LIGHT, l0: 1, Rb: 1000, both: [5000, 100000], ok: (r, at) => at(5000).state === 'off' && at(100000).state === 'saturated', answer: '100 kΩ' }),
+    mcq('c37q3', 'In the dark the LDR is 100 kΩ and the top resistor is 100 kΩ. The divider\'s open-circuit voltage from 9 V?', ['4.5 V', '0.7 V', '9 V'], 'Equal resistors split it in half: 9 × 100 ÷ 200 = 4.5 V (the base then clamps it near 0.7 V).'),
+    sq('c37q4', 'tap', 'Fault: the LED <b>never</b> lights, even in the dark. The meter shows <b>9 V across the 100 kΩ</b> top resistor and 0 V at the base. Tap the faulty part.', '9 V across the top resistor with 0 V below it means no current flows through it: that resistor (or its row) is open, so the base never gets fed.', { svg: () => npnCircuit({ div: true, Rtop: 100000, Rl: 100000, light: 'dark', Rb: 1000, tap: true }), answerKey: 'rtop', names: { rtop: 'the 100 kΩ top resistor', ldr: 'the LDR', rb: 'the base resistor', q: 'the transistor', led: 'the LED', rc: 'the 470 Ω resistor' }, answer: 'The 100 kΩ top resistor (open)' }),
+    mcq('c37q5', 'Fault: the light works <b>backwards</b>: on in bright light, off in the dark. Most likely?', ['The LDR and the fixed resistor are swapped', 'The LED is backwards', 'The base resistor is too small'], 'With the LDR on top, darkness raises the top resistance and pulls the base voltage DOWN.'),
+    mcq('c37q6', 'Fault: in the dark the LED only <b>glows dimly</b>, and V<sub>CE</sub> reads 4 V. Best fix?', ['A smaller top resistor or base resistor, so more base current flows', 'A bigger 470 Ω LED resistor', 'Reverse the transistor'], 'High V_CE = not saturated: the base isn\'t getting enough current.'),
+    mcq('c37q7', 'Fault: the LED is on <b>all the time</b>. The base reads 0.7 V even in bright sun, and there\'s a jumper from the + rail to the base row. Cause?', ['The stray jumper feeds the base directly, bypassing the sensor', 'The LDR is broken open', 'The battery is flat'], 'Anything that feeds the base from + overrides the divider.'),
+  ] },
+});
+
+/* ---------- unit test ---------- */
+TESTS.T7 = { id: 'T7', unit: 'U7', title: 'Unit 7 test: Capacitors, Transistors & Timing', pass: 0.8, steps: [
+  mcq('T7q1', '0.22 µF is the same as…', ['220 nF', '22 nF', '2.2 nF'], '1 µF = 1000 nF, so 0.22 µF = 220 nF.'),
+  sq('T7q2', 'tap', 'Which leg of this electrolytic is <b>−</b>? Tap it.', 'The stripe is on the left this time, over the shorter leg: that\'s −.', { tag: 'L33', svg: () => capEl({ tap: true, flip: true }), answerKey: 'l', names: { l: 'left leg (under the stripe)', r: 'right leg' }, answer: 'The left leg, under the stripe' }),
+  mcq('T7q3', 'A 100 µF cap at 12 V holds…', ['1.2 mC', '120 C', '12 mC'], '0.0001 × 12 = 0.0012 C.'),
+  sq('T7q4', 'rc', 'Set τ to <b>about 0.5 s</b> (0.4–0.6 s).', 'For example 10 kΩ × 47 µF = 0.47 s, or 22 kΩ × 22 µF ≈ 0.48 s.', { tag: 'L34', Rs: RSER, Cs: CSER, r0: 3, c0: 7, tmax: 4, ok: t => t >= .4 && t <= .6, answer: 'For example 10 kΩ and 47 µF' }),
+  mcq('T7q5', 'A cap charging from 5 V reaches about 3.2 V after…', ['1 τ', '5 τ', '0.1 τ'], '63% of 5 V ≈ 3.2 V.'),
+  mcq('T7q6', '47 kΩ and 220 µF. Time to (practically) fully charge?', ['About 52 s', 'About 10 s', 'About 1 s'], 'τ = 47 000 × 0.00022 ≈ 10.3 s; 5τ ≈ 52 s.'),
+  mcq('T7q7', 'In an NPN low-side switch, the emitter goes to…', ['Ground', 'The LED', 'The base resistor'], 'Emitter to ground, load on the collector, control on the base.'),
+  sq('T7q8', 'npn', 'Pick the base resistor that saturates the transistor with base current <b>between 0.2 and 0.5 mA</b>.', '(5 − 0.7) ÷ 10 kΩ ≈ 0.43 mA. 4.7 kΩ gives 0.9 mA (over), 47 kΩ only 0.09 mA (under).', { tag: 'L35', sw: true, on0: true, Rbs: RB, rb0: 0, ok: r => r.state === 'saturated' && r.Ib < .0005 && r.Ib >= .0002, answer: '10 kΩ' }),
+  mcq('T7q9', 'β = 200, the LED needs 15 mA. Minimum base current?', ['75 µA', '3 mA', '15 mA'], '15 mA ÷ 200 = 0.075 mA = 75 µA (use more for margin).'),
+  sq('T7q10', 'n555', 'Set the 555 to <b>2–4 Hz</b>.', 'For example R1 1 kΩ, R2 10 kΩ, C 22 µF ≈ 3.1 Hz.', { tag: 'L36', r1: 0, r2: 2, c0: 5, ok: f => f >= 2 && f <= 4, answer: 'For example 1 kΩ, 10 kΩ, 22 µF' }),
+  mcq('T7q11', 'R1 = 1 kΩ, R2 = 1 kΩ. Duty cycle?', ['About 67%', '50%', 'About 33%'], '(1 + 1) ÷ (1 + 2) = 2/3 ≈ 67%.'),
+  mcq('T7q12', 'Night light: 9 V, LDR on the bottom. In the dark the LDR jumps from 5 kΩ to 100 kΩ, so the divider voltage…', ['Rises, turning the transistor on', 'Falls, turning it off', 'Stays the same'], 'A bigger bottom resistor takes a bigger share of the 9 V.'),
+].map((s, i) => Object.assign(s, { tag: s.tag || ['L33', 'L33', 'L33', 'L34', 'L34', 'L34', 'L35', 'L35', 'L35', 'L36', 'L36', 'L37'][i] })) };
+
+UNITS.push({ id: 'U7', n: 7, title: 'Capacitors, Transistors & Timing', color: '#4F8FE8', dark: '#2F6BC0', lessons: ['L33', 'L34', 'L35', 'L36', 'L37'], test: 'T7' });
+/* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
 const KEY = 'zapling.v1';
@@ -2793,7 +2983,7 @@ function renderPath() {
     });
     ue.appendChild(pw); v.appendChild(ue);
   });
-  v.appendChild(el(`<div class="soon">${mascot('think')}<div><b style="color:var(--ink)">Next on the roadmap</b><div class="small" style="margin-top:3px">Capacitors &amp; AC, transistors and analog circuits, digital logic, microcontrollers, then PCB design.</div></div></div>`));
+  v.appendChild(el(`<div class="soon">${mascot('think')}<div><b style="color:var(--ink)">Next on the roadmap</b><div class="small" style="margin-top:3px">Unit 8 Digital Logic Basics, Unit 9 Verilog, Unit 10 Components &amp; Datasheets, then inductors &amp; AC, analog circuits, microcontrollers and PCB design.</div></div></div>`));
 }
 function openPop(pw, n, x, y, u) {
   $$('.pop').forEach(p => p.remove());
@@ -3766,6 +3956,71 @@ RENDER.sim_bb2 = (step, st, ready) => {
     lock() { locked = true; draw(); } };
 };
 /* =========================================================
+   UNIT 7 SIMS: rc, n555, npn, tap
+   ========================================================= */
+function idxSlider(st, list, i0, fmt, label) { // slider over a list of standard values
+  const b = sliderBox(st, { min: 0, max: list.length - 1, step: 1, start: i0 }, '', label);
+  const t = $$('.ticks span', b); t[0].textContent = fmt(list[0]); t[1].textContent = fmt(list[list.length - 1]);
+  return b;
+}
+RENDER.sim_rc = (step, st) => {
+  qhead(step, st); let ri = step.r0, ci = step.c0; const mode = step.mode || 'charge', Vs = step.Vs || 9;
+  const box = simBox(st, ''), sr = idxSlider(st, step.Rs, ri, ohmsTxt, 'Resistance R'), sc = idxSlider(st, step.Cs, ci, fmtC, 'Capacitance C'), say = statusEl(st, '');
+  const tau = () => step.Rs[ri] * step.Cs[ci];
+  const upd = () => {
+    const t = tau(); box.innerHTML = rcPlot(Vs, t, step.tmax || 6, mode);
+    $('.v', sr).textContent = `R = ${ohmsTxt(step.Rs[ri])}`; $('.v', sc).textContent = `C = ${fmtC(step.Cs[ci])}`;
+    say(`τ = R × C = ${ohmsTxt(step.Rs[ri])} × ${fmtC(step.Cs[ci])} = <b>${fmtT(t)}</b> · 5τ = ${fmtT(5 * t)}`, step.ok(t) ? 'ok' : '');
+  };
+  $('input', sr).oninput = e => { ri = +e.target.value; upd(); }; $('input', sc).oninput = e => { ci = +e.target.value; upd(); };
+  upd();
+  return { ready: true, check: () => step.ok(tau()), answer: step.answer, picked: () => `${ohmsTxt(step.Rs[ri])} × ${fmtC(step.Cs[ci])} = ${fmtT(tau())}`, lock() { $$('input', st).forEach(i => i.disabled = true); } };
+};
+RENDER.sim_n555 = (step, st) => {
+  qhead(step, st); let a = step.r1, b = step.r2, c = step.c0;
+  const box = simBox(st, ''), s1 = idxSlider(st, R1S, a, ohmsTxt, 'R1'), s2 = idxSlider(st, R2S, b, ohmsTxt, 'R2'), s3 = idxSlider(st, C5S, c, fmtC, 'Capacitor C'), say = statusEl(st, '');
+  const vals = () => { const R1 = R1S[a], R2 = R2S[b], C = C5S[c]; return { R1, R2, C, f: f555(R1, R2, C), d: d555(R1, R2) }; };
+  const upd = () => {
+    const v = vals(), P = 1 / v.f, fast = P < .08;
+    const led = `<g transform="translate(250 8)"><circle cx="40" cy="40" r="26" fill="#FF3355" opacity=".35" filter="url(#u7glow5)">${fast ? '' : `<animate attributeName="opacity" values=".55;0" keyTimes="0;${v.d.toFixed(3)}" calcMode="discrete" dur="${P.toFixed(3)}s" repeatCount="indefinite"/>`}</circle><circle cx="40" cy="40" r="15" fill="#FF3355" stroke="${INK}" stroke-width="2">${fast ? '' : `<animate attributeName="fill" values="#FF3355;#FFC2CB" keyTimes="0;${v.d.toFixed(3)}" calcMode="discrete" dur="${P.toFixed(3)}s" repeatCount="indefinite"/>`}</circle>${lbl(40, 78, fast ? 'too fast to see' : 'LED on pin 3', '#6B6899', 9.5)}</g>`;
+    box.innerHTML = `<svg viewBox="0 0 340 96" role="img" aria-label="555 blinker LED"><defs><filter id="u7glow5" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="5"/></filter></defs><rect width="340" height="96" rx="18" fill="${BG}"/><rect x="24" y="20" width="76" height="56" rx="7" fill="#4A4580"/>${lbl(62, 54, '555', '#fff', 18)}${lbl(116, 34, 'f ≈ ' + g3(v.f) + ' Hz', INK, 14, 'start')}${lbl(116, 56, 'period ' + fmtT(P), '#6B6899', 11.5, 'start')}${lbl(116, 74, 'duty ' + Math.round(v.d * 100) + '%', '#6B6899', 11.5, 'start')}${led}</svg>` + sqWave(v.d).replace('viewBox="0 0 340 180"', 'viewBox="0 0 340 180" style="margin-top:6px"');
+    $('.v', s1).textContent = `R1 = ${ohmsTxt(v.R1)}`; $('.v', s2).textContent = `R2 = ${ohmsTxt(v.R2)}`; $('.v', s3).textContent = `C = ${fmtC(v.C)}`;
+    say(`f = 1.44 ÷ ((${ohmsTxt(v.R1)} + 2 × ${ohmsTxt(v.R2)}) × ${fmtC(v.C)}) = <b>${g3(v.f)} Hz</b> · duty ${Math.round(v.d * 100)}%`, step.ok(v.f, v.d) ? 'ok' : '');
+  };
+  [[s1, x => a = x], [s2, x => b = x], [s3, x => c = x]].forEach(([s, f]) => $('input', s).oninput = e => { f(+e.target.value); upd(); });
+  upd();
+  return { ready: true, check: () => { const v = vals(); return step.ok(v.f, v.d); }, answer: step.answer, picked: () => { const v = vals(); return `${ohmsTxt(v.R1)}, ${ohmsTxt(v.R2)}, ${fmtC(v.C)}: ${g3(v.f)} Hz, ${Math.round(v.d * 100)}%`; }, lock() { $$('input', st).forEach(i => i.disabled = true); } };
+};
+RENDER.sim_npn = (step, st, ready) => {
+  qhead(step, st); let on = !!step.on0, rbi = step.rb0 || 0, li = step.l0 || 0, rti = step.rt0 || 0, locked = false;
+  const Rb = () => step.Rbs ? step.Rbs[rbi] : step.Rb, Rtop = () => step.Rtops ? step.Rtops[rti] : step.Rtop, Rl = () => step.ldrs ? step.ldrs[li][0] : null;
+  const calc = (rl = Rl()) => step.div ? npnCalc({ Vcc: 9, Rtop: Rtop(), Rl: rl, Rb: Rb() }) : npnCalc({ Vcc: 9, Vin: 5, Rb: Rb(), on });
+  const box = simBox(st, '');
+  if (step.sw) segToggle(st, [['0', 'Input OFF'], ['1', 'Input ON (5 V)']], on ? '1' : '0', v => { if (locked) return; on = v === '1'; upd(); ready(true); }, 'Input switch');
+  const sb = step.Rbs ? idxSlider(st, step.Rbs, rbi, ohmsTxt, 'Base resistor') : null, sl = step.ldrs ? idxSlider(st, step.ldrs, li, x => x[1].split(' (')[0], 'Light level') : null, stp = step.Rtops ? idxSlider(st, step.Rtops, rti, ohmsTxt, 'Top resistor') : null;
+  const say = statusEl(st, '');
+  const ok = () => step.ok(calc(), rl => calc(rl));
+  const upd = () => {
+    const r = calc();
+    box.innerHTML = npnCircuit({ div: step.div, Rtop: Rtop(), Rl: Rl(), light: step.ldrs ? step.ldrs[li][1].split(' (')[0] : '', Rb: Rb(), on, Vin: 5, r });
+    if (sb) $('.v', sb).textContent = `R_B = ${ohmsTxt(Rb())}`; if (sl) $('.v', sl).textContent = step.ldrs[li][1]; if (stp) $('.v', stp).textContent = `Top = ${ohmsTxt(Rtop())}`;
+    let t = `I<sub>B</sub> = ${fmtI(r.Ib)} · I<sub>C</sub> = ${fmtI(r.Ic)} · <b>${r.state}</b>`;
+    if (step.both) t += '<br>' + step.both.map(x => `LDR ${ohmsTxt(x)}: ${calc(x).state}`).join(' · ');
+    say(t, ok() ? 'ok' : '');
+  };
+  [[sb, x => rbi = x], [sl, x => li = x], [stp, x => rti = x]].forEach(([s, f]) => { if (s) $('input', s).oninput = e => { f(+e.target.value); upd(); ready(true); }; });
+  upd();
+  return { ready: !step.sw || !!step.Rbs, check: ok, answer: step.answer, picked: () => { const r = calc(); return step.div ? `Top ${ohmsTxt(Rtop())}${step.ldrs && !step.both ? ', ' + step.ldrs[li][1] : ''}: ${r.state}` : `${on ? 'ON' : 'OFF'}, R_B ${ohmsTxt(Rb())}: ${r.state}`; }, lock() { locked = true; $$('input,button', st).forEach(i => i.disabled = true); } };
+};
+RENDER.sim_tap = (step, st, ready) => {
+  qhead(step, st); let sel = null, locked = false;
+  const box = simBox(st, typeof step.svg === 'function' ? step.svg() : step.svg); box.classList.add('tapk');
+  const say = statusEl(st, 'Tap a part');
+  $$('[data-k]', box).forEach(g => { g.setAttribute('role', 'button'); g.setAttribute('aria-label', (step.names || {})[g.dataset.k] || g.dataset.k); g.onclick = () => { if (locked) return; sel = g.dataset.k; $$('[data-k]', box).forEach(x => x.classList.toggle('on', x === g)); SFX.tap(); say('Picked: ' + ((step.names || {})[sel] || sel)); ready(true); }; });
+  return { ready: false, check: () => sel === step.answerKey, answer: step.answer, picked: () => sel == null ? null : (step.names || {})[sel] || sel,
+    lock() { locked = true; $$('[data-k]', box).forEach(g => { if (g.dataset.k === step.answerKey) g.classList.add('ok'); else if (g.dataset.k === sel) g.classList.add('bad'); }); } };
+};
+/* =========================================================
    ASK SPRIG: help chat
    Mode 1: offline helper built from the app's own content (default)
    Mode 2: optional bring-your-own-key, OpenAI-compatible /chat/completions
@@ -4178,6 +4433,23 @@ const GAMES = [
       const p = pick([10, 20, 25, 40, 50, 75, 80, 90]), v = +(Vs * (100 - p) / 100).toFixed(2);
       return { q: `${Vs} V across a pot. The wiper is ${p}% of the way from the + end. Wiper voltage?`, art: CARDART.bbpot(), ...numOpts(v, [+(Vs * p / 100).toFixed(2), Vs / 2, Vs], ' V'), fb: `Below the wiper is ${100 - p}% of the track: ${Vs} × ${(100 - p) / 100} = ${gn(v)} V.` };
     } },
+    { id: 'G13', u: 'U7', name: 'RC Timer Dash', blurb: 'Time constants, 63% and 5τ: race the capacitor.', gen() {
+      const t = Math.random(), Rk = pick([1, 2.2, 4.7, 10, 22, 47, 100]), Cu = pick([1, 4.7, 10, 22, 47, 100, 220, 470]), tau = +(Rk * Cu / 1000).toPrecision(3);
+      if (t < .35) return { q: `R = ${Rk} kΩ, C = ${Cu} µF. Time constant τ?`, art: CARDART.u7rc(), ...numOpts(tau, [tau * 10, tau / 10, tau * 5], ' s'), fb: `τ = ${Rk * 1000} Ω × ${Cu / 1e6} F = ${gn(tau)} s.` };
+      if (t < .6) return { q: `R = ${Rk} kΩ, C = ${Cu} µF. About how long to fully charge (5τ)?`, art: CARDART.u7rc(), ...numOpts(+(5 * tau).toPrecision(3), [tau, +(tau / 5).toPrecision(3), +(50 * tau).toPrecision(3)], ' s'), fb: `τ = ${gn(tau)} s, so 5τ ≈ ${gn(+(5 * tau).toPrecision(3))} s.` };
+      if (t < .82) { const V = pick([5, 9, 12]), [n, p, w] = pick([[1, 63, 'charging'], [2, 86, 'charging'], [1, 37, 'discharging'], [3, 95, 'charging']]), v = +(V * p / 100).toFixed(1); return { q: `A cap ${w === 'charging' ? 'charges toward' : 'discharges from'} ${V} V. Voltage after ${n} τ?`, art: '', ...numOpts(v, [+(V * (100 - p) / 100).toFixed(1), V, V / 2], ' V'), fb: `After ${n} τ ${w} it's at about ${p}%: ${p}% of ${V} V ≈ ${gn(v)} V.` }; }
+      const [x, a, b, c] = pick([['0.1 µF', '100 nF', '10 nF', '1 nF'], ['4700 pF', '4.7 nF', '47 nF', '0.47 nF'], ['0.022 µF', '22 nF', '220 nF', '2.2 nF'], ['1000 µF', '1 mF', '0.1 mF', '10 mF'], ['104 (ceramic code)', '100 nF', '104 pF', '10 nF'], ['473 (ceramic code)', '47 nF', '473 pF', '4.7 nF']]);
+      return { q: `${x} is the same as…`, art: CARDART.u7cap(), opts: [a, b, c], a: 0, fb: `${x} = ${a}.` };
+    } },
+    { id: 'G14', u: 'U7', name: 'Switch & Blink', blurb: 'Base resistors and 555 blink rates.', gen() {
+      const t = Math.random();
+      if (t < .25) { const Ic = pick([10, 15, 20, 30, 40, 50]), b = pick([100, 200, 250]), ib = +(Ic / b * 1000).toPrecision(3); return { q: `The load needs I_C = ${Ic} mA and β = ${b}. Minimum base current?`, art: CARDART.u7npn(), ...numOpts(ib, [ib * 10, Ic * b, ib / 10], ' µA'), fb: `${Ic} mA ÷ ${b} = ${gn(ib)} µA (then add margin).` }; }
+      if (t < .45) { const Vin = pick([3.3, 5]), ib = pick([0.5, 1, 2]), rb = +((Vin - 0.7) / ib).toFixed(2); return { q: `A ${Vin} V input should push ${ib} mA into the base (V_BE 0.7 V). Base resistor?`, art: CARDART.u7npn(), ...numOpts(rb, [+(Vin / ib).toFixed(2), +(rb * 10).toFixed(1), +(0.7 / ib).toFixed(2)], ' kΩ'), fb: `(${Vin} − 0.7) ÷ ${ib} mA = ${gn(rb)} kΩ.` }; }
+      if (t < .7) { const R1 = pick([1, 2.2, 4.7, 10]), R2 = pick([4.7, 10, 22, 47]), C = pick([4.7, 10, 22, 47, 100]), f = +(1.44 / ((R1 + 2 * R2) * C) * 1000).toPrecision(2); return { q: `555 astable: R1 = ${R1} kΩ, R2 = ${R2} kΩ, C = ${C} µF. Frequency?`, art: CARDART.u7chip(), ...numOpts(f, [+(1.44 / ((R1 + R2) * C) * 1000).toPrecision(2), +(f * 10).toPrecision(2), +(f / 10).toPrecision(2)], ' Hz'), fb: `1.44 ÷ ((${R1} + 2 × ${R2}) kΩ × ${C} µF) ≈ ${gn(f)} Hz.` }; }
+      if (t < .85) { const R1 = pick([1, 2, 4.7, 10]), R2 = pick([1, 2, 4.7, 10, 22]), d = Math.round((R1 + R2) / (R1 + 2 * R2) * 100); return { q: `555 astable: R1 = ${R1} kΩ, R2 = ${R2} kΩ. Duty cycle?`, art: CARDART.u7chip(), ...numOpts(d, [100 - d, 50, Math.round(R2 / (R1 + 2 * R2) * 100)], '%'), fb: `(${R1} + ${R2}) ÷ (${R1} + 2 × ${R2}) ≈ ${d}%.` }; }
+      const [q, a, b, c] = pick([['A 555 blinks at 2 Hz. You double C. New rate?', '1 Hz', '4 Hz', '2 Hz'], ['A 555 blinks at 1 Hz. You halve C. New rate?', '2 Hz', '0.5 Hz', '1 Hz'], ['An NPN switch is fully on (saturated). V_CE is about…', '0.2 V', '0.7 V', '9 V'], ['Which NPN pin goes to ground in a low-side LED switch?', 'Emitter', 'Collector', 'Base'], ['Your transistor-driven LED is dim and V_CE is 3 V. Fix?', 'Smaller base resistor', 'Bigger base resistor', 'Bigger LED resistor']]);
+      return { q, art: '', opts: [a, b, c], a: 0, fb: `Answer: ${a}.` };
+    } },
   ];
   GAMES.splice(0, GAMES.length, ...NEWG);
 }
@@ -4185,7 +4457,7 @@ const GAMES = [
 const gstate = () => { if (!S.games || typeof S.games !== 'object') S.games = {}; S.games.best = S.games.best || {}; if (!S.games.xd || S.games.xd.d !== today()) S.games.xd = { d: today(), xp: 0 }; return S.games; };
 const gameUnlocked = g => !!S.done[unitOf(g.u).lessons[0]];
 /* ---------- Practice tab (route id stays 'games'): Circuit Lab first, then quick games by skill ---------- */
-const SKILLS = [['Electricity basics', ['G1', 'G2']], ["Ohm's law & networks", ['G3', 'G4']], ['Schematics & analysis', ['G5', 'G6']], ['Breadboard skills', ['G7', 'G8']], ['Building circuits', ['G9', 'G10']], ['Debugging & sensors', ['G11', 'G12']]];
+const SKILLS = [['Electricity basics', ['G1', 'G2']], ["Ohm's law & networks", ['G3', 'G4']], ['Schematics & analysis', ['G5', 'G6']], ['Breadboard skills', ['G7', 'G8']], ['Building circuits', ['G9', 'G10']], ['Debugging & sensors', ['G11', 'G12']], ['Capacitors & transistors', ['G13', 'G14']]];
 function renderGames() {
   const v = $('#v-games'), G = gstate(); v.innerHTML = '';
   const cb = el(`<div class="cookrow"><button class="cookbtn" id="cookBtn" aria-label="Open the Circuit Cookbook">${BOOKICON}Cookbook</button></div>`); $('button', cb).onclick = openCookbook; v.appendChild(cb);
@@ -4409,7 +4681,7 @@ function initGoal() {
    ========================================================= */
 ICON.token = (c = '') => `<svg viewBox="0 0 28 28" aria-hidden="true" class="${c}"><circle cx="14" cy="14" r="11" fill="#FFC94D" stroke="#E3A31A" stroke-width="2.5"/><path d="M15.5 7.5 10 15h4l-1.5 5.5L18 13h-4z" fill="#fff" stroke="#E3A31A" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
 ICON.shop = () => `<svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 11h18l-1.6 11.2a2 2 0 0 1-2 1.8H8.6a2 2 0 0 1-2-1.8z" fill="currentColor"/><path d="M9.5 11V9a4.5 4.5 0 0 1 9 0v2" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="14" cy="17" r="2.2" fill="#fff"/></svg>`;
-const TOK_UNIT = { U1: 10, U2: 10, U3: 12, U4: 12, U5: 15, U6: 15 }, TOK_TEST = 15, TOK_TESTU = { U1: 15, U2: 15, U3: 18, U4: 18, U5: 20, U6: 20 }, TOK_PRACTICE = 1, TOK_PRACTICE_DAY = 5, TOK_PLACED = 10, XP_PLACED = 20;
+const TOK_UNIT = { U1: 10, U2: 10, U3: 12, U4: 12, U5: 15, U6: 15, U7: 18 }, TOK_TEST = 15, TOK_TESTU = { U1: 15, U2: 15, U3: 18, U4: 18, U5: 20, U6: 20, U7: 22 }, TOK_PRACTICE = 1, TOK_PRACTICE_DAY = 5, TOK_PLACED = 10, XP_PLACED = 20;
 function ensureShop() {
   if (typeof S.tokens !== 'number' || !isFinite(S.tokens)) S.tokens = 0;
   if (!S.tokGranted || typeof S.tokGranted !== 'object') S.tokGranted = {};
@@ -4481,6 +4753,7 @@ const ADV = {
   U4: [['On a breadboard, holes c8 and h8 are…', ['Not connected: the center gap splits row 8', 'Connected: same row number', 'Connected through the + rail']], ['A DIP chip straddles the center gap so that…', ['Each pin gets its own strip', 'It can reach both rails', 'It stays cool']], ['An LED with its long leg toward − and short leg toward + will…', ['Stay dark: it is backwards', 'Light normally', 'Burn out']]],
   U5: [['9 V, red LED (2 V), 15 mA. Best standard resistor?', ['470 Ω', '330 Ω', '1 kΩ']], ['Three parallel LED branches at 12 mA from a 1800 mAh pack. Runtime?', ['About 50 hours', 'About 150 hours', 'About 5 hours']], ['To measure the current through an LED, the meter goes…', ['In series, by breaking the loop', 'Across the LED', 'Across the battery']]],
   U6: [['LED dark; 9 V across the LED, 0 V across its resistor. Most likely?', ['The LED is backwards or dead', 'The resistor is shorted', 'The battery is flat']], ['9 V divider: 10 kΩ on top, LDR (40 kΩ in the dark) on the bottom. V_out in the dark?', ['7.2 V', '1.8 V', '4.5 V']], ['Dimmer: 9 V, red LED (2 V), 220 Ω fixed + 1 kΩ pot. Lowest current?', ['About 5.7 mA', 'About 32 mA', 'About 7 mA']]],
+  U7: [['A cap charges through 10 kΩ from 9 V; C = 100 µF. Voltage after 1 second?', ['About 5.7 V', 'About 9 V', 'About 3.3 V']], ['An NPN switch drives a 20 mA LED, β = 200, from a 5 V input with a 10× margin. Base resistor?', ['About 4.3 kΩ', 'About 43 kΩ', 'About 250 Ω']], ['555 astable, R1 = 1 kΩ, R2 = 10 kΩ, C = 47 µF. Blink rate?', ['About 1.5 Hz', 'About 15 Hz', 'About 0.15 Hz']]],
 };
 function placementBank(level) {
   return UNITS.map(u => level === 'advanced'
