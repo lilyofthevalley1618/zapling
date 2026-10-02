@@ -380,6 +380,8 @@ body:has(.lesson) #askFab,body:has(.sprigchat) #askFab{display:none}
 .ggrid.mini{gap:7px}.gcard.mini{padding:7px 10px;border-top-width:4px;border-radius:14px;box-shadow:0 3px 0 var(--line);gap:2px}.gcard.mini b{font-size:13.5px}.gcard.mini em{font-size:12px}
 body:has(#v-games.on) #askFab{display:none}
 @media (min-width:980px){body:has(#v-games.on) #app{max-width:1060px}.labwrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}.labchat{margin-top:0;position:sticky;top:76px}.labchat .msgs{max-height:420px;min-height:260px}}
+.gover{position:fixed;inset:0;z-index:90;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto;pointer-events:auto}
+.gover .gobox{width:100%;max-width:440px}.gover .btn{touch-action:manipulation;position:relative;z-index:1}
 </style>
 </head>
 <body>
@@ -4153,29 +4155,32 @@ function renderGames() {
 }
 /* ---------- shared shell: timer, score, results, replay ---------- */
 let GM = null;
+// every timer a round starts goes through gLater/GM.tick, so game over (or quit) can stop them all
+function gStop() { if (!GM) return; clearInterval(GM.tick); (GM.timers || []).forEach(clearTimeout); GM.timers = []; }
+function gLater(fn, ms) { const me = GM; if (!me) return; me.timers.push(setTimeout(() => { if (GM === me && !me.over) fn(); }, ms)); }
 function playGame(g) {
-  Anim.clear(); $('.lesson')?.remove(); if (GM) clearInterval(GM.tick);
+  Anim.clear(); gStop(); $('.lesson')?.remove();
   const secs = g.secs || 60;
-  GM = { g, score: 0, right: 0, wrong: 0, combo: 0, end: Date.now() + secs * 1000, secs, lock: false };
+  GM = { g, score: 0, right: 0, wrong: 0, combo: 0, end: Date.now() + secs * 1000, secs, lock: false, over: false, timers: [] };
   const L = el(`<div class="lesson game" role="dialog" aria-modal="true" aria-label="${esc(g.name)}"><div class="inner"><div class="lhead"><button class="iconbtn" id="gx" aria-label="Quit game">${ICON.close()}</button><div class="prog" aria-label="Time left"><i id="gtime" style="width:100%"></i></div><span class="status ok" id="gscore" style="padding:5px 10px">0</span></div><div class="stage" id="gstage"></div></div></div>`);
   document.body.appendChild(L); document.body.style.overflow = 'hidden';
   $('#gx').onclick = quitGame;
-  GM.tick = setInterval(() => { const left = GM.end - Date.now(); $('#gtime').style.width = Math.max(0, left / (secs * 1000) * 100) + '%'; if (left <= 0) gameOver(); }, 100);
+  GM.tick = setInterval(() => { if (!GM || GM.over) return; const left = GM.end - Date.now(); $('#gtime').style.width = Math.max(0, left / (secs * 1000) * 100) + '%'; if (left <= 0) gameOver(); }, 100);
   g.mode === 'memory' ? memRound() : nextQ();
 }
-function quitGame() { if (GM) clearInterval(GM.tick); GM = null; $('.lesson.game')?.remove(); document.body.style.overflow = ''; renderTop(); showTab('games'); }
+function quitGame() { gStop(); GM = null; $('.lesson.game')?.remove(); document.body.style.overflow = ''; renderTop(); showTab('games'); }
 const gScore = () => { $('#gscore').textContent = GM.score + (GM.combo >= 3 ? ` ×${GM.combo}` : ''); };
 function nextQ() {
-  if (!GM) return; const it = GM.g.gen(), st = $('#gstage');
+  if (!GM || GM.over) return; const it = GM.g.gen(), st = $('#gstage');
   const fx = it.fixed ?? GM.g.fixed, order = fx ? it.opts.map((_, i) => i) : shuffle(it.opts.map((_, i) => i));
   st.innerHTML = `<div class="kicker">${GM.g.name}</div><h2 class="q">${it.q}</h2>${it.art ? `<div class="art">${it.art}</div>` : ''}<div class="opts ${fx ? 'grid2' : ''}">${order.map(i => `<button class="opt ${fx ? 'big' : ''}" data-oi="${i}"><span>${it.opts[i]}</span></button>`).join('')}</div><div id="gfb" class="gfb"></div>`;
   GM.lock = false;
   $$('.opt', st).forEach(b => b.onclick = () => {
-    if (!GM || GM.lock) return; GM.lock = true; const ok = +b.dataset.oi === it.a;
+    if (!GM || GM.lock || GM.over) return; GM.lock = true; const ok = +b.dataset.oi === it.a;
     b.classList.add(ok ? 'right' : 'wrong'); if (!ok) $(`.opt[data-oi="${it.a}"]`, st).classList.add('right');
     if (ok) { GM.right++; GM.combo++; GM.score += 10 + (GM.combo >= 3 ? 5 : 0); SFX.good(); }
     else { GM.wrong++; GM.combo = 0; GM.end -= 2000; SFX.bad(); $('#gfb').innerHTML = `${ICON.why()} ${it.fb || ''} <b>(−2 s)</b>`; }
-    gScore(); setTimeout(nextQ, ok ? 380 : 1500);
+    gScore(); gLater(nextQ, ok ? 380 : 1500);
   });
 }
 function memRound() {
@@ -4183,25 +4188,27 @@ function memRound() {
   const st = $('#gstage'); let open = [], found = 0;
   st.innerHTML = `<div class="kicker">${GM.g.name}</div><h2 class="q">Match each symbol to its name</h2><div class="memgrid">${cards.map((c, i) => `<button class="mcard" data-i="${i}" data-s="${c.s}" aria-label="Hidden card"><span class="back">${mascot('happy')}</span><span class="face">${c.k === 'sym' ? symCard(c.s) : `<b>${SYMNAME[c.s]}</b>`}</span></button>`).join('')}</div>`;
   $$('.mcard', st).forEach(b => b.onclick = () => {
-    if (!GM || GM.lock || b.classList.contains('up')) return; b.classList.add('up'); open.push(b); SFX.flip();
+    if (!GM || GM.lock || GM.over || b.classList.contains('up')) return; b.classList.add('up'); open.push(b); SFX.flip();
     if (open.length < 2) return; GM.lock = true; const [x, y] = open.map(e => cards[+e.dataset.i]);
     if (x.s === y.s && x.k !== y.k) { open.forEach(e => e.classList.add('done')); open = []; found++; GM.right++; GM.combo++; GM.score += 20; SFX.good(); gScore(); GM.lock = false; if (found === 6) { GM.score += Math.max(0, Math.round((GM.end - Date.now()) / 1000)); gameOver(); } }
-    else { GM.wrong++; GM.combo = 0; setTimeout(() => { open.forEach(e => e.classList.remove('up')); open = []; if (GM) GM.lock = false; }, 700); }
+    else { GM.wrong++; GM.combo = 0; gLater(() => { open.forEach(e => e.classList.remove('up')); open = []; GM.lock = false; }, 700); }
   });
 }
 function gameOver() {
-  if (!GM || GM.over) return; GM.over = true; clearInterval(GM.tick);
+  if (!GM || GM.over) return; GM.over = true; GM.lock = true; gStop(); $('#gtime') && ($('#gtime').style.width = '0%');
   const G = gstate(), g = GM.g, prev = G.best[g.id] || 0, rec = GM.score > prev;
   if (rec) G.best[g.id] = GM.score;
   const raw = g.mode === 'memory' ? Math.min(GAME_XP_ROUND, GM.right * 3 + (GM.right === 6 ? 2 : 0)) : Math.max(0, Math.min(GAME_XP_ROUND, 2 * GM.right - 2 * GM.wrong));
   const xp = Math.max(0, Math.min(raw, GAME_XP_DAY - G.xd.xp)); G.xd.xp += xp;
   const lvUp = xp ? addXp(xp) : false; save(); renderTop();
   const total = GM.right + GM.wrong;
-  $('#gstage').innerHTML = `<div class="center" style="padding-top:10px">${mascot(GM.right >= GM.wrong ? 'cheer' : 'think', 'style="width:120px"')}<div class="bigtitle">${rec ? 'New best!' : 'Time!'}</div>
+  $('.lesson.game .gover')?.remove();
+  const ov = el(`<div class="gover" role="dialog" aria-modal="true" aria-label="Round over"><div class="center gobox">${mascot(GM.right >= GM.wrong ? 'cheer' : 'think', 'style="width:120px"')}<div class="bigtitle">${rec ? 'New best!' : 'Time!'}</div>
     <div class="statrow"><div class="stat" style="border-color:var(--mint)"><div class="h" style="background:var(--mint)">Score</div><div class="v">${GM.score}</div></div><div class="stat" style="border-color:var(--sun)"><div class="h" style="background:var(--sund)">Best</div><div class="v">${G.best[g.id] || 0}</div></div><div class="stat" style="border-color:var(--peri)"><div class="h" style="background:var(--peri)">XP</div><div class="v">+${xp}</div></div></div>
     <p class="small">${GM.right} right${total ? ` of ${total}` : ''}${G.xd.xp >= GAME_XP_DAY ? ' · Daily game XP maxed: play for fun and best scores!' : ''}</p>
-    <h2 class="q" style="margin:16px 0 10px">Play again?</h2><div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn ghost" id="gback">No</button><button class="btn primary" id="gagain">Yes</button></div></div>`;
-  $('#gagain').onclick = () => playGame(g); $('#gback').onclick = quitGame;
+    <h2 class="q" style="margin:16px 0 10px">Play again?</h2><div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn ghost" id="gback" type="button">No</button><button class="btn primary" id="gagain" type="button">Yes</button></div></div></div>`);
+  $('.lesson.game').appendChild(ov);
+  $('#gagain', ov).onclick = () => { SFX.tap(); playGame(g); }; $('#gback', ov).onclick = () => { SFX.tap(); quitGame(); };
   SFX.done(); if (rec && GM.score) confetti(); if (lvUp) toast('Level up!', ICON.star());
 }
 /* =========================================================
@@ -4355,7 +4362,7 @@ function initGoal() {
    ========================================================= */
 ICON.token = (c = '') => `<svg viewBox="0 0 28 28" aria-hidden="true" class="${c}"><circle cx="14" cy="14" r="11" fill="#FFC94D" stroke="#E3A31A" stroke-width="2.5"/><path d="M15.5 7.5 10 15h4l-1.5 5.5L18 13h-4z" fill="#fff" stroke="#E3A31A" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
 ICON.shop = () => `<svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 11h18l-1.6 11.2a2 2 0 0 1-2 1.8H8.6a2 2 0 0 1-2-1.8z" fill="currentColor"/><path d="M9.5 11V9a4.5 4.5 0 0 1 9 0v2" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="14" cy="17" r="2.2" fill="#fff"/></svg>`;
-const TOK_UNIT = { U1: 10, U2: 10, U3: 12, U4: 12, U5: 15, U6: 15 }, TOK_TEST = 15, TOK_PRACTICE = 1, TOK_PRACTICE_DAY = 5, TOK_PLACED = 10, XP_PLACED = 20;
+const TOK_UNIT = { U1: 10, U2: 10, U3: 12, U4: 12, U5: 15, U6: 15 }, TOK_TEST = 15, TOK_TESTU = { U1: 15, U2: 15, U3: 18, U4: 18, U5: 20, U6: 20 }, TOK_PRACTICE = 1, TOK_PRACTICE_DAY = 5, TOK_PLACED = 10, XP_PLACED = 20;
 function ensureShop() {
   if (typeof S.tokens !== 'number' || !isFinite(S.tokens)) S.tokens = 0;
   if (!S.tokGranted || typeof S.tokGranted !== 'object') S.tokGranted = {};
@@ -4371,19 +4378,36 @@ function ensureShop() {
     });
   }
   if (!BODIES[S.avatar.eq.body]) S.avatar.eq.body = 'battery';
-  // retroactive grant for lessons/tests completed before tokens existed (placed-out ones get the placement bonus instead)
+  if (!S.tokPaid || typeof S.tokPaid !== 'object') S.tokPaid = {};
+  // one-time: turn the old yes/no "granted" flags into tokens actually credited per new lesson/test.
+  // A merged lesson/test is credited its paid sources' share of the new tier (1 of 2 old lessons paid = half).
+  // A flag with no paid legacy source was paid in full by the new system (lessons: tier, tests: the old flat 15).
+  let fix = 0;
+  if (!S.tokFix1) {
+    const lg = (S.legacy6 && S.legacy6.tokGranted) || {};
+    UNITS.forEach(u => [...u.lessons, u.test].forEach(id => {
+      if (!S.tokGranted[id] || S.tokPaid[id] != null) return;
+      const src = (id[0] === 'T' ? TMAP : MERGE)[id] || [], k = src.filter(x => lg[x]).length, tier = tokTier(id);
+      S.tokPaid[id] = k ? Math.floor(tier * k / src.length) : id[0] === 'T' ? Math.min(tier, TOK_TEST) : tier;
+    }));
+  }
+  // grant (or top up) first-time tokens for done lessons / passed tests that were credited less than their tier
+  // (placed-out ones get the placement bonus instead)
   UNITS.forEach(u => {
-    u.lessons.forEach(l => { const d = S.done[l]; if (d && !d.placed && !S.tokGranted[l]) { S.tokGranted[l] = 1; S.tokens += TOK_UNIT[u.id]; } });
-    const t = S.tests[u.test]; if (t && t.passed && !t.placed && !S.tokGranted[u.test]) { S.tokGranted[u.test] = 1; S.tokens += TOK_TEST; }
+    u.lessons.forEach(l => { const d = S.done[l]; if (d && !d.placed) fix += tokTopUp(l); });
+    const t = S.tests[u.test]; if (t && t.passed && !t.placed) fix += tokTopUp(u.test);
   });
+  if (!S.tokFix1) { S.tokFix1 = 1; if (fix > 0) pendingToasts.push([`+${fix} tokens: lesson rewards fixed after the course update`, ICON.token()]); }
 }
+const tokTier = id => id[0] === 'T' ? TOK_TESTU[TESTS[id].unit] : TOK_UNIT[LESSONS[id].unit];
+function tokTopUp(id) { const n = tokTier(id) - (S.tokPaid[id] || 0); S.tokGranted[id] = 1; if (n <= 0) return 0; S.tokPaid[id] = tokTier(id); S.tokens += n; return n; }
 function lessonTokens(lid) {
-  if (!S.tokGranted[lid]) { S.tokGranted[lid] = 1; const n = TOK_UNIT[LESSONS[lid].unit]; S.tokens += n; return n; }
+  const n = tokTopUp(lid); if (n > 0) return n; // first finish: the tier minus anything already credited
   if (!S.tokDay || S.tokDay.d !== today()) S.tokDay = { d: today(), n: 0 };
   if (S.tokDay.n >= TOK_PRACTICE_DAY) return 0;
   S.tokDay.n += TOK_PRACTICE; S.tokens += TOK_PRACTICE; return TOK_PRACTICE;
 }
-function testTokens(tid) { if (S.tokGranted[tid]) return 0; S.tokGranted[tid] = 1; S.tokens += TOK_TEST; return TOK_TEST; }
+function testTokens(tid) { return tokTopUp(tid); }
 
 /* ---------- placement ---------- */
 const ADV_OLD = {
