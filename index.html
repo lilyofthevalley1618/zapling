@@ -4395,8 +4395,14 @@ function ensureShop() {
   // (placed-out ones get the placement bonus instead)
   UNITS.forEach(u => {
     u.lessons.forEach(l => { const d = S.done[l]; if (d && !d.placed) fix += tokTopUp(l); });
-    const t = S.tests[u.test]; if (t && t.passed && !t.placed) fix += tokTopUp(u.test);
   });
+  // unit tests: only NEW-structure payouts count (they're new, harder exams). One-time: every passed test
+  // (not placed out) with no new-structure payout gets its full tier now.
+  if (!S.testPaidNew || typeof S.testPaidNew !== 'object') S.testPaidNew = {};
+  if (!S.testFix2) {
+    S.testFix2 = 1;
+    UNITS.forEach(u => { const t = S.tests[u.test]; if (t && t.passed && !t.placed && !S.testPaidNew[u.test]) { const n = testTokens(u.test); if (n) pendingToasts.push([`+${n} tokens: Unit ${u.n} exam reward`, ICON.token()]); } });
+  }
   if (!S.tokFix1) { S.tokFix1 = 1; if (fix > 0) pendingToasts.push([`+${fix} tokens: lesson rewards fixed after the course update`, ICON.token()]); }
 }
 const tokTier = id => id[0] === 'T' ? TOK_TESTU[TESTS[id].unit] : TOK_UNIT[LESSONS[id].unit];
@@ -4407,7 +4413,7 @@ function lessonTokens(lid) {
   if (S.tokDay.n >= TOK_PRACTICE_DAY) return 0;
   S.tokDay.n += TOK_PRACTICE; S.tokens += TOK_PRACTICE; return TOK_PRACTICE;
 }
-function testTokens(tid) { return tokTopUp(tid); }
+function testTokens(tid) { if (!S.testPaidNew) S.testPaidNew = {}; if (S.testPaidNew[tid]) return 0; const n = tokTier(tid); S.testPaidNew[tid] = n; S.tokGranted[tid] = 1; S.tokens += n; return n; }
 
 /* ---------- placement ---------- */
 const ADV_OLD = {
