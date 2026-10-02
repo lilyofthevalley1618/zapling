@@ -765,6 +765,139 @@ function schemLoop(kind = 'ok') {
   return `<svg viewBox="0 0 320 150" role="img" aria-label="Schematic option"><rect width="320" height="150" rx="16" fill="#fff"/>${s}</svg>`;
 }
 /* =========================================================
+   BREADBOARD 2 (Units 4-6): mini breadboard with rails, rows a–e / f–j, center gap,
+   plus a tiny DC solver so LEDs really light, burn out or stay dark.
+   Holes: 'a1'..'j15'; rail holes 'T+3', 'T-3' (top), 'B+3', 'B-3' (bottom).
+   A numbered row's 5 holes (a–e, or f–j) form one terminal strip.
+   ========================================================= */
+const BBC = 15, BBX2 = c => 62 + (c - 1) * 18.5;
+const BBROW = { a: 60, b: 73, c: 86, d: 99, e: 112, f: 144, g: 157, h: 170, i: 183, j: 196 };
+const BBRAIL = { 'T+': 18, 'T-': 31, 'B+': 222, 'B-': 235 };
+const LEDVF = { red: 2, yellow: 2.1, green: 2.2, blue: 3, white: 3 }, LED_RON = 25;
+const LEDCOL = { red: ['#FFB3BD', '#FF3355', '#E0506A'], green: ['#A8EBD6', '#22E0A0', '#1C9E80'], yellow: ['#FFE39A', '#FFD000', '#C9831A'], blue: ['#B9C3FF', '#4D6BFF', '#5A61D8'], white: ['#F1F0FA', '#FFFFFF', '#9E99C2'] };
+const bbParse = h => { const m = /^([TB][+-])(\d+)$/.exec(h); return m ? { rail: m[1], c: +m[2] } : { r: h[0], c: +h.slice(1) }; };
+const bbPos = h => { const p = bbParse(h); return [BBX2(p.c), p.rail ? BBRAIL[p.rail] : BBROW[p.r]]; };
+const bbNet = (h, o = {}) => { const p = bbParse(h); if (p.rail) return p.rail + (o.split && p.c > 7 ? 'r' : ''); return ('abcde'.includes(p.r) ? 'A' : 'F') + p.c; };
+const bbHoles = () => { const out = []; for (let c = 1; c <= BBC; c++) { ['T+', 'T-', 'B+', 'B-'].forEach(r => out.push(r + c)); for (const r of 'abcdefghij') out.push(r + c); } return out; };
+const bbName = h => { const p = bbParse(h); return p.rail ? `${p.rail[0] === 'T' ? 'top' : 'bottom'} ${p.rail[1] === '+' ? '+' : '−'} rail` : `hole ${p.r}${p.c}`; };
+
+/* ---------- solver: nets by union-find, then nodal analysis with LEDs as Vf + small R ---------- */
+function bbSolve(parts, o = {}) {
+  const P = {}, f = k => { if (P[k] === undefined) P[k] = k; while (P[k] !== k) k = P[k] = P[P[k]]; return k; };
+  const U = (a, b) => { a = f(a); b = f(b); if (a !== b) P[a] = b; };
+  const N = h => bbNet(h, o);
+  U('BAT+', 'T+'); U('BAT-', 'T-'); if (o.bottom) { U('T+', 'B+'); U('T-', 'B-'); }
+  parts.forEach(p => {
+    if (p.kind === 'wire') U(N(p.a), N(p.b));
+    if (p.kind === 'btn' && p.on) U(N(p.a), N(p.b));
+    if (p.kind === 'sw') U(N(p.c), N(p.on ? p.b : p.a));
+  });
+  const V = o.volts ?? 9, vcc = f('BAT+'), gnd = f('BAT-'), net = h => f(N(h));
+  if (vcc === gnd) return { short: true, I: {}, net, v: () => 0, V };
+  const els = [];
+  parts.forEach(p => {
+    if (p.kind === 'res' || p.kind === 'ldr') els.push({ a: net(p.a), b: net(p.b), r: p.ohms, id: p.id });
+    if (p.kind === 'pot') { els.push({ a: net(p.a), b: net(p.w), r: Math.max(1, p.ohms * p.pos), id: p.id }); els.push({ a: net(p.w), b: net(p.b), r: Math.max(1, p.ohms * (1 - p.pos)), id: p.id + '~' }); }
+    if (p.kind === 'led') els.push({ a: net(p.a), b: net(p.b), led: true, vf: p.vf || LEDVF[p.color || 'red'], id: p.id, on: false });
+  });
+  const live = els.filter(e => e.a !== e.b);
+  const nodes = [...new Set(live.flatMap(e => [e.a, e.b]))].filter(n => n !== vcc && n !== gnd), ix = {}; nodes.forEach((n, i) => ix[n] = i);
+  const fixed = n => n === vcc ? V : n === gnd ? 0 : null;
+  let volt = {};
+  for (let it = 0; it < 30; it++) {
+    const n = nodes.length, A = Array.from({ length: n }, () => new Array(n + 1).fill(0));
+    for (let i = 0; i < n; i++) A[i][i] += 1e-9;
+    const stamp = (a, b, g, src) => { // current a→b = g·(Va − Vb − src)
+      const ia = ix[a], ib = ix[b];
+      if (ia !== undefined) { A[ia][ia] += g; if (ib !== undefined) A[ia][ib] -= g; else A[ia][n] += g * fixed(b); A[ia][n] += g * src; }
+      if (ib !== undefined) { A[ib][ib] += g; if (ia !== undefined) A[ib][ia] -= g; else A[ib][n] += g * fixed(a); A[ib][n] -= g * src; }
+    };
+    live.forEach(e => { if (!e.led) stamp(e.a, e.b, 1 / e.r, 0); else if (e.on) stamp(e.a, e.b, 1 / LED_RON, e.vf); });
+    for (let c = 0; c < n; c++) { // gaussian elimination
+      let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+      [A[c], A[p]] = [A[p], A[c]];
+      for (let r = 0; r < n; r++) if (r !== c && A[r][c]) { const k = A[r][c] / A[c][c]; for (let j = c; j <= n; j++) A[r][j] -= k * A[c][j]; }
+    }
+    volt = {}; nodes.forEach((nd, i) => volt[nd] = A[i][n] / A[i][i]);
+    const vv = nd => fixed(nd) ?? volt[nd];
+    let changed = false;
+    live.forEach(e => { if (!e.led) return; const d = vv(e.a) - vv(e.b); const on = e.on ? d - e.vf > -1e-9 : d > e.vf + 1e-6; if (on !== e.on) { e.on = on; changed = true; } });
+    if (!changed) break;
+  }
+  const vOf = nd => fixed(nd) ?? (volt[nd] ?? 0);
+  const I = {};
+  els.forEach(e => { I[e.id] = e.a === e.b ? 0 : e.led ? (e.on ? (vOf(e.a) - vOf(e.b) - e.vf) / LED_RON : 0) : (vOf(e.a) - vOf(e.b)) / e.r; });
+  // floating = no path to either battery terminal (reads 0 V on a meter)
+  return { short: false, I, V, net, v: h => vOf(net(h)), nv: vOf };
+}
+const ledState = (sol, id) => { if (!sol || sol.short) return 'dark'; const i = sol.I[id] || 0; return i > .05 ? 'burnt' : i > .0005 ? 'lit' : 'dark'; };
+
+/* ---------- drawing ---------- */
+function bbPartSVG(p, sol, o) {
+  const [x1, y1] = bbPos(p.a), [x2, y2] = bbPos(p.kind === 'pot' || p.kind === 'sw' ? (p.kind === 'pot' ? p.b : p.b) : p.b);
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, ang = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+  let g = '';
+  const leg = (xa, ya, xb, yb, w = 2.4) => `<path d="M${xa} ${ya}L${xb} ${yb}" stroke="#9AA3B5" stroke-width="${w}" stroke-linecap="round"/>`;
+  if (p.kind === 'wire') {
+    const lift = Math.min(26, 8 + Math.hypot(x2 - x1, y2 - y1) * .18), c = p.color || '#2EC4A0';
+    g = `<path d="M${x1} ${y1}C${x1} ${Math.min(y1, y2) - lift} ${x2} ${Math.min(y1, y2) - lift} ${x2} ${y2}" fill="none" stroke="${c}" stroke-width="3.6" stroke-linecap="round"/><circle cx="${x1}" cy="${y1}" r="3" fill="${c}"/><circle cx="${x2}" cy="${y2}" r="3" fill="${c}"/>`;
+  }
+  if (p.kind === 'res' || p.kind === 'ldr') {
+    g = `<path d="M${x1} ${y1}L${x2} ${y2}" stroke="#9AA3B5" stroke-width="2.4" stroke-linecap="round"/><g transform="translate(${mx},${my - 7}) rotate(${Math.abs(ang) > 90 ? ang - 180 : ang}) scale(.62)">${p.kind === 'res' ? resistorDraw(bandsFor(p.ohms)).replace('M-27 0H27', 'M-17 0H17') : `<circle r="13" fill="#F6E7C8" stroke="#C9831A" stroke-width="2.4"/><path d="M-8 -4h4v8h4v-8h4v8h4" fill="none" stroke="#E0604F" stroke-width="2.2" stroke-linejoin="round"/>`}</g><path d="M${x1} ${y1}L${mx - 6} ${my - 7}M${x2} ${y2}L${mx + 6} ${my - 7}" stroke="#9AA3B5" stroke-width="2.4" stroke-linecap="round"/>`;
+    if (p.label) g += lbl(mx, my - 20, p.label, '#6B6899', 8.5);
+  }
+  if (p.kind === 'led') {
+    const col = LEDCOL[p.color || 'red'], st = o.blind ? 'dark' : ledState(sol, p.id), I = sol && sol.I[p.id] || 0;
+    const ux = (x2 - x1) / (Math.hypot(x2 - x1, y2 - y1) || 1), uy = (y2 - y1) / (Math.hypot(x2 - x1, y2 - y1) || 1);
+    let nx = uy, ny = -ux; if (ny > 0 || (ny === 0 && nx < 0)) { nx = -nx; ny = -ny; }
+    const cx = mx + nx * 15, cy = my + ny * 15, rot = Math.atan2(ny, nx) * 180 / Math.PI + 90;
+    const glow = st === 'lit' ? `<circle cx="${cx}" cy="${cy}" r="${13 + 9 * Math.min(1, I / .02)}" fill="${col[1]}" opacity="${(.25 + .45 * Math.min(1, I / .02)).toFixed(2)}" filter="url(#bbglow)"/>` : '';
+    g = `${glow}<path d="M${x1} ${y1}L${cx - ux * 5 + nx * 2} ${cy - uy * 5 + ny * 2 + 4}" stroke="#9AA3B5" stroke-width="2.4" stroke-linecap="round"/><path d="M${x2} ${y2}L${cx + ux * 5} ${cy + uy * 5 + 4}" stroke="#9AA3B5" stroke-width="2.4" stroke-linecap="round"/>
+      <g transform="translate(${cx},${cy}) rotate(${rot})"><path d="M-8 6V-3a8 8 0 0 1 16 0V6Z" fill="${st === 'burnt' ? '#B9B4D6' : st === 'lit' ? col[1] : col[0]}" stroke="${st === 'burnt' ? '#6B6899' : col[2]}" stroke-width="1.8"/><rect x="-10" y="5" width="20" height="3.5" rx="1.5" fill="${st === 'burnt' ? '#9E99C2' : col[2]}"/><path d="M8.5 5V8.5" stroke="#fff" stroke-width="1.6"/>${st === 'lit' ? '<path d="M-4 -4a4 4 0 0 1 4-3" stroke="#fff" stroke-width="1.6" fill="none" opacity=".8"/>' : ''}</g>
+      ${lbl(x1 + (x1 <= x2 ? -5 : 5), y1 - 6, '+', '#E0604F', 9)}${st === 'burnt' ? `<path d="M${cx - 4} ${cy - 14}q-4 -5 0 -9q4 -4 0 -9" stroke="#9E99C2" stroke-width="2" fill="none" stroke-linecap="round"/>` : ''}`;
+  }
+  if (p.kind === 'btn') {
+    g = `${leg(x1, y1, mx, my)}${leg(x2, y2, mx, my)}<rect x="${mx - 10}" y="${my - 10}" width="20" height="20" rx="4" fill="#4A4580" stroke="#2E2A5A" stroke-width="1.6"/><circle cx="${mx}" cy="${my}" r="${p.on ? 5.5 : 6.5}" fill="${p.on ? '#FF7F6E' : '#FFB3A8'}" stroke="#E0604F" stroke-width="1.6"/>`;
+  }
+  if (p.kind === 'sw') {
+    const [xc, yc] = bbPos(p.c);
+    g = `${leg(x1, y1, x1, my - 6)}${leg(xc, yc, xc, my - 6)}${leg(x2, y2, x2, my - 6)}<rect x="${x1 - 8}" y="${my - 17}" width="${x2 - x1 + 16}" height="13" rx="4" fill="#6B6899" stroke="#2E2A5A" stroke-width="1.5"/><rect x="${(p.on ? (xc + x2) / 2 : (x1 + xc) / 2) - 5}" y="${my - 24}" width="10" height="11" rx="2.5" fill="#FFC94D" stroke="#C9831A" stroke-width="1.5"/>`;
+  }
+  if (p.kind === 'pot') {
+    const [xw, yw] = bbPos(p.w), a0 = -135 + 270 * p.pos;
+    g = `${leg(x1, y1, x1, my - 8)}${leg(xw, yw, xw, my - 8)}${leg(x2, y2, x2, my - 8)}<rect x="${x1 - 7}" y="${my - 26}" width="${x2 - x1 + 14}" height="20" rx="5" fill="#5AB8F0" stroke="#2A7FB8" stroke-width="1.6"/><g transform="translate(${xw},${my - 16})"><circle r="8.5" fill="#fff" stroke="#2A7FB8" stroke-width="1.6"/><path d="M0 0L0 -7" transform="rotate(${a0})" stroke="#2E2A5A" stroke-width="2.4" stroke-linecap="round"/></g>`;
+  }
+  const xs = [x1, x2], ys = [y1, y2]; if (p.c) { const q = bbPos(p.c); xs.push(q[0]); ys.push(q[1]); } if (p.w) { const q = bbPos(p.w); xs.push(q[0]); ys.push(q[1]); }
+  const bx = Math.min(...xs) - 11, by = Math.min(...ys) - 30, bw = Math.max(...xs) - Math.min(...xs) + 22, bh = Math.max(...ys) - Math.min(...ys) + 40;
+  return `<g class="bbp" data-id="${p.id}">${g}<rect class="hl" x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="10" fill="#7C83FD" fill-opacity="0" stroke="#7C83FD" stroke-opacity="0" stroke-width="2.5" stroke-dasharray="5 4" pointer-events="${o.partTap ? 'all' : 'none'}" style="cursor:pointer"/></g>`;
+}
+// o: { volts, split, strips, bottom, blind, holesTap, partTap, marks:[{h,k}], probes:{red,black}, aria }
+function bbSVG(parts = [], o = {}, sol) {
+  sol = sol || bbSolve(parts, o);
+  let s = `<defs><filter id="bbglow" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="3"/></filter></defs><rect x="46" y="3" width="290" height="245" rx="10" fill="#F7F3E8" stroke="#DCD3BC" stroke-width="2"/><rect x="50" y="123" width="282" height="9" rx="4" fill="#E2D8BE"/>`;
+  const rl = (y, c) => o.split ? `<path d="M54 ${y}H${BBX2(7) + 8}M${BBX2(8) - 8} ${y}H330" stroke="${c}" stroke-width="2"/>` : `<path d="M54 ${y}H330" stroke="${c}" stroke-width="2"/>`;
+  s += rl(10, '#FF7F6E') + rl(39, '#7C83FD') + rl(214, '#FF7F6E') + rl(243, '#7C83FD');
+  s += lbl(52, 21, '+', '#E0604F', 10) + lbl(52, 34, '−', '#5A61D8', 11) + lbl(52, 225, '+', '#E0604F', 10) + lbl(52, 238, '−', '#5A61D8', 11);
+  for (let c = 1; c <= BBC; c++) {
+    const x = BBX2(c);
+    if (o.strips) s += `<rect x="${x - 6}" y="${BBROW.a - 7}" width="12" height="66" rx="6" fill="#EADFC4"/><rect x="${x - 6}" y="${BBROW.f - 7}" width="12" height="66" rx="6" fill="#EADFC4"/>`;
+    s += `<text x="${x}" y="49" text-anchor="middle" font-size="7" font-weight="800" fill="#A99F86" style="font-family:inherit">${c}</text>`;
+  }
+  'abcdefghij'.split('').forEach(r => s += `<text x="53" y="${BBROW[r] + 2.5}" text-anchor="middle" font-size="7" font-weight="800" fill="#A99F86" style="font-family:inherit">${r}</text>`);
+  bbHoles().forEach(h => { const [x, y] = bbPos(h); s += `<rect x="${x - 2.4}" y="${y - 2.4}" width="4.8" height="4.8" rx="1.1" fill="#BDB39A"/>`; });
+  // battery pack wired to the top rails (left end)
+  s += `<rect x="7" y="104" width="32" height="58" rx="7" fill="#4A4580" stroke="#2E2A5A" stroke-width="2"/><rect x="11" y="99" width="9" height="6" rx="1.5" fill="#E0604F"/><rect x="26" y="99" width="9" height="6" rx="1.5" fill="#9E99C2"/>${lbl(23, 131, (o.volts ?? 9) + '', '#fff', 12)}${lbl(23, 145, 'V', '#fff', 10)}
+    <path d="M15.5 99V18H58" fill="none" stroke="#E0604F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M30.5 99V31H58" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+  if (o.bottom) s += `<path d="M330 18H333V222H330" fill="none" stroke="#E0604F" stroke-width="2.6" stroke-linejoin="round"/><path d="M326 31H329V235H326" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linejoin="round"/>`;
+  (o.marks || []).forEach(m => { const [x, y] = bbPos(m.h); const c = { ref: '#FFC94D', sel: '#7C83FD', ok: '#2EC4A0', bad: '#FF7F6E' }[m.k] || '#7C83FD'; s += `<circle cx="${x}" cy="${y}" r="6.2" fill="${c}" fill-opacity="${m.k === 'ref' ? .55 : .35}" stroke="${c}" stroke-width="2.2"/>`; });
+  parts.forEach(p => s += bbPartSVG(p, sol, o));
+  const pr = o.probes || {};
+  ['red', 'black'].forEach(k => { if (!pr[k]) return; const [x, y] = bbPos(pr[k]), c = k === 'red' ? '#E0604F' : INK; s += `<g pointer-events="none"><path d="M${x} ${y}L${x + 10} ${y - 18}" stroke="${c}" stroke-width="3" stroke-linecap="round"/><rect x="${x + 6}" y="${y - 34}" width="9" height="18" rx="4" transform="rotate(28 ${x + 10} ${y - 25})" fill="${c}" stroke="#fff" stroke-width="1.5"/><circle cx="${x}" cy="${y}" r="3.4" fill="${c}" stroke="#fff" stroke-width="1.4"/></g>`; });
+  if (o.holesTap) bbHoles().forEach(h => { const [x, y] = bbPos(h); s += `<circle class="bbh" data-h="${h}" cx="${x}" cy="${y}" r="${bbParse(h).rail ? 6.3 : 6.4}" fill="transparent" style="cursor:pointer"/>`; });
+  return `<svg viewBox="0 0 340 251" role="img" aria-label="${o.aria || 'A breadboard circuit'}"><rect width="340" height="251" rx="18" fill="${BG}"/>${s}</svg>`;
+}
+const bbArt = (parts, o = {}) => () => bbSVG(parts, o);
+/* =========================================================
    CONCEPT ART
    ========================================================= */
 const ART = {
@@ -1927,6 +2060,385 @@ TESTS.t6 = {
   ],
 };
 /* =========================================================
+   UNITS 4-6 (new): hands-on breadboard circuits
+   Lessons L18-L32, tests T4-T6. Interactive steps use sim kind 'bb2' (05f).
+   ========================================================= */
+const RED = '#FF7F6E', BLK = '#2E2A5A', YEL = '#F2A93B', GRN = '#2EC4A0', BLU = '#5AB8F0';
+const ohmsTxt = r => r >= 1e6 ? r / 1e6 + ' MΩ' : r >= 1000 ? r / 1000 + ' kΩ' : r + ' Ω';
+const W = (id, a, b, color = GRN, name) => ({ id, kind: 'wire', a, b, color, name: name || 'a jumper wire' });
+const RS = (id, a, b, ohms, name) => ({ id, kind: 'res', a, b, ohms, name: name || `the ${ohmsTxt(ohms)} resistor` });
+const LD = (id, a, b, color = 'red', name) => ({ id, kind: 'led', a, b, color, label: color[0].toUpperCase() + color.slice(1) + ' LED', name: name || `the ${color} LED` });
+// the standard build: + rail → red jumper → row 2 → 470 Ω → row 6 → LED → row 7 → black jumper → − rail
+const STD = () => [W('j1', 'T+2', 'a2', RED, 'the red jumper'), RS('r1', 'c2', 'c6', 470), LD('d1', 'e6', 'e7'), W('j2', 'a7', 'T-7', BLK, 'the black jumper')];
+const STDNO = id => STD().filter(p => p.id !== id);
+const mcq = (id, q, opts, why, art) => Object.assign({ type: 'mc', id, q, opts, a: 0, why }, art ? { art } : {});
+const tfq = (id, q, a, why, art) => Object.assign({ type: 'tf', id, q, a, why }, art ? { art } : {});
+const bbq = (id, mode, q, why, x) => Object.assign({ type: 'sim', kind: 'bb2', id, mode, q, why, graded: mode === 'view' ? false : true }, x);
+const cpt = (title, html, art, tip) => Object.assign({ type: 'concept', kicker: 'New idea', title, html, art }, tip ? { tip } : {});
+const ledI = (sol, id) => (sol.I[id] || 0) * 1000;
+const SPDT = (extra = []) => [W('j1', 'T+7', 'a7', RED, 'the red jumper'), { id: 's1', kind: 'sw', a: 'c6', c: 'c7', b: 'c8', on: false, name: 'the SPDT switch' },
+  RS('r1', 'd6', 'd2', 470), LD('d1', 'e2', 'e1', 'red'), W('j2', 'a1', 'T-1', BLK), RS('r2', 'd8', 'd12', 470), LD('d2', 'e12', 'e13', 'green'), W('j3', 'a13', 'T-13', BLK)].concat(extra);
+
+/* ---------- card art ---------- */
+const bbMini = inner => `<svg viewBox="0 0 110 90"><rect x="8" y="10" width="94" height="70" rx="8" fill="#F7F3E8" stroke="#DCD3BC" stroke-width="2"/>${inner}</svg>`;
+const holesRow = (y, n = 6, x0 = 22) => [...Array(n)].map((_, i) => `<rect x="${x0 + i * 13 - 2.5}" y="${y - 2.5}" width="5" height="5" rx="1" fill="#BDB39A"/>`).join('');
+Object.assign(CARDART, {
+  bbstrip: () => bbMini(`<rect x="41" y="18" width="14" height="54" rx="7" fill="#7C83FD" opacity=".25"/>${[26, 36, 46, 56, 66].map(y => holesRow(y)).join('')}`),
+  bbgap: () => bbMini(`${[20, 30, 40].map(y => holesRow(y)).join('')}<rect x="14" y="45" width="82" height="6" rx="3" fill="#E2D8BE"/>${[56, 66, 76].map(y => holesRow(y)).join('')}`),
+  bbrail: () => bbMini(`<path d="M16 22H94" stroke="#FF7F6E" stroke-width="3"/>${holesRow(30)}<path d="M16 66H94" stroke="#7C83FD" stroke-width="3"/>${holesRow(58)}${lbl(14, 34, '+', '#E0604F', 11)}${lbl(14, 62, '−', '#5A61D8', 12)}`),
+  bbwire: () => `<svg viewBox="0 0 110 90"><path d="M20 70C20 10 90 10 90 70" stroke="#FF7F6E" stroke-width="7" fill="none" stroke-linecap="round"/><rect x="15" y="68" width="10" height="14" rx="2" fill="#9AA3B5"/><rect x="85" y="68" width="10" height="14" rx="2" fill="#9AA3B5"/></svg>`,
+  bbchip: () => `<svg viewBox="0 0 110 90"><rect x="25" y="25" width="60" height="40" rx="5" fill="#4A4580"/><circle cx="34" cy="34" r="3.5" fill="#9E99C2"/>${[0, 1, 2, 3].map(i => `<rect x="${32 + i * 13}" y="15" width="5" height="10" fill="#9AA3B5"/><rect x="${32 + i * 13}" y="65" width="5" height="10" fill="#9AA3B5"/>`).join('')}</svg>`,
+  bbled: () => `<svg viewBox="0 0 110 90"><path d="M42 50V30a13 13 0 0 1 26 0v20Z" fill="#FF6B7D" stroke="#E0506A" stroke-width="2.5"/><rect x="38" y="49" width="34" height="6" rx="3" fill="#E0506A"/><path d="M47 55V85M63 55V75" stroke="#9AA3B5" stroke-width="3.5" stroke-linecap="round"/>${lbl(36, 80, '+', '#E0604F', 13)}${lbl(76, 74, '−', '#5A61D8', 14)}</svg>`,
+  bbres: () => `<svg viewBox="0 0 110 90"><g transform="translate(55,45) scale(1.4)">${resistorDraw(bandsFor(470))}</g></svg>`,
+  bbsw: () => `<svg viewBox="0 0 110 90"><rect x="22" y="38" width="66" height="22" rx="6" fill="#6B6899"/><rect x="30" y="26" width="18" height="16" rx="4" fill="#FFC94D" stroke="#C9831A" stroke-width="2"/><path d="M32 60V78M55 60V78M78 60V78" stroke="#9AA3B5" stroke-width="3.5" stroke-linecap="round"/></svg>`,
+  bbbtn: () => `<svg viewBox="0 0 110 90"><rect x="32" y="22" width="46" height="46" rx="8" fill="#4A4580"/><circle cx="55" cy="45" r="14" fill="#FFB3A8" stroke="#E0604F" stroke-width="2.5"/><path d="M36 68V82M74 68V82" stroke="#9AA3B5" stroke-width="3.5"/></svg>`,
+  bbpot: () => `<svg viewBox="0 0 110 90"><rect x="24" y="30" width="62" height="32" rx="7" fill="#5AB8F0" stroke="#2A7FB8" stroke-width="2"/><circle cx="55" cy="46" r="13" fill="#fff" stroke="#2A7FB8" stroke-width="2"/><path d="M55 46L63 37" stroke="#2E2A5A" stroke-width="3.5" stroke-linecap="round"/><path d="M32 62V80M55 62V80M78 62V80" stroke="#9AA3B5" stroke-width="3.5" stroke-linecap="round"/></svg>`,
+  bbldr: () => `<svg viewBox="0 0 110 90"><circle cx="55" cy="42" r="22" fill="#F6E7C8" stroke="#C9831A" stroke-width="3"/><path d="M40 36h8v12h8v-12h8v12h8" fill="none" stroke="#E0604F" stroke-width="3" stroke-linejoin="round"/><path d="M18 12l10 10M30 6l6 12" stroke="#FFC94D" stroke-width="3" stroke-linecap="round"/></svg>`,
+  bbmeter: () => `<svg viewBox="0 0 110 90"><rect x="30" y="10" width="50" height="70" rx="9" fill="#FFC94D" stroke="#C9831A" stroke-width="2.5"/><rect x="37" y="18" width="36" height="18" rx="3" fill="#E8F7F0"/>${lbl(55, 32, '6.65', '#2E2A5A', 11)}<circle cx="55" cy="58" r="11" fill="#fff" stroke="#C9831A" stroke-width="2"/></svg>`,
+  bbbat: () => `<svg viewBox="0 0 110 90"><rect x="28" y="22" width="54" height="56" rx="8" fill="#4A4580"/><rect x="34" y="14" width="14" height="9" rx="2" fill="#E0604F"/><rect x="62" y="14" width="14" height="9" rx="2" fill="#9E99C2"/>${lbl(55, 56, '9 V', '#fff', 16)}</svg>`,
+  bbbug: () => `<svg viewBox="0 0 110 90"><circle cx="48" cy="42" r="20" fill="none" stroke="#7C83FD" stroke-width="5"/><path d="M62 56L82 76" stroke="#7C83FD" stroke-width="7" stroke-linecap="round"/><path d="M40 42l6 6 10-12" stroke="#2EC4A0" stroke-width="4" fill="none" stroke-linecap="round"/></svg>`,
+});
+
+/* ---------- cards ---------- */
+Object.assign(CARDS, {
+  tstrip: { term: 'Terminal strip', art: 'bbstrip', def: 'The 5 holes of one numbered row on one side of the gap (a–e or f–j). A metal clip inside joins them, so legs in the same strip are connected.', lesson: 'L18' },
+  cgap: { term: 'Center gap', art: 'bbgap', def: 'The channel down the middle of a breadboard. It separates the a–e strips from the f–j strips, so row 5 top and row 5 bottom are NOT connected.', lesson: 'L18' },
+  bbshort: { term: 'Same-strip short', art: 'bbstrip', def: 'If both legs of a part sit in the same strip, the strip connects them and the part is bypassed (shorted out).', lesson: 'L18' },
+  prail: { term: 'Power rail', art: 'bbrail', def: 'The long strips along a breadboard\'s edges. The red-line rail usually carries + from the battery, the blue-line rail carries −.', lesson: 'L19' },
+  gnd0: { term: 'Ground (0 V)', art: 'bbrail', def: 'The reference point we call 0 V, usually the battery\'s − side. Every loop must return to it.', lesson: 'L19' },
+  splitr: { term: 'Split rail', art: 'bbrail', def: 'On many full-size boards each rail is broken in the middle. The two halves are NOT connected unless you add a jumper.', lesson: 'L19' },
+  jumper: { term: 'Jumper wire', art: 'bbwire', def: 'A short wire that connects two holes. Color is only a label: red for +, black or blue for −, other colors for signals.', lesson: 'L20' },
+  header: { term: 'Pin header', art: 'bbchip', def: 'A row of metal pins spaced 2.54 mm (0.1 inch) apart, the same spacing as breadboard holes.', lesson: 'L20' },
+  dip: { term: 'DIP chip', art: 'bbchip', def: 'A chip with two rows of legs. It straddles the center gap so every pin gets its own strip.', lesson: 'L20' },
+  anode: { term: 'Anode (+)', art: 'bbled', def: 'The LED leg current flows INTO. It\'s the longer leg; connect it toward the + side.', lesson: 'L21' },
+  cathode: { term: 'Cathode (−)', art: 'bbled', def: 'The LED leg current flows OUT of. It\'s the shorter leg, next to the flat edge of the rim; connect it toward −.', lesson: 'L21' },
+  fwdv: { term: 'Forward voltage (Vf)', art: 'bbled', def: 'The voltage an LED "uses" when it\'s on: about 2 V for red, 2.2 V for green, 3 V for blue or white.', lesson: 'L21' },
+  limr: { term: 'Current-limiting resistor', art: 'bbres', def: 'The resistor in series with an LED. Without it, the LED pulls far too much current and burns out.', lesson: 'L22' },
+  bbloop: { term: 'LED loop', art: 'bbled', def: '+ rail → resistor → LED anode → LED cathode → − rail. Current is the same all the way around.', lesson: 'L22' },
+  ledr: { term: 'R = (Vs − Vf) ÷ I', art: 'bbres', def: 'The LED resistor formula. Example: (9 V − 2 V) ÷ 0.02 A = 350 Ω, so pick the next standard value up, 390 Ω.', lesson: 'L23' },
+  stdval: { term: 'Standard resistor values', art: 'bbres', def: 'Resistors come in set steps (like 100, 220, 330, 470, 680, 1k). Round UP to the next one so the current stays safe.', lesson: 'L23' },
+  spst: { term: 'SPST switch', art: 'bbsw', def: 'Single pole, single throw: one path that is either on or off.', lesson: 'L24' },
+  spdt: { term: 'SPDT switch', art: 'bbsw', def: 'Single pole, double throw: 3 legs. The common leg connects to one of two other legs, so it picks between two paths.', lesson: 'L24' },
+  pushb: { term: 'Pushbutton (momentary)', art: 'bbbtn', def: 'A switch that connects only while you hold it down, like a doorbell.', lesson: 'L24' },
+  ledser: { term: 'LEDs in series', art: 'bbled', def: 'One path: same current through each LED, and their forward voltages add up. R = (Vs − ΣVf) ÷ I.', lesson: 'L25' },
+  ledpar: { term: 'LEDs in parallel', art: 'bbled', def: 'Separate branches, each LED with its own resistor. Branch currents add up at the battery.', lesson: 'L25' },
+  mah: { term: 'mAh (capacity)', art: 'bbbat', def: 'How much charge a battery holds. Runtime ≈ capacity ÷ current, e.g. 2000 mAh ÷ 20 mA ≈ 100 hours.', lesson: 'L26' },
+  cellpack: { term: 'Battery pack', art: 'bbbat', def: 'Cells in series add voltage (4 × AA = 6 V). Cells in parallel keep the voltage but add capacity.', lesson: 'L26' },
+  vprobe: { term: 'Measuring voltage', art: 'bbmeter', def: 'Put the probes ACROSS the part (in parallel), red on the higher side. The circuit stays as it is.', lesson: 'L27' },
+  iprobe: { term: 'Measuring current', art: 'bbmeter', def: 'Break the loop and put the meter IN SERIES so the current flows through it.', lesson: 'L27' },
+  contin: { term: 'Continuity mode', art: 'bbmeter', def: 'A meter mode that beeps when two points are connected. Use it with the power OFF.', lesson: 'L27' },
+  dbglist: { term: 'Debug checklist', art: 'bbbug', def: 'Power → ground → rows (off by one?) → polarity → split rails. Then measure voltages along the loop.', lesson: 'L28' },
+  offby1: { term: 'Off-by-one row', art: 'bbstrip', def: 'The most common breadboard mistake: a leg one row away from where it should be, so the loop is open.', lesson: 'L28' },
+  pot: { term: 'Potentiometer', art: 'bbpot', def: 'A 3-leg variable resistor. The outer legs are the ends of a resistive track; the middle leg (wiper) slides along it.', lesson: 'L29' },
+  wiper: { term: 'Wiper', art: 'bbpot', def: 'The middle leg of a pot. Using one end + the wiper gives a variable resistor; using all 3 legs gives a voltage divider.', lesson: 'L29' },
+  ldr: { term: 'LDR (photoresistor)', art: 'bbldr', def: 'A resistor that changes with light: low (about 1 kΩ) in bright light, high (100 kΩ or more) in the dark.', lesson: 'L30' },
+  sdiv: { term: 'Sensor divider', art: 'bbldr', def: 'A sensor plus a fixed resistor between + and −. Vout = Vs × R_bottom ÷ (R_top + R_bottom) changes with the sensor.', lesson: 'L30' },
+  ibudget: { term: 'Current budget', art: 'bbbat', def: 'Add up every branch\'s current to get the battery current, then estimate runtime from the mAh rating.', lesson: 'L31' },
+  halfsplit: { term: 'Half-splitting', art: 'bbbug', def: 'Measure in the middle of the circuit first. Whichever half has the problem, test its middle next.', lesson: 'L32' },
+});
+
+/* ---------- lessons ---------- */
+Object.assign(LESSONS, {
+  L18: { title: 'Inside a breadboard', goal: 'Learn which holes are connected: strips, rows and the center gap.', cards: ['tstrip', 'cgap', 'bbshort'], steps: [
+    cpt('Building without solder', `<p class="body">A <b>breadboard</b> has metal clips hidden under its holes. Push a leg in and the clip grabs it.</p><div class="def">Each <b>numbered row</b> has two <b>terminal strips</b>: holes <b>a–e</b> are one strip, holes <b>f–j</b> are another (shaded).<br>The <b>center gap</b> keeps those two halves apart.</div>`, bbArt([], { strips: true }), 'Legs in the same strip are connected. Legs in different strips are not, unless a part or wire joins them.'),
+    bbq('b18q1', 'view', 'Explore: <b>tap any holes</b> to see which ones are connected underneath.', 'Every hole in a 5-hole strip is joined. The rails along the edges run the whole length of the board.', { strips: true }),
+    bbq('b18q2', 'holes', 'The glowing hole is <b>b4</b>. Tap a <b>different hole connected to it</b>.', 'b4 sits in the a–e strip of row 4, so a4, c4, d4 and e4 are all connected to it.', { ref: 'b4', strips: true, answer: 'a4, c4, d4 or e4' }),
+    bbq('b18q3', 'holes', 'No shading this time. Tap <b>two holes</b> connected to <b>h9</b>.', 'h9 is in the f–j strip of row 9: f9, g9, i9 and j9. The a–e holes of row 9 are across the gap, so they don\'t count.', { ref: 'h9', need: 2, answer: 'Two of f9, g9, i9, j9' }),
+    mcq('b18q4', 'Are holes <b>e3</b> and <b>f3</b> connected?', ['No: the center gap separates a–e from f–j', 'Yes: same row number means connected', 'Only while the battery is on'], 'The gap splits each numbered row into two separate strips. e3 is in the top strip, f3 in the bottom one.'),
+    tfq('b18q5', 'Holes a7 and a8 are connected because they sit next to each other in line "a".', false, 'Connections run along each numbered row (a7–e7), not along the lettered lines. a7 and a8 are in different strips.'),
+    mcq('b18q6', 'You push a resistor\'s legs into <b>b12</b> and <b>d12</b>. What happens?', ['Both legs are in the same strip, so the resistor is bypassed and does nothing', 'It works normally', 'It burns out right away'], 'b12 and d12 share one strip, so current takes the metal clip instead of the resistor. Each leg of a part needs its own strip.'),
+    bbq('b18q7', 'holes', 'Tap a hole that is <b>NOT</b> connected to <b>c6</b> but is in <b>row 6</b>.', 'Only the f–j holes of row 6 are in row 6 yet separate from c6, thanks to the center gap.', { ref: 'c6', okHole: h => /^[f-j]6$/.test(h), answer: 'f6, g6, h6, i6 or j6' }),
+  ] },
+  L19: { title: 'Power rails & ground', goal: 'Use the + and − rails, find ground, and fix split rails.', cards: ['prail', 'gnd0', 'splitr'], steps: [
+    cpt('Rails carry the power', `<p class="body">The long strips along the edges are the <b>power rails</b>. Here the battery feeds the <b>top</b> rails: <b style="color:var(--corald)">+</b> (red line) and <b style="color:var(--perid)">−</b> (blue line).</p><div class="def">We call the − side <b>ground</b>: the <b>0 V</b> reference. Every loop has to make it back there.</div>`, bbArt([], {})),
+    bbq('b19q1', 'holes', 'Tap any hole that carries the battery\'s <b>+ 9 V</b>.', 'The battery\'s red wire feeds the top + rail, so every hole along that red-line rail is at +9 V.', { okHole: h => h.startsWith('T+'), answer: 'Any hole on the top + rail' }),
+    bbq('b19q2', 'holes', 'Now tap a hole on <b>ground</b> (the battery\'s − side).', 'The black wire feeds the top − rail (blue line). That\'s ground, 0 V.', { okHole: h => h.startsWith('T-'), answer: 'Any hole on the top − rail' }),
+    mcq('b19q3', 'Nothing is plugged into the <b>bottom</b> rails yet. A bottom + rail hole is at…', ['Nothing: it isn\'t connected until you add jumpers', '+9 V, because all rails are linked inside', '0 V, because it\'s ground'], 'The bottom rails are separate strips. Link them to the top rails with jumpers if you want power down there too.'),
+    cpt('Watch out for split rails', `<p class="body">On many full-size boards each rail is <b>split in the middle</b>: notice the break in the lines.</p><div class="def">The right half has <b>no power</b> until you add a jumper across the break.</div>`, bbArt([], { split: true })),
+    bbq('b19q4', 'holes', 'This board has <b>split rails</b>. Tap a <b>+ rail</b> hole that has <b>no power</b>.', 'The battery feeds the left half. Holes 8–15 on the + rail are on the other side of the break, so they\'re dead.', { split: true, okHole: h => /^T\+(8|9|1[0-5])$/.test(h), answer: 'A + rail hole in columns 8–15' }),
+    bbq('b19q5', 'place', 'The LED circuit sits on the dead half. <b>Add one jumper</b> so it lights.', 'Bridge the break: a jumper from any + hole on the left half to the right half. The ground jumper already goes to the powered half.', { split: true, parts: [W('j1', 'T+10', 'a10', RED, 'the red jumper'), RS('r1', 'c10', 'c13', 470), LD('d1', 'e13', 'e14'), W('j2', 'a14', 'T-6', BLK, 'the black jumper')], place: { id: 'jx', kind: 'wire', color: YEL, label: 'jumper' }, answer: 'A jumper across the break in the + rail (e.g. T+5 to T+9)' }),
+    tfq('b19q6', 'Ground is just a name for the 0 V reference point, usually the battery\'s − side.', true, 'Exactly. Voltages are measured relative to ground.'),
+    mcq('b19q7', 'You plug a jumper from the + rail straight into the − rail. What happens?', ['A short circuit: a huge current and a hot battery', 'Nothing, the rails are insulated', 'Every LED gets brighter'], 'A bare wire across the battery has almost no resistance, so the current is enormous. Never bridge + to − directly.'),
+  ] },
+  L20: { title: 'Jumpers, pins & headers', goal: 'Wire rows to rails, read pin spacing, and seat chips.', cards: ['jumper', 'header', 'dip'], steps: [
+    cpt('Jumper wires', `<p class="body"><b>Jumper wires</b> link holes: rail to row, row to row.</p><div class="def">Color is just a label: <b style="color:var(--corald)">red</b> for +, <b>black</b> or blue for −, other colors for signals. Keep them short and flat so you can see your parts.</div>`, bbArt(STD(), {})),
+    cpt('Pins, headers and chips', `<p class="body">Breadboard holes are <b>2.54 mm (0.1 in)</b> apart, the same as <b>pin headers</b> and chip legs.</p><div class="def">A <b>DIP chip</b> straddles the <b>center gap</b>. That way each pin lands in its own strip instead of being joined to the pin opposite.</div>`, CARDART.bbchip),
+    bbq('b20q1', 'place', 'This circuit has no power. <b>Add a jumper</b> from the + rail to <b>row 3</b>.', 'The resistor starts in row 3, so a jumper from any + rail hole to a3–e3 completes the loop.', { parts: [RS('r1', 'c3', 'c7', 470), LD('d1', 'e7', 'e8'), W('j2', 'a8', 'T-8', BLK, 'the black jumper')], place: { id: 'jx', kind: 'wire', color: RED, label: 'red jumper' }, answer: 'A jumper from the + rail to any free hole in row 3' }),
+    mcq('b20q2', 'Standard header pins are spaced…', ['2.54 mm (0.1 inch)', '5 mm', '1 cm'], '0.1 in = 2.54 mm: the breadboard grid, header pins and DIP chips all share it.'),
+    mcq('b20q3', 'Why does a DIP chip sit <b>across the center gap</b>?', ['So each pin gets its own strip instead of being shorted to the pin opposite', 'To keep the chip cool', 'So it can reach both power rails'], 'If both rows of pins sat in the same strips, opposite pins would be connected together.'),
+    bbq('b20q4', 'place', 'Add the <b>ground jumper</b> to finish this loop.', 'The LED\'s − leg is in row 7. A jumper from row 7 to the − rail lets current return to the battery.', { parts: STDNO('j2'), place: { id: 'jx', kind: 'wire', color: BLK, label: 'black jumper' }, answer: 'A jumper from row 7 (a7–d7) to the − rail' }),
+    tfq('b20q5', 'A red jumper wire carries current better than a black one.', false, 'Color is only insulation. Every jumper conducts the same; colors just help you read the board.'),
+    { type: 'order', id: 'b20q6', q: 'Put a clean build in order.', items: ['Plan from the schematic', 'Connect the battery to the rails (switched off)', 'Plug in the parts', 'Add the jumper wires', 'Check everything, then power on'], why: 'Plan first, power last. Building with the power off avoids accidental shorts.' },
+  ] },
+  L21: { title: 'LEDs: anode & cathode', goal: 'Plug LEDs in the right way round.', cards: ['anode', 'cathode', 'fwdv'], steps: [
+    cpt('One-way light', `<p class="body">An LED only lets current through <b>one way</b>: in at the <b>anode (+)</b>, out at the <b>cathode (−)</b>.</p><div class="def"><b>Anode</b>: the <b>longer</b> leg, toward +.<br><b>Cathode</b>: the <b>shorter</b> leg, by the <b>flat edge</b> of the rim, toward −.<br>Backwards = dark (no damage at these low voltages).</div>`, bbArt(STD(), {}), 'The little + on the board marks the anode leg.'),
+    mcq('b21q1', 'Which leg of a brand-new LED is the anode?', ['The longer leg', 'The shorter leg', 'The leg by the flat edge'], 'Long leg = anode (+). The short leg by the flat edge is the cathode (−).'),
+    bbq('b21q2', 'place', 'Plug in the LED. Tap a hole for its <b>+ leg</b> first, then its <b>− leg</b>.', 'Current comes from the resistor in row 6, so the anode goes in row 6 and the cathode in row 7, where the black jumper returns to −.', { parts: STDNO('d1'), place: { id: 'd1', kind: 'led', color: 'red', label: 'LED' }, answer: '+ leg in row 6, − leg in row 7' }),
+    bbq('b21q3', 'fix', 'This LED stays dark. <b>Tap the part that\'s in wrong.</b>', 'The LED\'s anode is in row 7 (the ground side) and its cathode in row 6. It\'s backwards, so no current flows.', { parts: [W('j1', 'T+2', 'a2', RED, 'the red jumper'), RS('r1', 'c2', 'c6', 470), LD('d1', 'e7', 'e6'), W('j2', 'a7', 'T-7', BLK, 'the black jumper')], answerId: 'd1', answer: 'The LED: it\'s in backwards' }),
+    tfq('b21q4', 'Current flows through an LED from the cathode to the anode.', false, 'It\'s anode → cathode, + to −.'),
+    bbq('b21q5', 'place', '<b>No preview this time.</b> The resistor ends in row 9 and the ground jumper starts in row 11. Plug the LED in so it will light.', 'Anode in row 9 (the resistor\'s row), cathode in row 11 (the ground jumper\'s row). Each leg in its own strip, + toward the resistor.', { blind: true, parts: [W('j1', 'T+3', 'a3', RED, 'the red jumper'), RS('r1', 'c3', 'c9', 1000), W('j2', 'a11', 'T-11', BLK, 'the black jumper')], place: { id: 'd1', kind: 'led', color: 'green', label: 'LED' }, answer: '+ leg in row 9, − leg in row 11' }),
+    mcq('b21q6', 'A blue LED needs about 3 V. Will it light from a single 1.5 V AA cell?', ['No: 1.5 V is below its forward voltage', 'Yes, just more dimly', 'Yes, at full brightness'], 'Below its forward voltage an LED passes almost no current, so it stays dark.'),
+  ] },
+  L22: { title: 'Your first LED circuit', goal: 'Build a complete, safe LED loop from scratch.', cards: ['limr', 'bbloop'], steps: [
+    cpt('Why the resistor?', `<p class="body">Once an LED turns on it has very little resistance. On its own it would pull a huge current and <b>burn out</b>.</p><div class="def">A <b>current-limiting resistor</b> in series keeps the current around <b>10–20 mA</b>.<br>The loop: <b>+ rail → resistor → LED → − rail</b>.</div>`, bbArt(STD(), {})),
+    bbq('b22q1', 'place', 'The jumpers are in. Place the <b>470 Ω resistor</b> (row 2 → row 6), then the <b>LED</b> (row 6 → row 7).', 'Resistor from the + jumper\'s row to the LED\'s row, then the LED anode in that row and its cathode in the ground jumper\'s row.', { parts: [W('j1', 'T+2', 'a2', RED, 'the red jumper'), W('j2', 'a7', 'T-7', BLK, 'the black jumper')], place: [{ id: 'r1', kind: 'res', ohms: 470, label: '470 Ω resistor' }, { id: 'd1', kind: 'led', color: 'green', label: 'LED' }], answer: 'Resistor row 2 → row 6, LED + in row 6, − in row 7' }),
+    mcq('b22q2', 'Someone built this. What happened?', ['No resistor: too much current burned out the LED', 'The LED is backwards', 'The battery is flat'], 'The LED goes straight from the + jumper\'s row to the ground row with nothing to limit the current.', bbArt([W('j1', 'T+2', 'a2', RED), LD('d1', 'e2', 'e3'), W('j2', 'a3', 'T-3', BLK)], {})),
+    { type: 'order', id: 'b22q3', q: 'Trace the current through the standard build.', art: bbArt(STD(), {}), items: ['+ rail', 'Red jumper', 'Resistor', 'LED (anode → cathode)', 'Black jumper', '− rail'], why: 'Out of the + rail, through each part in turn, back into the − rail.' },
+    mcq('b22q4', 'Does the resistor have to go on the + side of the LED?', ['No: in a series loop the same current flows everywhere, so either side works', 'Yes, always before the LED', 'No, it must go after the LED'], 'In one loop, the order of series parts doesn\'t change the current.'),
+    bbq('b22q5', 'place', '<b>Build it all, no preview.</b> Only the resistor is in (row 4 → row 8). Add the + jumper, the LED and the ground jumper.', 'Red jumper from + to row 4, LED + leg in row 8 and − leg in a new row, then a black jumper from that row to −.', { blind: true, parts: [RS('r1', 'c4', 'c8', 470)], place: [{ id: 'jx', kind: 'wire', color: RED, label: 'red jumper' }, { id: 'd1', kind: 'led', color: 'yellow', label: 'LED' }, { id: 'jy', kind: 'wire', color: BLK, label: 'black jumper' }], answer: '+ rail → row 4; LED + in row 8, − in row 9; row 9 → − rail' }),
+    tfq('b22q6', 'If the LED is lit, current is flowing through both jumper wires.', true, 'It\'s one series loop, so the same current passes through every part, jumpers included.'),
+  ] },
+  L23: { title: 'Choosing the LED resistor', goal: 'Calculate and pick the right resistor value.', cards: ['ledr', 'stdval'], steps: [
+    cpt('R = (Vs − Vf) ÷ I', `<p class="body">The resistor takes whatever voltage the LED doesn't use.</p><div class="def"><b>R = (V<sub>supply</sub> − V<sub>f</sub>) ÷ I</b><br>9 V, red LED (2 V), 20 mA: (9 − 2) ÷ 0.02 = <b>350 Ω</b> → round <b>up</b> to the standard <b>390 Ω</b>.</div>`, CARDART.bbres, 'Typical LED currents are 5–20 mA. Rounding up keeps you on the safe side.'),
+    mcq('b23q1', '5 V supply, red LED (2 V), target 15 mA. Resistor?', ['200 Ω', '333 Ω', '75 Ω'], '(5 − 2) ÷ 0.015 = 200 Ω.'),
+    mcq('b23q2', '9 V supply, blue LED (3 V), target 10 mA. Which standard resistor?', ['680 Ω', '560 Ω', '220 Ω'], '(9 − 3) ÷ 0.01 = 600 Ω. Round up to 680 Ω so the current stays under 10 mA.'),
+    bbq('b23q3', 'slider', 'Slide through the resistor drawer. Pick one that puts <b>8–20 mA</b> through the LED.', '9 V − 2 V = 7 V across the resistor. 470 Ω gives about 14 mA. 220 Ω gives about 29 mA (too much), and 1 kΩ only about 7 mA.', { parts: [W('j1', 'T+2', 'a2', RED), RS('r1', 'c2', 'c6', 47), LD('d1', 'e6', 'e7'), W('j2', 'a7', 'T-7', BLK)], slider: { part: 'r1', prop: 'ohms', values: [47, 100, 220, 470, 1000, 4700, 10000], label: 'Resistor value', lo: '47 Ω', hi: '10 kΩ', fmt: v => 'Resistor: ' + ohmsTxt(v) }, readout: (sol) => `LED current: <b>${ledI(sol, 'd1').toFixed(1)} mA</b>${ledState(sol, 'd1') === 'burnt' ? ' · burned out!' : ''}`, ok: sol => { const i = ledI(sol, 'd1'); return i >= 8 && i <= 20; }, answer: '470 Ω (about 14 mA)' }),
+    mcq('b23q4', '12 V supply, green LED (2.2 V), 20 mA. You pick 560 Ω. About how much power does the resistor burn?', ['About 0.17 W: a ¼ W resistor is fine', 'About 1.7 W: it needs a big resistor', 'About 0.017 W'], 'I ≈ 9.8 V ÷ 560 Ω ≈ 17.5 mA. P = V × I ≈ 9.8 × 0.0175 ≈ 0.17 W, under ¼ W.'),
+    tfq('b23q5', 'Using a smaller resistor than calculated makes the LED last longer.', false, 'Smaller R means more current. That makes it brighter but hotter, and it wears out sooner or burns out.'),
+    mcq('b23q6', '6 V pack, two red LEDs (2 V each) in series, 10 mA. Resistor?', ['200 Ω', '400 Ω', '600 Ω'], '(6 − 2 − 2) ÷ 0.01 = 200 Ω. In series, the forward voltages add.'),
+  ] },
+  L24: { title: 'Switches & pushbuttons', goal: 'Control LEDs with SPST, SPDT and momentary switches.', cards: ['spst', 'spdt', 'pushb'], steps: [
+    cpt('Three kinds of switch', `<p class="body">A switch opens or closes a path.</p><div class="def"><b>SPST</b>: one path, on or off.<br><b>Pushbutton</b>: momentary, closed only while held.<br><b>SPDT</b>: 3 legs; the <b>common</b> leg connects to <b>one of two</b> others, so it chooses a path.</div>`, CARDART.bbsw),
+    bbq('b24q1', 'toggle', '<b>Tap the pushbutton</b> to press it and light the LED. Press Check while it\'s lit.', 'The button bridges row 2 (power) and row 5 (the resistor). Pressed = closed loop = light.', { parts: [W('j1', 'T+2', 'a2', RED), { id: 'b1', kind: 'btn', a: 'c2', b: 'c5', on: false, name: 'the pushbutton' }, RS('r1', 'd5', 'd9', 470), LD('d1', 'e9', 'e10'), W('j2', 'a10', 'T-10', BLK)], ok: sol => ledState(sol, 'd1') === 'lit', answer: 'Press the button so the LED lights' }),
+    bbq('b24q2', 'toggle', 'The SPDT switch picks a path. Set it so the <b>green LED is on and the red one is off</b>.', 'The common leg (row 7) gets +. Sliding the switch connects it to row 8, which feeds the green branch.', { parts: SPDT(), ok: sol => ledState(sol, 'd2') === 'lit' && ledState(sol, 'd1') === 'dark', answer: 'Slide the switch toward row 8' }),
+    mcq('b24q3', 'A doorbell button is…', ['Momentary: on only while pressed', 'Latching: it stays on', 'An SPDT switch'], 'Release it and the contact springs open again.'),
+    mcq('b24q4', 'How many legs does an SPDT switch need?', ['3: common plus two throws', '2', '4'], 'Common + throw A + throw B.'),
+    tfq('b24q5', 'To control an LED, a switch goes in series with it.', true, 'In series, opening the switch breaks the loop.'),
+    mcq('b24q6', 'You wire a pushbutton <b>across</b> the LED\'s two legs (in parallel). Pressing it…', ['Turns the LED off by bypassing it', 'Turns the LED on', 'Burns the LED out'], 'The button gives current an easier path around the LED. The resistor still limits the current, so nothing burns.'),
+  ] },
+  L25: { title: 'LEDs in series & parallel', goal: 'Run several LEDs from one battery.', cards: ['ledser', 'ledpar'], steps: [
+    cpt('Series or parallel LEDs?', `<p class="body"><b>Series</b>: one path, same current; forward voltages <b>add</b> (3 red LEDs = 6 V). The supply must be higher than the total.</p><div class="def"><b>Parallel</b>: each LED in its <b>own branch with its own resistor</b>. The branch currents add up at the battery.</div>`, CARDART.bbled),
+    mcq('b25q1', '9 V, two red LEDs (2 V each) in series, 10 mA. Resistor?', ['500 Ω', '700 Ω', '250 Ω'], '(9 − 4) ÷ 0.01 = 500 Ω.'),
+    mcq('b25q2', 'Three blue LEDs (3 V each) in series on a 9 V battery…', ['Barely light, if at all: 9 V leaves nothing for a resistor', 'Light brightly', 'Each gets the full 9 V'], '3 × 3 V = 9 V, the whole supply. No headroom means almost no current, and no room for a resistor.'),
+    bbq('b25q3', 'place', 'Add a <b>second LED</b> in its own branch (bottom half). Its resistor ends in row 8 and its ground jumper starts in row 9.', 'Branch 2: + crosses the gap in row 2, through R2 to row 8, LED anode in row 8, cathode in row 9, back to the bottom − rail.', { bottom: true, parts: [W('j1', 'T+2', 'a2', RED), RS('r1', 'c2', 'c6', 470), LD('d1', 'e6', 'e7', 'green'), W('j2', 'a7', 'T-7', BLK), W('jx', 'e2', 'f2', YEL), RS('r2', 'h2', 'h8', 470), W('j3', 'g9', 'B-9', BLK)], place: { id: 'd2', kind: 'led', color: 'yellow', label: 'second LED' }, answer: 'LED + leg in row 8 (f–j side), − leg in row 9' }),
+    tfq('b25q4', 'Two LEDs in parallel can safely share ONE resistor.', false, 'Their forward voltages differ slightly, so one LED hogs the current. Give each branch its own resistor.'),
+    mcq('b25q5', 'Three parallel LED branches each draw 15 mA. The battery supplies…', ['45 mA', '15 mA', '5 mA'], 'Parallel branch currents add: 3 × 15 = 45 mA.'),
+    mcq('b25q6', '12 V, four red LEDs (2 V) in series at 20 mA. Resistor?', ['200 Ω', '400 Ω', '600 Ω'], '(12 − 8) ÷ 0.02 = 200 Ω.'),
+  ] },
+  L26: { title: 'Battery packs & power', goal: 'Pick a power source and estimate how long it lasts.', cards: ['mah', 'cellpack'], steps: [
+    cpt('Volts and capacity', `<p class="body">An AA cell is <b>1.5 V</b>. Cells in <b>series</b> add voltage: 4 × AA = <b>6 V</b>. Cells in <b>parallel</b> keep the voltage but add <b>capacity</b>.</p><div class="def">Capacity is in <b>mAh</b>. Runtime ≈ <b>capacity ÷ current</b>. A 9 V battery holds about 500 mAh; an AA about 2000 mAh. USB gives 5 V.</div>`, CARDART.bbbat),
+    mcq('b26q1', 'Four AA cells in series give…', ['6 V', '1.5 V', '3 V'], '4 × 1.5 V = 6 V.'),
+    mcq('b26q2', 'A 2000 mAh pack runs a circuit drawing 25 mA. About how long does it last?', ['About 80 hours', 'About 8 hours', 'About 800 hours'], '2000 ÷ 25 = 80 hours (a little less in practice).'),
+    bbq('b26q3', 'fix', 'The LED is dark and the battery is getting <b>hot</b>. Tap the part causing it.', 'The yellow jumper connects the + rail straight to the − rail: a short circuit. Almost all the current rushes through it.', { parts: STD().concat([W('jx', 'T+12', 'T-12', YEL, 'the yellow jumper')]), answerId: 'jx', answer: 'The yellow jumper from + to −' }),
+    tfq('b26q4', 'Two identical cells in parallel give double the voltage.', false, 'Parallel keeps the voltage the same and adds capacity. Series adds voltage.'),
+    mcq('b26q5', 'A 9 V battery (500 mAh) powers a circuit drawing 50 mA. Runtime?', ['About 10 hours', 'About 100 hours', 'About 1 hour'], '500 ÷ 50 = 10 hours.'),
+    mcq('b26q6', '3 × AA in series drives a red LED (2 V) at 10 mA. Resistor?', ['250 Ω', '450 Ω', '200 Ω'], '3 × 1.5 = 4.5 V. (4.5 − 2) ÷ 0.01 = 250 Ω.'),
+  ] },
+  L27: { title: 'Multimeter on the breadboard', goal: 'Measure voltages on a live breadboard.', cards: ['vprobe', 'iprobe', 'contin'], steps: [
+    cpt('Probing a breadboard', `<p class="body">To measure <b>voltage</b>, touch the probes to holes in the strips on each side of a part: <b>across</b> it, red on the higher side.</p><div class="def"><b>Current</b>: break the loop and put the meter <b>in series</b>.<br><b>Resistance / continuity</b>: power <b>off</b> first.</div>`, CARDART.bbmeter),
+    bbq('b27q1', 'meter', 'Measure the voltage <b>across the resistor</b>. Tap a hole for the red probe, then one for the black probe.', 'The resistor spans row 2 to row 6. Red in row 2 (higher side), black in row 6: about 6.6 V.', { parts: STD(), want: ['c2', 'c6'], answer: 'Red probe in row 2, black probe in row 6' }),
+    bbq('b27q2', 'meter', 'Now measure <b>across the LED</b>.', 'The LED spans rows 6 and 7. Red in row 6, black in row 7: about 2.4 V, its forward voltage.', { parts: STD(), want: ['e6', 'e7'], answer: 'Red probe in row 6, black probe in row 7' }),
+    mcq('b27q3', 'The meter shows 6.6 V across the 470 Ω resistor. What\'s the current?', ['About 14 mA', 'About 1.4 A', 'About 3 mA'], 'I = V ÷ R = 6.6 ÷ 470 ≈ 0.014 A = 14 mA.'),
+    bbq('b27q4', 'meter', 'Find two spots that read the <b>full battery voltage</b> (about 9 V).', 'Anything connected to + versus anything connected to −: the + rail or row 2 against the − rail or row 7.', { parts: STD(), ok: r => r > 8.9, answer: 'Red on the + rail (or row 2), black on the − rail (or row 7)' }),
+    tfq('b27q5', 'To measure the LED current, put the meter probes across the LED\'s legs.', false, 'Across = voltage. For current, the loop must run through the meter, in series.'),
+    mcq('b27q6', 'Continuity (beep) mode should be used…', ['With the power off', 'Only while the circuit runs', 'Across the battery'], 'Continuity sends its own small current. Live voltages give false readings or can damage the meter.'),
+  ] },
+  L28: { title: 'Debugging breadboard builds', goal: 'Find wrong rows, split rails, backwards LEDs and missing grounds.', cards: ['dbglist', 'offby1'], steps: [
+    cpt('A debug checklist', `<p class="body">When it doesn't work, check in order:</p><div class="def">1. <b>Power</b>: battery on the rails?<br>2. <b>Ground</b>: does the loop return to −?<br>3. <b>Rows</b>: every leg in the intended strip (off by one)?<br>4. <b>Polarity</b>: LEDs the right way round?<br>5. <b>Split rails</b> bridged?</div>`, CARDART.bbbug),
+    bbq('b28q1', 'fix', 'Plan: resistor from row 2 to row 6, LED from row 6 to row 7. Something is <b>off by one</b>. Tap it.', 'The LED\'s + leg is in row 5, not row 6, so nothing connects it to the resistor. The loop is open.', { parts: [W('j1', 'T+2', 'a2', RED, 'the red jumper'), RS('r1', 'c2', 'c6', 470), LD('d1', 'e5', 'e7'), W('j2', 'a7', 'T-7', BLK, 'the black jumper')], answerId: 'd1', answer: 'The LED: its + leg is in row 5' }),
+    bbq('b28q2', 'place', 'The LED\'s − row (row 7) goes nowhere. <b>Add the missing ground</b>.', 'Current has to return to the battery. A jumper from row 7 to the − rail closes the loop.', { parts: STDNO('j2'), place: { id: 'jx', kind: 'wire', color: BLK, label: 'ground jumper' }, answer: 'A jumper from row 7 to the − rail' }),
+    mcq('b28q3', 'Why is this LED dark?', ['The rails are split: the build\'s half has no power', 'The LED is backwards', 'The resistor is too big'], 'Everything is on the right half, past the break. Bridge both rails across the break.', bbArt([W('j1', 'T+10', 'a10', RED), RS('r1', 'c10', 'c13', 470), LD('d1', 'e13', 'e14'), W('j2', 'a14', 'T-14', BLK)], { split: true })),
+    bbq('b28q4', 'fix', 'This build has the resistor and LED in different rows. It\'s still dark. Tap the faulty part.', 'The LED\'s + leg is in row 10 (the ground row) and its − leg is in row 9 (the resistor\'s row): it\'s reversed, so it blocks the current.', { parts: [W('j1', 'T+4', 'a4', RED, 'the red jumper'), RS('r1', 'c4', 'c9', 1000), LD('d1', 'e10', 'e9', 'green'), W('j2', 'a10', 'T-10', BLK, 'the black jumper')], answerId: 'd1', answer: 'The LED: it\'s backwards' }),
+    mcq('b28q5', 'The LED is dark. You measure the full 9 V across the LED\'s legs and 0 V across the resistor. Most likely…', ['The LED is backwards (or dead): no current flows', 'The battery is flat', 'The ground jumper is missing'], 'No current means no drop across the resistor, so the LED sees the whole battery voltage. A blocking LED is the culprit.'),
+    { type: 'order', id: 'b28q6', q: 'Order your debugging steps.', items: ['Check the battery and rail connections', 'Check the ground return to −', 'Check each leg is in the right row', 'Check LED polarity', 'Measure voltages along the loop'], why: 'Start with the big, easy things (power and ground), then rows and polarity, then measure.' },
+  ] },
+  L29: { title: 'Potentiometers & dimmers', goal: 'Use a pot as a dimmer and as a voltage divider.', cards: ['pot', 'wiper'], steps: [
+    cpt('Meet the potentiometer', `<p class="body">A <b>pot</b> has 3 legs: two ends of a resistive track and a <b>wiper</b> in the middle that slides along it.</p><div class="def"><b>End + wiper</b>: a variable resistor (a <b>dimmer</b>).<br><b>All 3 legs</b>: a voltage divider.<br>Keep a <b>fixed resistor</b> in series so the LED is safe at the 0 Ω end.</div>`, CARDART.bbpot),
+    bbq('b29q1', 'slider', 'Turn the dimmer until the LED current is <b>8–12 mA</b>.', 'Current = 7 V ÷ (220 Ω + the pot\'s part). For 8–12 mA the total should be about 580–875 Ω, so the pot section is about 350–650 Ω.', { parts: [W('j1', 'T+2', 'a2', RED), { id: 'p1', kind: 'pot', a: 'd2', w: 'd3', b: 'd4', ohms: 1000, pos: 1, name: 'the pot' }, RS('r1', 'a3', 'a7', 220), LD('d1', 'e7', 'e8'), W('j2', 'a8', 'T-8', BLK)], slider: { part: 'p1', prop: 'pos', min: 0, max: 1, step: .01, label: 'Dimmer knob', lo: '0 Ω', hi: '1 kΩ', fmt: v => `Pot section: ${Math.round(v * 1000)} Ω` }, readout: sol => `LED current: <b>${ledI(sol, 'd1').toFixed(1)} mA</b>`, ok: sol => { const i = ledI(sol, 'd1'); return i >= 8 && i <= 12; }, answer: 'Pot section about 350–650 Ω' }),
+    mcq('b29q2', 'Why keep the fixed 220 Ω resistor in series with the dimmer?', ['At the pot\'s 0 Ω end it still limits the current', 'It makes the LED brighter', 'Pots only work next to resistors'], 'Turn the pot all the way down and only the fixed resistor protects the LED.'),
+    mcq('b29q3', 'A 10 kΩ pot\'s wiper is 30% of the way from end A. Resistance A→wiper and wiper→B?', ['3 kΩ and 7 kΩ', '7 kΩ and 3 kΩ', '10 kΩ and 0 Ω'], 'The track splits at the wiper: 30% of 10 kΩ = 3 kΩ, the rest is 7 kΩ.'),
+    bbq('b29q4', 'slider', 'Now the pot is a <b>voltage divider</b> (ends on + and −). Set the wiper to <b>2.8–3.2 V</b>.', 'The wiper voltage = 9 V × (lower section ÷ 10 kΩ). For 3 V the knob needs to be about two-thirds of the way toward the + end.', { parts: [W('j1', 'T+3', 'a3', RED), { id: 'p1', kind: 'pot', a: 'c3', w: 'c4', b: 'c5', ohms: 10000, pos: .2, name: 'the pot' }, W('j2', 'a5', 'T-5', BLK)], red: 'e4', black: 'T-9', slider: { part: 'p1', prop: 'pos', min: 0, max: 1, step: .01, label: 'Pot knob', lo: '9 V', hi: '0 V', fmt: v => `Knob: ${Math.round(v * 100)}%` }, readout: sol => `Meter (wiper to −): <b>${(sol.v('e4') - sol.v('T-9')).toFixed(2)} V</b>`, ok: sol => { const v = sol.v('e4'); return v >= 2.8 && v <= 3.2; }, answer: 'Knob at about 65–69%' }),
+    tfq('b29q5', 'The middle leg of a potentiometer is the wiper.', true, 'Yes. The outer two are the ends of the track.'),
+    mcq('b29q6', 'Dimmer: 9 V, red LED (2 V), fixed 330 Ω plus a 1 kΩ pot. Current range?', ['About 5 mA to 21 mA', 'About 0 to 27 mA', 'About 7 mA to 9 mA'], 'Max: 7 ÷ 330 ≈ 21 mA. Min: 7 ÷ 1330 ≈ 5.3 mA.'),
+  ] },
+  L30: { title: 'Light sensors: LDR dividers', goal: 'Turn light into a voltage with an LDR divider.', cards: ['ldr', 'sdiv'], steps: [
+    cpt('A resistor that sees light', `<p class="body">An <b>LDR</b>'s resistance drops in bright light (about <b>1 kΩ</b>) and rises in the dark (<b>100 kΩ</b> or more).</p><div class="def">Pair it with a fixed resistor: <b>V<sub>out</sub> = V<sub>s</sub> × R<sub>bottom</sub> ÷ (R<sub>top</sub> + R<sub>bottom</sub>)</b>.<br>LDR on the <b>bottom</b>: V<sub>out</sub> <b>rises when it gets dark</b>: perfect for a night-light.</div>`, CARDART.bbldr),
+    bbq('b30q1', 'slider', 'Fixed 10 kΩ on top, LDR on the bottom. Make it <b>dark enough</b> that V<sub>out</sub> goes <b>above 7 V</b>.', 'V_out = 9 × R_LDR ÷ (10k + R_LDR). At 50 kΩ it\'s 7.5 V; at 20 kΩ only 6 V.', { parts: [W('j1', 'T+3', 'a3', RED), RS('r1', 'c3', 'c7', 10000), { id: 'q1', kind: 'ldr', a: 'd7', b: 'd11', ohms: 1000, name: 'the LDR' }, W('j2', 'a11', 'T-11', BLK)], red: 'e7', black: 'T-13', slider: { part: 'q1', prop: 'ohms', values: [1000, 2000, 5000, 10000, 20000, 50000, 100000], label: 'Light level', lo: 'bright', hi: 'dark', fmt: v => 'LDR: ' + ohmsTxt(v) }, readout: sol => `V<sub>out</sub>: <b>${(sol.v('e7') - sol.v('T-13')).toFixed(2)} V</b>`, ok: sol => sol.v('e7') > 7, answer: 'Dark: LDR at 50 kΩ or more' }),
+    mcq('b30q2', '5 V, 10 kΩ on top, LDR on the bottom reads 10 kΩ (dim room). V<sub>out</sub>?', ['2.5 V', '5 V', '1.25 V'], 'Equal resistors split the voltage in half: 2.5 V.'),
+    mcq('b30q3', 'Same divider in bright light: the LDR drops to 1 kΩ. V<sub>out</sub>?', ['About 0.45 V', 'About 4.5 V', 'About 2.5 V'], '5 × 1 ÷ (10 + 1) ≈ 0.45 V.'),
+    tfq('b30q4', 'An LDR\'s resistance goes up as it gets darker.', true, 'Less light, fewer free charges, more resistance.'),
+    mcq('b30q5', 'To make V<sub>out</sub> RISE when it gets BRIGHTER, put the LDR…', ['On top (between + and V_out)', 'On the bottom (between V_out and ground)', 'Across the battery'], 'Bright light makes the top resistor small, so V_out moves up toward the supply.'),
+    mcq('b30q6', '9 V divider: LDR on top, 4.7 kΩ on the bottom. V<sub>out</sub> reads 3 V. LDR resistance?', ['About 9.4 kΩ', 'About 4.7 kΩ', 'About 14 kΩ'], '3 = 9 × 4.7 ÷ (4.7 + R) → 4.7 + R = 14.1 → R ≈ 9.4 kΩ.'),
+  ] },
+  L31: { title: 'Capstone: indicator panel', goal: 'Plan, build and budget a multi-LED panel.', cards: ['ibudget'], steps: [
+    cpt('Plan → build → test', `<p class="body">Real builds combine everything: a switch picks a status color, parallel branches each get a resistor, and you check the <b>current budget</b>.</p><div class="def">Battery current = sum of the branch currents. Runtime ≈ mAh ÷ total mA.</div>`, bbArt(SPDT(), {})),
+    bbq('b31q1', 'place', '<b>No preview.</b> Both LEDs are in. Add the two resistors so both branches light (top: row 2 → row 7, bottom: row 2 → row 7).', 'Each branch needs its own resistor from the + row (row 2, both halves thanks to the yellow jumper) to its LED\'s + row (row 7).', { blind: true, bottom: true, parts: [W('j1', 'T+2', 'a2', RED), W('jx', 'e2', 'f2', YEL), LD('d1', 'e7', 'e8', 'green'), W('j2', 'a8', 'T-8', BLK), LD('d2', 'j7', 'j8', 'blue'), W('j3', 'g8', 'B-8', BLK)], place: [{ id: 'r1', kind: 'res', ohms: 470, label: 'top resistor' }, { id: 'r2', kind: 'res', ohms: 330, label: 'bottom resistor' }], answer: 'Top resistor row 2 → row 7 (a–e), bottom resistor row 2 → row 7 (f–j)' }),
+    bbq('b31q2', 'toggle', 'Status panel: set it to <b>green = OK</b> (green on, red off).', 'Slide the SPDT so the common row 7 feeds row 8, the green branch.', { parts: SPDT(), ok: sol => ledState(sol, 'd2') === 'lit' && ledState(sol, 'd1') === 'dark', answer: 'Switch toward row 8' }),
+    mcq('b31q3', 'Your panel has 3 LEDs at 12 mA each plus a 4 mA sensor, on a 500 mAh 9 V battery. Total current and runtime?', ['40 mA, about 12 hours', '12 mA, about 40 hours', '40 mA, about 1 hour'], '3 × 12 + 4 = 40 mA. 500 ÷ 40 ≈ 12.5 hours.'),
+    mcq('b31q4', 'A 9 V loop has a green LED (2.2 V) and a 680 Ω resistor. The meter shows 6.8 V across the resistor. Current?', ['10 mA', '6.8 mA', '100 mA'], '6.8 ÷ 680 = 0.01 A = 10 mA. (And 6.8 + 2.2 = 9 V: the budget checks out.)'),
+    tfq('b31q5', 'In a parallel LED panel, unplugging one LED turns all the others off.', false, 'Each branch is its own loop. The others keep working.'),
+    { type: 'order', id: 'b31q6', q: 'Order the capstone workflow.', items: ['Draw the schematic', 'Calculate each resistor', 'Lay out rows and rails', 'Build with the power off', 'Power on and measure'], why: 'Plan and calculate first; build unpowered; then test with the meter.' },
+  ] },
+  L32: { title: 'Capstone: fault-finding', goal: 'Find several faults fast, with logic and the meter.', cards: ['halfsplit'], steps: [
+    cpt('Think like a detective', `<p class="body"><b>Half-splitting</b>: measure in the middle of the loop first. Whichever half is wrong, test its middle next.</p><div class="def"><b>Full voltage across one part, 0 V across the rest</b> → that part is open (or a backwards LED).<br><b>Dim LED</b> → resistor too big.<br><b>Hot battery</b> → short.</div>`, CARDART.bbbug),
+    bbq('b32q1', 'place', '<b>Two faults, no preview.</b> The LED and the ground jumper were removed. Put the LED in the right way and add the ground jumper.', 'LED + leg in row 6 (with the resistor), − leg in row 7, then a jumper from row 7 to the − rail.', { blind: true, parts: [W('j1', 'T+2', 'a2', RED), RS('r1', 'c2', 'c6', 470)], place: [{ id: 'd1', kind: 'led', color: 'red', label: 'LED' }, { id: 'jx', kind: 'wire', color: BLK, label: 'ground jumper' }], answer: 'LED + in row 6, − in row 7; jumper row 7 → − rail' }),
+    mcq('b32q2', 'LED dark. + rail to − rail: 9 V. Across the resistor: 0 V. Across the LED: 9 V. Most likely?', ['The LED is backwards or dead', 'The battery is flat', 'The resistor is shorted'], 'No current (0 V on the resistor) and the full supply across the LED: the LED is blocking.'),
+    mcq('b32q3', 'The LED is very dim. The resistor\'s bands read yellow-violet-orange (47 kΩ) instead of yellow-violet-brown (470 Ω).', ['Wrong resistor: 47 kΩ allows only about 0.15 mA', 'The LED is backwards', 'The battery is shorted'], '7 V ÷ 47 000 Ω ≈ 0.15 mA, about 100× too little.'),
+    bbq('b32q4', 'fix', 'Two-LED panel: the bottom LED stays dark. Tap the faulty part.', 'R2 starts in row 3, but the + supply on the bottom half is in row 2. R2 is off by one row.', { bottom: true, parts: [W('j1', 'T+2', 'a2', RED, 'the red jumper'), RS('r1', 'c2', 'c7', 470, 'R1'), LD('d1', 'e7', 'e8', 'green'), W('j2', 'a8', 'T-8', BLK, 'the top black jumper'), W('jx', 'e2', 'f2', YEL, 'the yellow jumper'), RS('r2', 'h3', 'h7', 470, 'R2'), LD('d2', 'j7', 'j8', 'blue', 'the blue LED'), W('j3', 'g8', 'B-8', BLK, 'the bottom black jumper')], answerId: 'r2', answer: 'R2: it starts in row 3 instead of row 2' }),
+    mcq('b32q5', '9 V, two parallel branches: red LED + 470 Ω, and blue LED (3 V) + 300 Ω. Total battery current?', ['About 35 mA', 'About 15 mA', 'About 20 mA'], 'Red: 7 ÷ 470 ≈ 15 mA. Blue: 6 ÷ 300 = 20 mA. Total ≈ 35 mA.'),
+    tfq('b32q6', 'Half-splitting means checking the middle of the circuit first to halve the search.', true, 'Each measurement rules out half of what\'s left.'),
+  ] },
+});
+
+/* ---------- unit tests 4-6 ---------- */
+TESTS.T4 = { id: 'T4', unit: 'U4', title: 'Unit 4 test: Breadboard Basics', pass: 0.8, steps: [
+  bbq('T4q1', 'holes', 'Tap a hole connected to <b>g11</b>.', 'g11 is in the f–j strip of row 11: f11, h11, i11 or j11.', { tag: 'L18', ref: 'g11', answer: 'f11, h11, i11 or j11' }),
+  mcq('T4q2', 'd5 and g5 are…', ['Not connected: they\'re on opposite sides of the gap', 'Connected: same row number', 'Connected through the rails'], 'The center gap splits row 5 into two strips.', null),
+  bbq('T4q3', 'holes', 'Split rails again. Tap a <b>− rail</b> hole that is <b>not</b> connected to the battery.', 'The battery feeds the left half; − rail holes 8–15 are past the break.', { tag: 'L19', split: true, okHole: h => /^T-(8|9|1[0-5])$/.test(h), answer: 'A − rail hole in columns 8–15' }),
+  tfq('T4q4', 'A jumper straight from + rail to − rail is a short circuit.', true, 'It bypasses everything with almost zero resistance.'),
+  bbq('T4q5', 'place', '<b>No preview.</b> Add the missing + jumper (the resistor starts in row 5).', 'Any + rail hole to any free hole in row 5.', { tag: 'L20', blind: true, parts: [RS('r1', 'c5', 'c9', 470), LD('d1', 'e9', 'e10'), W('j2', 'a10', 'T-10', BLK)], place: { id: 'jx', kind: 'wire', color: RED, label: 'red jumper' }, answer: 'A jumper from the + rail to row 5' }),
+  mcq('T4q6', 'Header pins and breadboard holes share a spacing of…', ['2.54 mm', '1 mm', '5.08 cm'], '0.1 inch = 2.54 mm.'),
+  bbq('T4q7', 'fix', 'Dark LED. Tap the part that\'s wrong.', 'The LED\'s anode faces the ground row: it\'s backwards.', { tag: 'L21', parts: [W('j1', 'T+3', 'a3', RED, 'the red jumper'), RS('r1', 'c3', 'c8', 470), LD('d1', 'e9', 'e8', 'yellow'), W('j2', 'a9', 'T-9', BLK, 'the black jumper')], answerId: 'd1', answer: 'The LED (backwards)' }),
+  mcq('T4q8', 'The LED leg by the flat edge of the rim is the…', ['Cathode (−)', 'Anode (+)', 'Wiper'], 'Flat edge and short leg = cathode.'),
+  bbq('T4q9', 'place', '<b>No preview.</b> Place the LED (resistor ends in row 8, ground jumper in row 12).', 'Anode in row 8, cathode in row 12.', { tag: 'L21', blind: true, parts: [W('j1', 'T+4', 'a4', RED), RS('r1', 'c4', 'c8', 470), W('j2', 'a12', 'T-12', BLK)], place: { id: 'd1', kind: 'led', color: 'blue', label: 'LED' }, answer: '+ leg in row 8, − leg in row 12' }),
+  mcq('T4q10', 'Why does every LED need a series resistor?', ['To limit the current so it doesn\'t burn out', 'To make it light faster', 'To set its color'], 'Once on, an LED has little resistance; the resistor sets the current.'),
+  bbq('T4q11', 'place', '<b>No preview.</b> Build the loop: place the resistor, then the LED.', 'Resistor from row 2 to a new row, LED + leg in that row, − leg in row 7.', { tag: 'L22', blind: true, parts: [W('j1', 'T+2', 'a2', RED), W('j2', 'a7', 'T-7', BLK)], place: [{ id: 'r1', kind: 'res', ohms: 470, label: 'resistor' }, { id: 'd1', kind: 'led', color: 'red', label: 'LED' }], answer: 'Resistor row 2 → row 6, LED row 6 → row 7' }),
+  tfq('T4q12', 'Swapping the order of the resistor and LED in a single loop changes the current.', false, 'Series order doesn\'t matter; the current is the same everywhere in the loop.'),
+].map((s, i) => Object.assign(s, { tag: s.tag || ['L18', 'L18', 'L19', 'L19', 'L20', 'L20', 'L21', 'L21', 'L21', 'L22', 'L22', 'L22'][i] })) };
+TESTS.T5 = { id: 'T5', unit: 'U5', title: 'Unit 5 test: Building Real Circuits', pass: 0.8, steps: [
+  mcq('T5q1', '9 V, red LED (2 V), 15 mA. Best standard resistor?', ['470 Ω', '390 Ω', '220 Ω'], '7 ÷ 0.015 ≈ 467 Ω → 470 Ω.'),
+  mcq('T5q2', '5 V USB, white LED (3 V), 20 mA. Resistor?', ['100 Ω', '150 Ω', '250 Ω'], '(5 − 3) ÷ 0.02 = 100 Ω.'),
+  bbq('T5q3', 'slider', 'Pick a resistor that gives <b>5–12 mA</b> from this 12 V supply.', '(12 − 2) ÷ R: 1 kΩ gives about 10 mA. 470 Ω gives about 20 mA (too much).', { tag: 'L23', volts: 12, parts: [W('j1', 'T+2', 'a2', RED), RS('r1', 'c2', 'c6', 100), LD('d1', 'e6', 'e7'), W('j2', 'a7', 'T-7', BLK)], slider: { part: 'r1', prop: 'ohms', values: [100, 220, 470, 1000, 4700, 10000], label: 'Resistor value', lo: '100 Ω', hi: '10 kΩ', fmt: v => 'Resistor: ' + ohmsTxt(v) }, readout: sol => `LED current: <b>${ledI(sol, 'd1').toFixed(1)} mA</b>`, ok: sol => { const i = ledI(sol, 'd1'); return i >= 5 && i <= 12; }, answer: '1 kΩ' }),
+  bbq('T5q4', 'toggle', 'Set the SPDT so the <b>red LED</b> is on.', 'The switch starts on the green side; flip it back toward row 6.', { tag: 'L24', parts: SPDT().map(p => p.id === 's1' ? Object.assign(p, { on: true }) : p), ok: sol => ledState(sol, 'd1') === 'lit' && ledState(sol, 'd2') === 'dark', answer: 'Switch toward row 6' }),
+  mcq('T5q5', 'A pushbutton is…', ['Momentary: closed only while pressed', 'Always closed', 'A 3-leg selector'], 'Momentary contact.'),
+  mcq('T5q6', '9 V, three red LEDs (2 V) in series at 15 mA. Resistor?', ['200 Ω', '600 Ω', '133 Ω'], '(9 − 6) ÷ 0.015 = 200 Ω.'),
+  tfq('T5q7', 'Parallel LEDs should each get their own resistor.', true, 'Otherwise one LED hogs the current.'),
+  mcq('T5q8', 'Four parallel branches at 18 mA from a 2000 mAh pack. Runtime?', ['About 28 hours', 'About 111 hours', 'About 7 hours'], '4 × 18 = 72 mA. 2000 ÷ 72 ≈ 28 hours.'),
+  bbq('T5q9', 'fix', 'Hot battery, dark LED. Tap the cause.', 'The green jumper runs from the + rail to row 7, which is on the − side: a short past the LED and resistor.', { tag: 'L26', parts: STD().concat([W('jx', 'T+9', 'b7', GRN, 'the green jumper')]), answerId: 'jx', answer: 'The green jumper (+ rail to the ground row)' }),
+  bbq('T5q10', 'meter', 'Measure the voltage across the <b>resistor</b>.', 'Red in row 2, black in row 6.', { tag: 'L27', parts: STD(), want: ['b2', 'b6'], answer: 'Red in row 2, black in row 6' }),
+  mcq('T5q11', 'To measure LED current you…', ['Break the loop and put the meter in series', 'Touch the probes across the LED', 'Measure across the battery'], 'Current must flow through the meter.'),
+  mcq('T5q12', 'Two AA cells in parallel give…', ['1.5 V with double the capacity', '3 V', '0.75 V'], 'Parallel cells: same voltage, more mAh.'),
+].map((s, i) => Object.assign(s, { tag: s.tag || ['L23', 'L23', 'L23', 'L24', 'L24', 'L25', 'L25', 'L25', 'L26', 'L27', 'L27', 'L26'][i] })) };
+TESTS.T6 = { id: 'T6', unit: 'U6', title: 'Unit 6 test: Troubleshooting & Projects', pass: 0.8, steps: [
+  bbq('T6q1', 'fix', 'Plan: resistor rows 3→7, LED rows 7→8. Tap the misplaced part.', 'The resistor ends in row 6, one row short of the LED.', { tag: 'L28', parts: [W('j1', 'T+3', 'a3', RED, 'the red jumper'), RS('r1', 'c3', 'c6', 470), LD('d1', 'e7', 'e8'), W('j2', 'a8', 'T-8', BLK, 'the black jumper')], answerId: 'r1', answer: 'The resistor: it ends in row 6' }),
+  bbq('T6q2', 'place', '<b>No preview.</b> This split-rail build is dark. Add <b>one</b> jumper to fix it.', 'Bridge the break in the + rail. (The ground jumper goes to the powered half already.)', { tag: 'L28', blind: true, split: true, parts: [W('j1', 'T+11', 'a11', RED), RS('r1', 'c11', 'c14', 470), LD('d1', 'e14', 'e15'), W('j2', 'a15', 'T-4', BLK)], place: { id: 'jx', kind: 'wire', color: YEL, label: 'jumper' }, answer: 'A jumper across the + rail break' }),
+  mcq('T6q3', 'Full 9 V across the resistor, 0 V across the LED, LED dark. Likely?', ['The LED is shorted out (both legs in one strip, or a wire across it)', 'The LED is backwards', 'The battery is flat'], 'All the voltage lands on the resistor, so the LED has no voltage: something is bypassing it.'),
+  bbq('T6q4', 'slider', 'Dimmer: set the LED current to <b>14–18 mA</b>.', '7 V ÷ (220 + pot) = 16 mA → pot ≈ 200 Ω.', { tag: 'L29', parts: [W('j1', 'T+2', 'a2', RED), { id: 'p1', kind: 'pot', a: 'd2', w: 'd3', b: 'd4', ohms: 1000, pos: 1 }, RS('r1', 'a3', 'a7', 220), LD('d1', 'e7', 'e8'), W('j2', 'a8', 'T-8', BLK)], slider: { part: 'p1', prop: 'pos', min: 0, max: 1, step: .01, label: 'Dimmer knob', lo: '0 Ω', hi: '1 kΩ', fmt: v => `Pot section: ${Math.round(v * 1000)} Ω` }, readout: sol => `LED current: <b>${ledI(sol, 'd1').toFixed(1)} mA</b>`, ok: sol => { const i = ledI(sol, 'd1'); return i >= 14 && i <= 18; }, answer: 'Pot section about 140–270 Ω' }),
+  mcq('T6q5', 'A 5 kΩ pot\'s wiper sits at 80% from end A. A→wiper?', ['4 kΩ', '1 kΩ', '5 kΩ'], '80% of 5 kΩ = 4 kΩ.'),
+  mcq('T6q6', '9 V, LDR on top (2 kΩ in light), 10 kΩ on the bottom. V<sub>out</sub>?', ['7.5 V', '1.5 V', '4.5 V'], '9 × 10 ÷ 12 = 7.5 V.'),
+  tfq('T6q7', 'With the LDR on the bottom of the divider, V_out rises when it gets dark.', true, 'Dark → LDR resistance up → bigger share of the voltage.'),
+  bbq('T6q8', 'slider', 'Night-light check: find the light level where V<sub>out</sub> first goes <b>above 4.5 V</b>.', '9 × R ÷ (10k + R) > 4.5 V needs R > 10 kΩ: the 20 kΩ setting (6 V) is the first one above.', { tag: 'L30', parts: [W('j1', 'T+3', 'a3', RED), RS('r1', 'c3', 'c7', 10000), { id: 'q1', kind: 'ldr', a: 'd7', b: 'd11', ohms: 1000 }, W('j2', 'a11', 'T-11', BLK)], red: 'e7', black: 'T-13', slider: { part: 'q1', prop: 'ohms', values: [1000, 2000, 5000, 10000, 20000, 50000, 100000], label: 'Light level', lo: 'bright', hi: 'dark', fmt: v => 'LDR: ' + ohmsTxt(v) }, readout: sol => `V<sub>out</sub>: <b>${(sol.v('e7') - sol.v('T-13')).toFixed(2)} V</b>`, ok: sol => { const v = sol.v('e7'); return v > 4.5 && v < 7; }, answer: 'LDR at 20 kΩ (6 V)' }),
+  mcq('T6q9', 'Panel: 2 LEDs at 15 mA and 1 at 10 mA on a 500 mAh battery. Runtime?', ['About 12.5 hours', 'About 50 hours', 'About 1 hour'], '40 mA total; 500 ÷ 40 = 12.5 h.'),
+  bbq('T6q10', 'fix', 'The bottom LED stays dark. Tap the faulty part.', 'The bottom black jumper goes to the TOP + rail instead of a − rail.', { tag: 'L32', bottom: true, parts: [W('j1', 'T+2', 'a2', RED, 'the red jumper'), RS('r1', 'c2', 'c7', 470, 'R1'), LD('d1', 'e7', 'e8', 'green'), W('j2', 'a8', 'T-8', BLK, 'the top black jumper'), W('jx', 'e2', 'f2', YEL, 'the yellow jumper'), RS('r2', 'h2', 'h7', 470, 'R2'), LD('d2', 'j7', 'j8', 'blue', 'the blue LED'), W('j3', 'g8', 'B+8', BLK, 'the bottom black jumper')], answerId: 'j3', answer: 'The bottom black jumper (it goes to + instead of −)' }),
+  mcq('T6q11', 'Half-splitting a 6-part loop, your first measurement should be…', ['Across the middle, splitting the loop into two halves', 'Across the first part', 'Across the battery only'], 'Start in the middle to rule out half the parts at once.'),
+  mcq('T6q12', '9 V; branch A: red LED + 330 Ω; branch B: green LED (2.2 V) + 680 Ω. Total current?', ['About 31 mA', 'About 21 mA', 'About 10 mA'], 'A: 7 ÷ 330 ≈ 21 mA. B: 6.8 ÷ 680 = 10 mA. Total ≈ 31 mA.'),
+].map((s, i) => Object.assign(s, { tag: s.tag || ['L28', 'L28', 'L28', 'L29', 'L29', 'L30', 'L30', 'L30', 'L31', 'L32', 'L32', 'L31'][i] })) };
+/* =========================================================
+   RESTRUCTURE (v4): the 6 old units become new Units 1-3 (denser, harder),
+   the breadboard units (04h) become Units 4-6. Old content files stay as the source material.
+   ========================================================= */
+const OLD_UNITS = UNITS.map(u => ({ id: u.id, lessons: u.lessons.slice(), test: u.test }));
+const MERGE = {
+  L1: ['l1', 'l2'], L2: ['l3', 'l4'], L3: ['l5', 'l6'], L4: ['l7', 'l8'], L5: ['l9', 'l10'],
+  L6: ['l11', 'l12'], L7: ['l13', 'l14'], L8: ['l15', 'l16'], L9: ['l17', 'l18'], L10: ['l19', 'l20'], L11: ['l21'],
+  L12: ['l22', 'l23'], L13: ['l24', 'l25'], L14: ['l26', 'l27'], L15: ['l28', 'l29'], L16: ['l30', 'l31'], L17: ['l32'],
+};
+const OLD2NEW = {}; Object.entries(MERGE).forEach(([n, ls]) => ls.forEach(l => OLD2NEW[l] = n));
+// old Unit 1 was too easy: drop the trivial recall items
+const TRIM = new Set(['l1q1', 'l1q3', 'l2q2', 'l2q4', 'l3q4', 'l5q4', 'l6q3', 'l7q4', 'l8q4']);
+const NEWMETA = {
+  L1: ['Charge & static', 'Charges, attraction and repulsion, static vs. flowing current.'],
+  L2: ['Conductors & closed loops', 'What conducts, and why a circuit must be a complete loop.'],
+  L3: ['Safety & voltage', 'Shorts, ratings and what voltage really is.'],
+  L4: ['Current & resistance', 'Amps, coulombs per second, and what resists the flow.'],
+  L5: ['Prefixes & the multimeter', 'Milli, kilo, mega, micro, and measuring V and I.'],
+  L6: ["Ohm's law, every way", 'V = I × R, solved for any one, in multi-step problems.'],
+  L7: ['I–V graphs & power', 'Read slopes, then calculate power and energy.'],
+  L8: ['Power ratings & series', 'Pick safe ratings, then add up series resistors and drops.'],
+  L9: ['Parallel & equivalent R', 'Parallel branches and collapsing networks to one resistor.'],
+  L10: ['Voltage & current dividers', 'Divider formulas, including loaded dividers.'],
+  L11: ['Combination circuits', 'Series-parallel networks, step by step, with no hand-holding.'],
+  L12: ['Schematic symbols', 'Why schematics exist and the core component symbols.'],
+  L13: ['Ground, rails & junctions', 'Power nets, ground, dots and crossings.'],
+  L14: ['Labels & breadboard layouts', 'Reference designators, net labels and schematic-to-breadboard.'],
+  L15: ['KVL & KCL', 'Loops add up and junctions balance.'],
+  L16: ['Node voltages & superposition', 'Voltages relative to ground, one source at a time.'],
+  L17: ['Thevenin & analysis challenge', 'Reduce any network to a source and a resistor.'],
+};
+// new, harder exercises (multi-step, combined series/parallel, less hand-holding)
+const EXTRA = {
+  L1: [mcq('n1q1', 'A balloon gains 5 × 10¹² extra electrons (each −1.6 × 10⁻¹⁹ C). Its charge is about…', ['−0.8 µC', '−8 µC', '+0.8 µC'], '5 × 10¹² × 1.6 × 10⁻¹⁹ C = 8 × 10⁻⁷ C = 0.8 µC, and extra electrons make it negative.')],
+  L2: [mcq('n2q1', 'A bulb and a switch are in one loop. The switch is open. Which is true?', ['No current anywhere in the loop', 'Current flows up to the switch, then stops', 'The bulb glows dimly'], 'An open loop means zero current everywhere, not just past the gap.')],
+  L3: [mcq('n3q1', 'A 6 V lamp runs from four 1.5 V cells. One cell is put in backwards. The lamp now gets about…', ['3 V', '4.5 V', '6 V'], 'The reversed cell subtracts instead of adding: 1.5 + 1.5 + 1.5 − 1.5 = 3 V.')],
+  L4: [mcq('n4q1', '0.25 A flows for 4 minutes. How much charge moves?', ['60 C', '1 C', '16 C'], 'Q = I × t = 0.25 A × 240 s = 60 C.'), tfq('n4q2', 'Doubling the length of a wire (same material and thickness) roughly doubles its resistance.', true, 'Resistance grows with length: twice as far to push through.')],
+  L5: [mcq('n5q1', '0.0047 MΩ + 330 Ω in series is…', ['5.03 kΩ', '4.73 kΩ', '337 Ω'], '0.0047 MΩ = 4.7 kΩ = 4700 Ω; plus 330 Ω = 5030 Ω = 5.03 kΩ.')],
+  L6: [mcq('n6q1', 'A bulb draws 0.4 A from 24 V. You swap in one with twice the resistance. The new current?', ['0.2 A', '0.8 A', '0.4 A'], 'R = 24 ÷ 0.4 = 60 Ω → 120 Ω. I = 24 ÷ 120 = 0.2 A.'), mcq('n6q2', 'A resistor drops 6 V at 15 mA. What current flows at 10 V?', ['25 mA', '9 mA', '150 mA'], 'R = 6 ÷ 0.015 = 400 Ω. I = 10 ÷ 400 = 25 mA.')],
+  L7: [mcq('n7q1', 'A 12 V motor draws 2.5 A for 3 minutes. Energy used?', ['5400 J', '30 J', '90 J'], 'P = 12 × 2.5 = 30 W. E = P × t = 30 × 180 s = 5400 J.'), mcq('n7q2', 'On an I–V graph, line A is steeper than line B. Which has more resistance?', ['B', 'A', 'They are equal'], 'Steeper I vs V = more current per volt = LESS resistance, so B resists more.')],
+  L8: [mcq('n8q1', '100 Ω and 400 Ω in series across 10 V. Power in the 400 Ω?', ['0.16 W', '0.25 W', '0.04 W'], 'I = 10 ÷ 500 = 0.02 A. P = I²R = 0.0004 × 400 = 0.16 W.'), mcq('n8q2', 'A ¼ W, 220 Ω resistor. Highest safe voltage across it?', ['About 7.4 V', 'About 55 V', 'About 0.5 V'], 'P = V² ÷ R → V = √(0.25 × 220) ≈ 7.4 V.')],
+  L9: [mcq('n9q1', '6 Ω ∥ 3 Ω, then in series with 4 Ω. Total?', ['6 Ω', '13 Ω', '2 Ω'], '6 ∥ 3 = 18 ÷ 9 = 2 Ω; 2 + 4 = 6 Ω.'), mcq('n9q2', '12 V across that network (6 Ω ∥ 3 Ω, then 4 Ω). Current through the 3 Ω?', ['About 1.33 A', '2 A', '4 A'], 'Total 6 Ω → 2 A. The parallel pair (2 Ω) gets 4 V. I₃ = 4 ÷ 3 ≈ 1.33 A.')],
+  L10: [mcq('n10q1', '9 V divider, 10 kΩ over 10 kΩ, loaded by another 10 kΩ on the output. V_out?', ['3 V', '4.5 V', '6 V'], 'Bottom becomes 10k ∥ 10k = 5 kΩ. V_out = 9 × 5 ÷ 15 = 3 V. Loads pull dividers down.'), mcq('n10q2', '3 A splits between 2 Ω and 4 Ω in parallel. Current in the 4 Ω?', ['1 A', '2 A', '1.5 A'], 'Current divides inversely: I₄ = 3 × 2 ÷ (2 + 4) = 1 A.')],
+  L11: [mcq('n11q1', '24 V across 4 Ω in series with (12 Ω ∥ 6 Ω). Voltage across the 6 Ω?', ['12 V', '8 V', '16 V'], '12 ∥ 6 = 4 Ω; total 8 Ω → 3 A. The pair drops 3 × 4 = 12 V.'), mcq('n11q2', 'Same circuit: total power from the 24 V source?', ['72 W', '48 W', '144 W'], 'P = V × I = 24 × 3 = 72 W.'), mcq('n11q3', '(2 Ω + 4 Ω) ∥ 3 Ω, all across 9 V. Current from the source?', ['4.5 A', '1.5 A', '3 A'], 'Branches: 6 Ω and 3 Ω → 6 ∥ 3 = 2 Ω. I = 9 ÷ 2 = 4.5 A.')],
+  L12: [mcq('n12q1', 'An LED symbol\'s triangle points toward ground. For it to light, its anode connects to…', ['The higher-voltage side', 'Ground', 'Either side'], 'Current flows in the arrow\'s direction, so the anode (base of the triangle) must be on the + side.')],
+  L13: [mcq('n13q1', 'A schematic shows the ground symbol at three different places. Resistance between any two of them?', ['0 Ω: they are the same net', 'Depends on the parts between them', 'Infinite'], 'Every ground symbol is the same node, connected even with no line drawn.')],
+  L14: [mcq('n14q1', 'R3 and R7 each have a leg on the net labeled SENSE. On the breadboard, those two legs must be…', ['In the same strip (or joined by a jumper)', 'In different strips', 'On the + rail'], 'Same net = electrically connected, so same strip or a wire between.')],
+  L15: [mcq('n15q1', '9 V loop: LED drops 2 V, R1 drops 4.5 V. What does R2 drop?', ['2.5 V', '6.5 V', '4.5 V'], 'KVL: 9 = 2 + 4.5 + V₂ → V₂ = 2.5 V.'), mcq('n15q2', '30 mA enters a node; two branches leave carrying 12 mA and I. A third branch brings 5 mA in. I = ?', ['23 mA', '18 mA', '13 mA'], 'In = out: 30 + 5 = 12 + I → I = 23 mA.')],
+  L16: [mcq('n16q1', 'With only the 6 V source on, R carries 2 mA. With only the 3 V source on, R carries −0.5 mA. Both on?', ['1.5 mA', '2.5 mA', '−1.5 mA'], 'Superposition: 2 + (−0.5) = 1.5 mA.'), mcq('n16q2', 'Node A is at 7 V, node B at 2.5 V. A 1.5 kΩ resistor connects them. Its current?', ['3 mA', '4.7 mA', '1.7 mA'], 'V = 7 − 2.5 = 4.5 V; I = 4.5 ÷ 1500 = 3 mA.')],
+  L17: [mcq('n17q1', 'V_Th = 6 V, R_Th = 2 kΩ, load = 4 kΩ. Load voltage?', ['4 V', '2 V', '6 V'], 'Divider: 6 × 4 ÷ (2 + 4) = 4 V.'), mcq('n17q2', 'Open-circuit voltage 12 V, short-circuit current 4 mA. R_Th?', ['3 kΩ', '48 kΩ', '0.33 kΩ'], 'R_Th = V_oc ÷ I_sc = 12 ÷ 0.004 = 3 kΩ.'), mcq('n17q3', 'Which load gets the MOST power from a source with R_Th = 2 kΩ?', ['2 kΩ', '200 Ω', '20 kΩ'], 'Maximum power transfer: load = R_Th.')],
+};
+Object.entries(MERGE).forEach(([n, src]) => {
+  const steps = [], cards = [];
+  src.forEach(l => { LESSONS[l].steps.forEach(s => { if (!TRIM.has(s.id)) steps.push(s); }); cards.push(...LESSONS[l].cards); });
+  steps.push(...(EXTRA[n] || []));
+  LESSONS[n] = { title: NEWMETA[n][0], goal: NEWMETA[n][1], cards, steps };
+  cards.forEach(c => { if (CARDS[c]) CARDS[c].lesson = n; });
+});
+const pickT = (tid, keep) => TESTS[tid].steps.filter((s, i) => keep(i, s)).map(s => Object.assign({}, s, { tag: OLD2NEW[s.tag] || s.tag }));
+TESTS.T1 = { id: 'T1', unit: 'U1', title: 'Unit 1 test: Electricity Essentials', pass: 0.8, steps: [...pickT('t1', i => i % 2 === 1 || i === 10), ...pickT('t2', i => i % 2 === 0),
+  Object.assign(mcq('T1x1', '0.5 A flows for 2 minutes through a 9 V battery. Charge moved and energy delivered?', ['60 C and 540 J', '1 C and 9 J', '60 C and 9 J'], 'Q = 0.5 × 120 = 60 C. Each coulomb gets 9 J, so 540 J.'), { tag: 'L4' })] };
+TESTS.T2 = { id: 'T2', unit: 'U2', title: 'Unit 2 test: Ohm\'s Law & Circuits', pass: 0.8, steps: [...pickT('t3', i => i % 2 === 0), ...pickT('t4', i => i % 2 === 1),
+  Object.assign(mcq('T2x1', '18 V across 3 Ω in series with (6 Ω ∥ 6 Ω). Power in ONE of the 6 Ω resistors?', ['13.5 W', '27 W', '54 W'], '6 ∥ 6 = 3 Ω; total 6 Ω → 3 A. Each 6 Ω carries 1.5 A: P = 1.5² × 6 = 13.5 W.'), { tag: 'L11' }),
+  Object.assign(mcq('T2x2', '12 V divider: 6 kΩ over 3 kΩ, loaded by 6 kΩ. V_out?', ['3 V', '4 V', '6 V'], '3k ∥ 6k = 2 kΩ. V_out = 12 × 2 ÷ 8 = 3 V.'), { tag: 'L10' })] };
+TESTS.T3 = { id: 'T3', unit: 'U3', title: 'Unit 3 test: Schematics & Analysis', pass: 0.8, steps: [...pickT('t5', i => i % 2 === 0), ...pickT('t6', i => i % 2 === 1 || i === 10),
+  Object.assign(mcq('T3x1', 'A source reads 10 V open and 4 V with a 2 kΩ load. R_Th?', ['3 kΩ', '2 kΩ', '5 kΩ'], '4 = 10 × 2 ÷ (R + 2) → R + 2 = 5 → R = 3 kΩ.'), { tag: 'L17' })] };
+const NEWUNITS = [
+  { id: 'U1', n: 1, title: 'Electricity Essentials', color: '#2EC4A0', dark: '#1C9E80', lessons: ['L1', 'L2', 'L3', 'L4', 'L5'], test: 'T1' },
+  { id: 'U2', n: 2, title: "Ohm's Law & Circuits", color: '#7C83FD', dark: '#5A61D8', lessons: ['L6', 'L7', 'L8', 'L9', 'L10', 'L11'], test: 'T2' },
+  { id: 'U3', n: 3, title: 'Schematics & Analysis', color: '#FF7F6E', dark: '#E0604F', lessons: ['L12', 'L13', 'L14', 'L15', 'L16', 'L17'], test: 'T3' },
+  { id: 'U4', n: 4, title: 'Breadboard Basics', color: '#F2A93B', dark: '#C9831A', lessons: ['L18', 'L19', 'L20', 'L21', 'L22'], test: 'T4' },
+  { id: 'U5', n: 5, title: 'Building Real Circuits', color: '#3FB8AF', dark: '#2A928A', lessons: ['L23', 'L24', 'L25', 'L26', 'L27'], test: 'T5' },
+  { id: 'U6', n: 6, title: 'Troubleshooting & Projects', color: '#B57EDC', dark: '#8E58B8', lessons: ['L28', 'L29', 'L30', 'L31', 'L32'], test: 'T6' },
+];
+OLD_UNITS.forEach(u => { u.lessons.forEach(l => delete LESSONS[l]); delete TESTS[u.test]; });
+UNITS.splice(0, UNITS.length, ...NEWUNITS);
+
+/* ---------- one-time save migration (runs from migrate()) ---------- */
+const OLD_TOK = { u1: 5, u2: 5, u3: 6, u4: 6, u5: 8, u6: 8 }, OLD_TOK2 = { u1: 10, u2: 10, u3: 12, u4: 12, u5: 15, u6: 15 };
+const UMAP = { U1: ['u1', 'u2'], U2: ['u3', 'u4'], U3: ['u5', 'u6'] }, TMAP = { T1: ['t1', 't2'], T2: ['t3', 't4'], T3: ['t5', 't6'] };
+const GMAP = { G1: ['g1', 'g2'], G2: ['g3', 'g4'], G3: ['g5', 'g6'], G4: ['g7', 'g8'], G5: ['g9'], G6: ['g10', 'g11', 'g12'] };
+function migrate6() {
+  if (S.mig6) return;
+  S.tokGranted = S.tokGranted && typeof S.tokGranted === 'object' ? S.tokGranted : {};
+  if (typeof S.tokens !== 'number' || !isFinite(S.tokens)) S.tokens = 0;
+  const old = Object.keys(S.done).some(k => /^l\d+$/.test(k)) || Object.keys(S.tests).some(k => /^t\d+$/.test(k));
+  if (old) {
+    S.legacy6 = JSON.parse(JSON.stringify({ done: S.done, tests: S.tests, tokGranted: S.tokGranted, placement: S.placement || null, games: S.games || null, deckRw: S.deckRw || null }));
+    // settle the old token rules exactly once on the old layout, so nothing is lost or paid twice
+    if (!S.tokMig2) OLD_UNITS.forEach(u => u.lessons.forEach(l => { if (S.tokGranted[l] && S.done[l] && !S.done[l].placed) S.tokens += OLD_TOK2[u.id] - OLD_TOK[u.id]; }));
+    OLD_UNITS.forEach(u => {
+      u.lessons.forEach(l => { const d = S.done[l]; if (d && !d.placed && !S.tokGranted[l]) { S.tokGranted[l] = 1; S.tokens += OLD_TOK2[u.id]; } });
+      const t = S.tests[u.test]; if (t && t.passed && !t.placed && !S.tokGranted[u.test]) { S.tokGranted[u.test] = 1; S.tokens += 15; }
+    });
+    const done = {}, tests = {};
+    Object.entries(MERGE).forEach(([n, src]) => {
+      if (src.every(l => S.done[l])) { const ds = src.map(l => S.done[l]); done[n] = Object.assign({ at: ds.map(d => d.at || '').sort().pop() || today() }, ds.some(d => d.placed) ? { placed: true } : {}); }
+      if (src.some(l => S.tokGranted[l])) S.tokGranted[n] = 1; // a merged lesson never pays its first-time tokens twice
+    });
+    Object.entries(TMAP).forEach(([n, src]) => {
+      const ts = src.map(t => S.tests[t]);
+      if (ts.every(t => t && t.passed)) tests[n] = Object.assign({ passed: true, best: Math.min(...ts.map(t => t.best || 0)), attempts: ts.reduce((a, t) => a + (t.attempts || 0), 0) }, ts.some(t => t.placed) ? { placed: true } : {});
+      if (src.some(t => S.tokGranted[t])) S.tokGranted[n] = 1;
+    });
+    Object.keys(S.done).forEach(k => { if (!/^l\d+$/.test(k)) done[k] = S.done[k]; });
+    Object.keys(S.tests).forEach(k => { if (!/^t\d+$/.test(k)) tests[k] = S.tests[k]; });
+    S.done = done; S.tests = tests;
+    if (S.placement && Array.isArray(S.placement.units)) S.placement.units = Object.keys(UMAP).filter(n => UMAP[n].every(u => S.placement.units.includes(u)));
+    if (S.games && S.games.best) { const b = {}; Object.entries(GMAP).forEach(([n, src]) => { const v = Math.max(0, ...src.map(g => S.games.best[g] || 0)); if (v) b[n] = v; }); S.games.best = b; }
+    if (S.deckRw) { const d = {}; Object.entries(UMAP).forEach(([n, src]) => { if (src.some(u => S.deckRw[u] && S.deckRw[u].paid)) d[n] = { d: null, seen: [], days: [], paid: 1 }; }); S.deckRw = d; }
+    S.fcTest = {};
+  }
+  S.tokMig2 = 1; S.mig6 = 1; S.v = 4;
+}
+/* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
 const KEY = 'zapling.v1';
@@ -1947,7 +2459,8 @@ function migrate() {
   S.hearts = Math.max(0, Math.min(MAX_HEARTS, Math.round(S.hearts)));
   if (S.hearts >= MAX_HEARTS) S.heartsAt = null;
   else if (typeof S.heartsAt !== 'number' || S.heartsAt > now()) S.heartsAt = now();
-  S.v = 3; // v3: Units 4-6 added; nothing to convert, all earlier progress is kept
+  S.v = Math.max(S.v || 0, 3);
+  migrate6(); // v4: 6 denser units (old units 1-6 → new 1-3) + breadboard Units 4-6
 }
 const testState = tid => (S.tests[tid] = S.tests[tid] || { passed: false, best: 0, attempts: 0 });
 const unitUnlocked = u => u.n === 1 || !!(S.tests[UNITS[u.n - 2].test] || {}).passed;
@@ -2193,7 +2706,7 @@ function renderPath() {
     });
     ue.appendChild(pw); v.appendChild(ue);
   });
-  v.appendChild(el(`<div class="soon">${mascot('think')}<div><b style="color:var(--ink)">More units coming soon</b><div class="small" style="margin-top:3px">Next up: real-world components, capacitors, inductors and AC.</div></div></div>`));
+  v.appendChild(el(`<div class="soon">${mascot('think')}<div><b style="color:var(--ink)">Next on the roadmap</b><div class="small" style="margin-top:3px">Capacitors &amp; AC, transistors and analog circuits, digital logic, microcontrollers, then PCB design.</div></div></div>`));
 }
 function openPop(pw, n, x, y, u) {
   $$('.pop').forEach(p => p.remove());
@@ -2352,7 +2865,7 @@ function flashcardHTML(id, i, n) {
   const c = CARDS[id];
   return `${n > 1 ? `<div class="dots">${Array.from({ length: n }, (_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>` : ''}
   <div class="fc" id="fc" role="button" tabindex="0" aria-label="Flashcard: ${esc(c.term)}. Tap to flip.">
-    <div class="in"><div class="face front">${CARDART[c.art]()}<div class="term">${c.term}</div><div class="hint">Tap to flip</div></div>
+    <div class="in"><div class="face front">${(CARDART[c.art] || CARDART.bbbug)()}<div class="term">${c.term}</div><div class="hint">Tap to flip</div></div>
     <div class="face back"><div class="term">${c.term}</div><div>${c.def}</div></div></div></div>`;
 }
 function renderCards() {
@@ -3075,6 +3588,90 @@ RENDER.sim_thev = (step, st) => {
   upd();
   return { ready: true, check: () => Math.abs(vth - VT) < .01 && Math.abs(rth - RT) < .01, answer: step.answer || `V_Th = ${fx(VT)} V, R_Th = ${fx(RT)} kΩ`, picked: () => `V_Th = ${fx(vth)} V, R_Th = ${fx(rth)} kΩ`, lock() { $$('input', st).forEach(i => i.disabled = true); } };
 };
+/* ---------- Units 4-6: interactive breadboard exercise ----------
+   modes: holes (tap connected holes) · place (plug in parts) · fix (tap the faulty part)
+          toggle (press buttons / flip switches) · meter (place probes) · slider (turn a pot / change light) · view */
+const BBKIND = { wire: 'jumper wire', res: 'resistor', led: 'LED', btn: 'pushbutton', sw: 'switch', pot: 'potentiometer', ldr: 'LDR' };
+function bbLedSummary(parts, sol) {
+  return parts.filter(p => p.kind === 'led').map(p => { const s = ledState(sol, p.id); return `${p.label || 'LED'}: ${s === 'burnt' ? '<b>burned out!</b>' : s === 'lit' ? 'lit' + ((sol.I[p.id] || 0) > .03 ? ' (too bright!)' : '') : 'dark'}`; }).join(' · ') || (sol.short ? 'Short circuit!' : '');
+}
+RENDER.sim_bb2 = (step, st, ready) => {
+  qhead(step, st); if (step.art) st.appendChild(artEl(step.art));
+  const o = { volts: step.volts, split: step.split, strips: step.strips, bottom: step.bottom, aria: step.aria };
+  const parts = JSON.parse(JSON.stringify(step.parts || [])), mode = step.mode || 'view';
+  const spec = mode === 'place' ? [].concat(step.place).map(x => Object.assign({}, x)) : [];
+  let locked = false, sel = [], placed = [], legs = [], picked = null, touched = false;
+  const probes = { red: step.red || null, black: step.black || null }; let nextP = probes.red ? 'black' : 'red';
+  const box = simBox(st, ''), say = statusEl(st, '');
+  const all = () => parts.concat(placed);
+  const legLbl = k => k === 'led' ? ['its + leg (anode: the long leg)', 'its − leg (cathode: the short leg, flat side)'] : ['one end', 'the other end'];
+  let bar = null;
+  if (mode === 'place' || mode === 'meter') {
+    bar = el(`<div class="simbar"><button class="btn ghost" style="width:auto;padding:8px 16px;font-size:14px" id="bbundo">${mode === 'place' ? 'Undo' : 'Reset probes'}</button></div>`); st.appendChild(bar);
+    $('#bbundo', bar).onclick = () => { if (locked) return; SFX.tap(); if (mode === 'place') { if (legs.length) legs = []; else placed.pop(); ready(false); } else { probes.red = step.red || null; probes.black = step.black || null; nextP = probes.red ? 'black' : 'red'; ready(false); } draw(); };
+  }
+  let sl = null;
+  if (mode === 'slider') {
+    const S2 = step.slider, n = S2.values ? S2.values.length - 1 : null, p0 = parts.find(p => p.id === S2.part);
+    const start = S2.values ? Math.max(0, S2.values.indexOf(p0[S2.prop])) : p0[S2.prop];
+    sl = el(`<div class="rangebox"><div class="v"></div><input class="range" type="range" min="${S2.values ? 0 : S2.min}" max="${S2.values ? n : S2.max}" step="${S2.values ? 1 : S2.step}" value="${start}" aria-label="${S2.label}"><div class="ticks"><span>${S2.lo || ''}</span><span>${S2.hi || ''}</span></div></div>`); st.appendChild(sl);
+    $('input', sl).oninput = e => { const v = +e.target.value; p0[S2.prop] = S2.values ? S2.values[v] : v; touched = true; ready(true); draw(); };
+  }
+  const reading = sol => (probes.red && probes.black) ? sol.v(probes.red) - sol.v(probes.black) : null;
+  function status(sol) {
+    if (mode === 'holes') return sel.length ? `Selected: ${sel.map(bbName).join(', ')}${(step.need || 1) > 1 ? ` (${sel.length}/${step.need})` : ''}` : (step.prompt || 'Tap a hole');
+    if (mode === 'place') { const cur = spec[placed.length]; if (cur) return `Place the ${cur.label || BBKIND[cur.kind]}: tap a hole for ${legLbl(cur.kind)[legs.length]}`; return 'Placed! ' + bbLedSummary(all(), sol); }
+    if (mode === 'fix') return picked ? 'Selected: ' + (parts.find(p => p.id === picked).name || BBKIND[parts.find(p => p.id === picked).kind]) : 'Tap the part that is wrong';
+    if (mode === 'meter') { const r = reading(sol); return r === null ? `Tap a hole for the ${nextP} probe` : `Meter reads <b>${(Math.abs(r) < .005 ? 0 : r).toFixed(2)} V</b>`; }
+    if (mode === 'slider') { const t = step.readout ? step.readout(sol, all()) : ''; $('.v', sl).innerHTML = step.slider.fmt(parts.find(p => p.id === step.slider.part)[step.slider.prop]); return t || bbLedSummary(all(), sol); }
+    if (mode === 'toggle') return bbLedSummary(all(), sol) || 'Tap a button or switch';
+    return step.prompt || 'Tap any hole to see what it connects to';
+  }
+  function draw() {
+    const P = all().concat(legs.length ? [] : []), sol = bbSolve(P, o);
+    const marks = [];
+    if (step.ref) marks.push({ h: step.ref, k: 'ref' });
+    sel.forEach(h => marks.push({ h, k: locked ? (okHole(h) ? 'ok' : 'bad') : 'sel' }));
+    legs.forEach(h => marks.push({ h, k: 'sel' }));
+    (step.marks || []).forEach(m => marks.push(m));
+    box.innerHTML = bbSVG(P, Object.assign({}, o, { blind: step.blind && !locked, holesTap: ['holes', 'place', 'meter', 'view'].includes(mode), partTap: ['fix', 'toggle'].includes(mode), marks, probes }), sol);
+    say(status(sol), sol.short ? 'bad' : '');
+    $$('.bbh', box).forEach(c => c.onclick = () => tapHole(c.dataset.h));
+    $$('.bbp', box).forEach(g => g.onclick = () => tapPart(g.dataset.id));
+    if (mode === 'fix' && picked) { const r = $(`.bbp[data-id="${picked}"] .hl`, box); if (r) { r.setAttribute('stroke-opacity', .9); r.setAttribute('fill-opacity', .1); } }
+    return sol;
+  }
+  const okHole = h => step.okHole ? step.okHole(h) : (h !== step.ref && bbNet(h, o) === bbNet(step.target || step.ref, o));
+  function tapHole(h) {
+    if (locked) return;
+    if (mode === 'view') { SFX.tap(); const same = bbHoles().filter(x => bbNet(x, o) === bbNet(h, o)); say(`${bbName(h)} is connected to ${same.length - 1} other hole${same.length === 2 ? '' : 's'}${bbParse(h).rail ? ' along the rail' : ' in the same row (' + same.map(x => x.slice(0, 1)).join(', ') + ')'}`); return; }
+    if (mode === 'holes') { const i = sel.indexOf(h); if (i >= 0) sel.splice(i, 1); else { if (sel.length >= (step.need || 1)) sel.shift(); sel.push(h); } SFX.tap(); ready(sel.length === (step.need || 1)); draw(); return; }
+    if (mode === 'place') {
+      const cur = spec[placed.length]; if (!cur || legs.includes(h)) return; legs.push(h); SFX.drop();
+      if (legs.length === 2) { placed.push(Object.assign({}, cur, { a: legs[0], b: legs[1] })); legs = []; if (placed.length === spec.length) ready(true); }
+      draw(); return;
+    }
+    if (mode === 'meter') { probes[nextP] = h; nextP = nextP === 'red' ? 'black' : 'red'; SFX.drop(); touched = true; ready(!!(probes.red && probes.black)); draw(); }
+  }
+  function tapPart(id) {
+    if (locked) return; const p = parts.find(x => x.id === id); if (!p) return;
+    if (mode === 'fix') { picked = id; SFX.tap(); ready(true); draw(); }
+    if (mode === 'toggle' && (p.kind === 'btn' || p.kind === 'sw')) { p.on = !p.on; touched = true; SFX.toggle(); ready(true); draw(); }
+  }
+  draw();
+  const check = () => {
+    const sol = bbSolve(all(), o);
+    if (mode === 'holes') return sel.length === (step.need || 1) && sel.every(okHole);
+    if (mode === 'place') return placed.length === spec.length && (step.ok ? step.ok(sol, all()) : all().filter(p => p.kind === 'led').every(p => ledState(sol, p.id) === 'lit' && sol.I[p.id] <= .03));
+    if (mode === 'fix') return picked === step.answerId;
+    if (mode === 'meter') { if (!probes.red || !probes.black) return false; return step.want ? sol.net(probes.red) === sol.net(step.want[0]) && sol.net(probes.black) === sol.net(step.want[1]) : step.ok(reading(sol)); }
+    if (mode === 'toggle' || mode === 'slider') return step.ok(sol, all());
+    return true;
+  };
+  return { ready: mode === 'view' || mode === 'toggle' && step.readyNow, check, answer: step.answer,
+    picked: () => mode === 'fix' ? picked : mode === 'holes' ? sel.map(bbName).join(', ') : null,
+    lock() { locked = true; draw(); } };
+};
 /* =========================================================
    ASK SPRIG: help chat
    Mode 1: offline helper built from the app's own content (default)
@@ -3414,6 +4011,79 @@ const GAMES = [
         ...numOpts(ans, [V, d1 + d2, V - d1], ' V'), fb: `${V} = ${d1} + ${d2} + ? → ? = ${ans} V.` };
     } },
 ];
+/* v4: 2 games per new unit. Units 1-3 mix the old generators; Units 4-6 are new breadboard games. */
+{
+  const OG = Object.fromEntries(GAMES.map(g => [g.id, g]));
+  const mix = (id, u, name, blurb, src) => ({ id, u, name, blurb, gen() { const g = OG[pick(src)], it = g.gen(); it.fixed = !!g.fixed; return it; } });
+  const E12 = [100, 150, 220, 270, 330, 390, 470, 560, 680, 820, 1000, 1200, 1500];
+  const up = r => E12.find(v => v >= r - 1e-9) || 1500;
+  const shiftH = (h, k) => h.replace(/\d+$/, n => +n + k);
+  const LITV = [
+    [p => p, 'Complete loop with a resistor: it lights.'],
+    [p => p.map(x => x.id === 'd1' ? Object.assign({}, x, { a: x.b, b: x.a }) : x), 'The LED is backwards, so it blocks the current.'],
+    [p => p.filter(x => x.id !== 'j2'), 'No ground jumper: the loop never gets back to −.'],
+    [p => p.map(x => x.id === 'd1' ? Object.assign({}, x, { a: shiftH(x.a, -1) }) : x), 'The LED\'s + leg is one row off, so the loop is open.'],
+    [p => p.map(x => x.id === 'r1' ? Object.assign({}, x, { b: 'h' + x.b.slice(1) }) : x), 'The resistor crosses the gap into the f–j strip, away from the LED.'],
+  ];
+  const BUGS = [
+    ['LED dark. 9 V across the LED, 0 V across the resistor.', 'The LED is backwards (or dead)'],
+    ['The battery gets hot and the LED is dark.', 'A short from + to −'],
+    ['The LED glows, but only very dimly.', 'The resistor value is far too high'],
+    ['The LED flashed brightly, then went dark for good.', 'No current-limiting resistor'],
+    ['Nothing on the right half of the board gets power.', 'A split rail that isn\'t bridged'],
+    ['LED dark. The meter reads 0 V everywhere, even rail to rail.', 'No power reaching the rails'],
+    ['LED dark. The row with its − leg has nothing else in it.', 'A missing ground jumper'],
+    ['Removing a resistor changes nothing at all.', 'Both its legs are in the same strip'],
+  ];
+  const NEWG = [
+    mix('G1', 'U1', 'Charge & Conductor Rush', 'Conductor or insulator? Attract or repel? Fast!', ['g1', 'g2']),
+    mix('G2', 'U1', 'Prefix & Meter Dash', 'Convert prefixes and predict meter readings.', ['g3', 'g4']),
+    mix('G3', 'U2', 'Ohm & Power Sprint', 'Solve V = I × R and pick safe power ratings.', ['g5', 'g6']),
+    mix('G4', 'U2', 'Network Builder', 'Series or parallel? Hit the target resistance.', ['g7', 'g8']),
+    Object.assign({}, OG.g9, { id: 'G5', u: 'U3' }),
+    mix('G6', 'U3', 'Circuit Detective', 'Spot schematic errors, balance junctions and loops.', ['g10', 'g11', 'g12']),
+    { id: 'G7', u: 'U4', name: 'Hole Hopper', blurb: 'Are the two glowing holes connected?', fixed: true, gen() {
+      const o = { split: Math.random() < .3 }; let a, b;
+      if (o.split && Math.random() < .5) { const r = pick(['T+', 'T-']); a = r + (1 + Math.floor(Math.random() * 7)); b = r + (8 + Math.floor(Math.random() * 8)); }
+      else {
+        a = pick('abcdefghij'.split('')) + (2 + Math.floor(Math.random() * (BBC - 2))); const p = bbParse(a), half = 'abcde'.includes(p.r) ? 'abcde' : 'fghij', roll = Math.random();
+        b = roll < .45 ? pick(half.replace(p.r, '').split('')) + p.c : roll < .7 ? pick((half === 'abcde' ? 'fghij' : 'abcde').split('')) + p.c : p.r + (p.c + pick([-1, 1]));
+      }
+      const same = bbNet(a, o) === bbNet(b, o);
+      return { q: `Are <b>${bbName(a)}</b> and <b>${bbName(b)}</b> connected?`, art: bbSVG([], Object.assign({ marks: [{ h: a, k: 'ref' }, { h: b, k: 'ref' }] }, o)), opts: ['Connected', 'Not connected'], a: same ? 0 : 1,
+        fb: same ? 'Same 5-hole strip (or the same rail half): connected.' : 'Different strips, across the gap, or across a rail break: not connected.' };
+    } },
+    { id: 'G8', u: 'U4', name: 'Will It Light?', blurb: 'Read the breadboard: lit or dark?', fixed: true, gen() {
+      const v = Math.random() < .4 ? LITV[0] : pick(LITV.slice(1)), k = Math.floor(Math.random() * 8);
+      const parts = v[0](STD()).map(p => Object.assign({}, p, { a: shiftH(p.a, k), b: shiftH(p.b, k) }));
+      const lit = ledState(bbSolve(parts, {}), 'd1') === 'lit';
+      return { q: 'Power on. Will the LED light?', art: bbSVG(parts, { blind: true }), opts: ['Lights up', 'Stays dark'], a: lit ? 0 : 1, fb: v[1] };
+    } },
+    { id: 'G9', u: 'U5', name: 'Resistor Picker', blurb: 'Pick the standard resistor for each LED.', gen() {
+      const Vs = pick([5, 9, 12]), [col, Vf] = pick([['red', 2], ['green', 2.2], ['blue', 3]]), I = pick([10, 15, 20]), r = (Vs - Vf) / (I / 1000), ans = up(r), i = E12.indexOf(ans);
+      return { q: `${Vs} V supply, ${col} LED (${Vf} V), ${I} mA. Smallest safe standard resistor?`, art: '', ...numOpts(ans, [up(Vs / (I / 1000)), E12[Math.max(0, i - 1)], E12[Math.min(E12.length - 1, i + 2)]], ' Ω'), fb: `(${Vs} − ${Vf}) ÷ ${I / 1000} A = ${gn(r.toFixed(0))} Ω → round up to ${ans} Ω.` };
+    } },
+    { id: 'G10', u: 'U5', name: 'Power Planner', blurb: 'LED strings, branch currents and battery life.', gen() {
+      const t = Math.random();
+      if (t < .34) { const N = pick([2, 3]), Vs = pick([9, 12]), I = pick([10, 20]), R = (Vs - 2 * N) / (I / 1000); return { q: `${N} red LEDs (2 V each) in series on ${Vs} V at ${I} mA. Resistor?`, art: '', ...numOpts(R, [Vs / (I / 1000), (Vs - 2) / (I / 1000), R * 2], ' Ω'), fb: `(${Vs} − ${2 * N}) ÷ ${I / 1000} = ${gn(R)} Ω. Series forward voltages add.` }; }
+      if (t < .67) { const N = pick([2, 3, 4, 5]), I = pick([8, 10, 12, 15, 20]); return { q: `${N} parallel LED branches at ${I} mA each. Battery current?`, art: '', ...numOpts(N * I, [I, N * I / 2, I + N], ' mA'), fb: `Parallel currents add: ${N} × ${I} = ${N * I} mA.` }; }
+      const cap = pick([500, 1000, 2000, 2500]), I = pick([20, 25, 40, 50, 100]), h = cap / I;
+      return { q: `A ${cap} mAh battery powers a circuit drawing ${I} mA. Runtime?`, art: '', ...numOpts(h, [h * 10, h / 10, cap * I / 1000], ' h'), fb: `${cap} ÷ ${I} = ${gn(h)} hours.` };
+    } },
+    { id: 'G11', u: 'U6', name: 'Bug Hunt', blurb: 'Read the symptom, name the cause.', gen() {
+      const b = pick(BUGS), others = shuffle(BUGS.filter(x => x !== b)).slice(0, 2).map(x => x[1]);
+      return { q: b[0], art: CARDART.bbbug(), opts: [b[1], ...others], a: 0, fb: `Cause: ${b[1].toLowerCase()}.` };
+    } },
+    { id: 'G12', u: 'U6', name: 'Divider Dial', blurb: 'Pots and light sensors: find V_out.', gen() {
+      const t = Math.random(), Vs = pick([5, 9, 12]);
+      if (t < .4) { const R1 = pick([1, 2, 3, 4, 5, 10]), R2 = pick([1, 2, 3, 5, 6, 10]), v = +(Vs * R2 / (R1 + R2)).toFixed(2); return { q: `${Vs} V divider: ${R1} kΩ on top, ${R2} kΩ on the bottom. V_out?`, art: '', ...numOpts(v, [+(Vs * R1 / (R1 + R2)).toFixed(2), Vs / 2, Vs], ' V'), fb: `${Vs} × ${R2} ÷ (${R1} + ${R2}) = ${gn(v)} V.` }; }
+      if (t < .75) { const [lt, L] = pick([['bright', 1], ['dim', 10], ['dark', 40]]), v = +(Vs * L / (10 + L)).toFixed(2); return { q: `${Vs} V: 10 kΩ on top, LDR on the bottom. It\'s ${lt} (LDR = ${L} kΩ). V_out?`, art: CARDART.bbldr(), ...numOpts(v, [+(Vs * 10 / (10 + L)).toFixed(2), Vs, Vs / 2], ' V'), fb: `${Vs} × ${L} ÷ (10 + ${L}) = ${gn(v)} V.` }; }
+      const p = pick([10, 20, 25, 40, 50, 75, 80, 90]), v = +(Vs * (100 - p) / 100).toFixed(2);
+      return { q: `${Vs} V across a pot. The wiper is ${p}% of the way from the + end. Wiper voltage?`, art: CARDART.bbpot(), ...numOpts(v, [+(Vs * p / 100).toFixed(2), Vs / 2, Vs], ' V'), fb: `Below the wiper is ${100 - p}% of the track: ${Vs} × ${(100 - p) / 100} = ${gn(v)} V.` };
+    } },
+  ];
+  GAMES.splice(0, GAMES.length, ...NEWG);
+}
 /* ---------- state ---------- */
 const gstate = () => { if (!S.games || typeof S.games !== 'object') S.games = {}; S.games.best = S.games.best || {}; if (!S.games.xd || S.games.xd.d !== today()) S.games.xd = { d: today(), xp: 0 }; return S.games; };
 const gameUnlocked = g => !!S.done[unitOf(g.u).lessons[0]];
@@ -3445,8 +4115,8 @@ function quitGame() { if (GM) clearInterval(GM.tick); GM = null; $('.lesson.game
 const gScore = () => { $('#gscore').textContent = GM.score + (GM.combo >= 3 ? ` ×${GM.combo}` : ''); };
 function nextQ() {
   if (!GM) return; const it = GM.g.gen(), st = $('#gstage');
-  const order = GM.g.fixed ? it.opts.map((_, i) => i) : shuffle(it.opts.map((_, i) => i));
-  st.innerHTML = `<div class="kicker">${GM.g.name}</div><h2 class="q">${it.q}</h2>${it.art ? `<div class="art">${it.art}</div>` : ''}<div class="opts ${GM.g.fixed ? 'grid2' : ''}">${order.map(i => `<button class="opt ${GM.g.fixed ? 'big' : ''}" data-oi="${i}"><span>${it.opts[i]}</span></button>`).join('')}</div><div id="gfb" class="gfb"></div>`;
+  const fx = it.fixed ?? GM.g.fixed, order = fx ? it.opts.map((_, i) => i) : shuffle(it.opts.map((_, i) => i));
+  st.innerHTML = `<div class="kicker">${GM.g.name}</div><h2 class="q">${it.q}</h2>${it.art ? `<div class="art">${it.art}</div>` : ''}<div class="opts ${fx ? 'grid2' : ''}">${order.map(i => `<button class="opt ${fx ? 'big' : ''}" data-oi="${i}"><span>${it.opts[i]}</span></button>`).join('')}</div><div id="gfb" class="gfb"></div>`;
   GM.lock = false;
   $$('.opt', st).forEach(b => b.onclick = () => {
     if (!GM || GM.lock) return; GM.lock = true; const ok = +b.dataset.oi === it.a;
@@ -3633,7 +4303,7 @@ function initGoal() {
    ========================================================= */
 ICON.token = (c = '') => `<svg viewBox="0 0 28 28" aria-hidden="true" class="${c}"><circle cx="14" cy="14" r="11" fill="#FFC94D" stroke="#E3A31A" stroke-width="2.5"/><path d="M15.5 7.5 10 15h4l-1.5 5.5L18 13h-4z" fill="#fff" stroke="#E3A31A" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
 ICON.shop = () => `<svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 11h18l-1.6 11.2a2 2 0 0 1-2 1.8H8.6a2 2 0 0 1-2-1.8z" fill="currentColor"/><path d="M9.5 11V9a4.5 4.5 0 0 1 9 0v2" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="14" cy="17" r="2.2" fill="#fff"/></svg>`;
-const TOK_UNIT = { u1: 10, u2: 10, u3: 12, u4: 12, u5: 15, u6: 15 }, TOK_UNIT_OLD = { u1: 5, u2: 5, u3: 6, u4: 6, u5: 8, u6: 8 }, TOK_TEST = 15, TOK_PRACTICE = 1, TOK_PRACTICE_DAY = 5, TOK_PLACED = 10, XP_PLACED = 20;
+const TOK_UNIT = { U1: 10, U2: 10, U3: 12, U4: 12, U5: 15, U6: 15 }, TOK_TEST = 15, TOK_PRACTICE = 1, TOK_PRACTICE_DAY = 5, TOK_PLACED = 10, XP_PLACED = 20;
 function ensureShop() {
   if (typeof S.tokens !== 'number' || !isFinite(S.tokens)) S.tokens = 0;
   if (!S.tokGranted || typeof S.tokGranted !== 'object') S.tokGranted = {};
@@ -3649,8 +4319,6 @@ function ensureShop() {
     });
   }
   if (!BODIES[S.avatar.eq.body]) S.avatar.eq.body = 'battery';
-  // one-time top-up: lessons already paid at the old 5/6/8 rate get the difference
-  if (!S.tokMig2) { S.tokMig2 = 1; UNITS.forEach(u => u.lessons.forEach(l => { if (S.tokGranted[l] && S.done[l] && !S.done[l].placed) S.tokens += TOK_UNIT[u.id] - TOK_UNIT_OLD[u.id]; })); }
   // retroactive grant for lessons/tests completed before tokens existed (placed-out ones get the placement bonus instead)
   UNITS.forEach(u => {
     u.lessons.forEach(l => { const d = S.done[l]; if (d && !d.placed && !S.tokGranted[l]) { S.tokGranted[l] = 1; S.tokens += TOK_UNIT[u.id]; } });
@@ -3666,13 +4334,21 @@ function lessonTokens(lid) {
 function testTokens(tid) { if (S.tokGranted[tid]) return 0; S.tokGranted[tid] = 1; S.tokens += TOK_TEST; return TOK_TEST; }
 
 /* ---------- placement ---------- */
-const ADV = {
+const ADV_OLD = {
   u1: [['A plastic comb rubbed on hair picks up extra electrons. Its charge is now…', ['Negative', 'Positive', 'Still neutral']], ['Why is a bird sitting on ONE power line safe?', ['Both feet are at nearly the same voltage, so almost no current flows through it', 'Bird feet are perfect insulators', 'Power lines carry no current']], ['In a copper wire carrying current, what actually moves?', ['Free electrons drifting slowly toward the + terminal', 'Protons flowing toward the − terminal', 'Atoms of copper sliding along the wire']]],
   u2: [['A steady 0.5 A flows for 2 minutes. How much charge passes a point?', ['60 C', '1 C', '30 C']], ['0.047 MΩ is the same as…', ['47 kΩ', '470 kΩ', '4.7 kΩ']], ['To measure the current through a bulb, the meter goes…', ['In series, so the current flows through it', 'In parallel, across the bulb', 'Across the battery']]],
   u3: [['A 12 V heater draws 3 A. Its resistance and power are…', ['4 Ω and 36 W', '36 Ω and 4 W', '4 Ω and 12 W']], ['You double the voltage across a fixed resistor. Its power becomes…', ['4 times as much', '2 times as much', 'The same']], ['A 1 kΩ resistor has 10 V across it. What power does it use?', ['0.1 W', '10 W', '0.01 W']]],
   u4: [['Three 30 Ω resistors in parallel, then in series with 10 Ω. Total?', ['20 Ω', '100 Ω', '40 Ω']], ['12 V divider: R1 = 8 kΩ on top, R2 = 4 kΩ below. V_out across R2?', ['4 V', '8 V', '6 V']], ['Two identical bulbs on one battery go from series to parallel. The battery current becomes…', ['4 times as much', '2 times as much', 'The same']]],
   u5: [['The net label "VCC" appears at two places with no wire drawn between them. They are…', ['Connected', 'Not connected', 'Connected only through ground']], ['On a parts list, Q3 is most likely a…', ['Transistor', 'Capacitor', 'Crystal']], ['On an LED symbol, the cathode (−) is…', ['The side with the bar', 'The side with the flat base of the triangle', 'Whichever leg is longer']]],
   u6: [['12 V drives 2 kΩ, 3 kΩ and 1 kΩ in series. Voltage across the 3 kΩ?', ['6 V', '4 V', '3 V']], ['Node X: 6 kΩ up to 12 V, and both 3 kΩ and 6 kΩ down to ground. V_X?', ['3 V', '4 V', '6 V']], ['A circuit reads 10 V with nothing connected and 5 V with a 5 kΩ load. R_Th is…', ['5 kΩ', '10 kΩ', '2.5 kΩ']]],
+};
+const ADV = {
+  U1: [ADV_OLD.u1[1], ADV_OLD.u2[0], ADV_OLD.u2[1]],
+  U2: [ADV_OLD.u3[0], ADV_OLD.u4[0], ADV_OLD.u4[1]],
+  U3: [ADV_OLD.u5[0], ADV_OLD.u6[0], ADV_OLD.u6[2]],
+  U4: [['On a breadboard, holes c8 and h8 are…', ['Not connected: the center gap splits row 8', 'Connected: same row number', 'Connected through the + rail']], ['A DIP chip straddles the center gap so that…', ['Each pin gets its own strip', 'It can reach both rails', 'It stays cool']], ['An LED with its long leg toward − and short leg toward + will…', ['Stay dark: it is backwards', 'Light normally', 'Burn out']]],
+  U5: [['9 V, red LED (2 V), 15 mA. Best standard resistor?', ['470 Ω', '330 Ω', '1 kΩ']], ['Three parallel LED branches at 12 mA from a 1800 mAh pack. Runtime?', ['About 50 hours', 'About 150 hours', 'About 5 hours']], ['To measure the current through an LED, the meter goes…', ['In series, by breaking the loop', 'Across the LED', 'Across the battery']]],
+  U6: [['LED dark; 9 V across the LED, 0 V across its resistor. Most likely?', ['The LED is backwards or dead', 'The resistor is shorted', 'The battery is flat']], ['9 V divider: 10 kΩ on top, LDR (40 kΩ in the dark) on the bottom. V_out in the dark?', ['7.2 V', '1.8 V', '4.5 V']], ['Dimmer: 9 V, red LED (2 V), 220 Ω fixed + 1 kΩ pot. Lowest current?', ['About 5.7 mA', 'About 32 mA', 'About 7 mA']]],
 };
 function placementBank(level) {
   return UNITS.map(u => level === 'advanced'
