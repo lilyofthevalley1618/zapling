@@ -2582,68 +2582,85 @@ const activeToday = () => S.last === today();
    ========================================================= */
 /* ---------- sound module: everything synthesized with Web Audio, no files ---------- */
 const SND = { ctx: null, out: null, tick: 0, primed: false };
+// iPhone: 'playback' keeps sounds playing with the ring/silent switch on silent (Safari 16.4+)
+function audioSession() { try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) { } }
+// master bus: voices → master gain → compressor (glue + loudness) → makeup gain → brick-wall limiter → soft clip ≤ −1 dBFS
+function masterChain(c) {
+  const m = c.createGain(); m.gain.value = 1;
+  const comp = c.createDynamicsCompressor(); comp.threshold.value = -20; comp.knee.value = 8; comp.ratio.value = 4; comp.attack.value = .003; comp.release.value = .15;
+  const mk = c.createGain(); mk.gain.value = 2.2;
+  const lim = c.createDynamicsCompressor(); lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = .001; lim.release.value = .06;
+  const sc = c.createWaveShaper(), n = 2048, cv = new Float32Array(n), CEIL = .89; // .89 ≈ −1 dBFS
+  for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; cv[i] = CEIL * Math.tanh(x * 1.6 / CEIL) / Math.tanh(1.6 / CEIL); }
+  sc.curve = cv; sc.oversample = '2x';
+  m.connect(comp); comp.connect(mk); mk.connect(lim); lim.connect(sc); sc.connect(c.destination);
+  return m;
+}
 function audio() {
   if (!S.sound) return null;
   try {
     if (!SND.ctx) {
       const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
-      SND.ctx = new C(); const comp = SND.ctx.createDynamicsCompressor();
-      SND.out = SND.ctx.createGain(); SND.out.gain.value = .5; // moderate master volume
-      SND.out.connect(comp); comp.connect(SND.ctx.destination);
+      audioSession(); SND.ctx = new C(); SND.out = masterChain(SND.ctx);
     }
     if (SND.ctx.state !== 'running') { const p = SND.ctx.resume(); p && p.catch && p.catch(() => { }); }
     return SND.ctx;
   } catch (e) { return null; }
 }
-// one enveloped oscillator: freq, start offset (s), length (s), wave, peak, {to: glide target, a: attack}
+// one enveloped oscillator: freq, start offset (s), length (s), wave, peak, {to: glide target, a: attack, lp: lowpass Hz}
 function tone(f, at, dur, type = 'sine', vol = .1, o = {}) {
   const c = audio(); if (!c) return;
   const t = c.currentTime + .015 + at, os = c.createOscillator(), g = c.createGain();
   os.type = type; os.frequency.setValueAtTime(f, t); if (o.to) os.frequency.exponentialRampToValueAtTime(o.to, t + dur * .9);
-  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + (o.a || .006)); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-  os.connect(g); g.connect(SND.out); os.start(t); os.stop(t + dur + .05);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + (o.a || .003)); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  let node = os; if (o.lp) { const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = o.lp; os.connect(lp); node = lp; }
+  node.connect(g); g.connect(SND.out); os.start(t); os.stop(t + dur + .05);
 }
-// filtered noise burst (whoosh / thunk texture)
-function hiss(at, dur, vol, f0, f1, q = 1.2) {
+// filtered noise burst: whoosh / thunk texture, or a 2–5 ms click transient for snap
+function hiss(at, dur, vol, f0, f1, q = 1.2, atk) {
   const c = audio(); if (!c) return;
   const t = c.currentTime + .015 + at, n = Math.ceil(c.sampleRate * dur), buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
   for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
   const src = c.createBufferSource(), bp = c.createBiquadFilter(), g = c.createGain(); src.buffer = buf;
   bp.type = 'bandpass'; bp.Q.value = q; bp.frequency.setValueAtTime(f0, t); bp.frequency.exponentialRampToValueAtTime(f1, t + dur);
-  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + dur * .35); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + (atk || dur * .35)); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
   src.connect(bp); bp.connect(g); g.connect(SND.out); src.start(t); src.stop(t + dur + .05);
 }
-const bell = (f, at, dur, vol) => { tone(f, at, dur, 'sine', vol); tone(f * 2, at, dur * .6, 'sine', vol * .22); tone(f * 3.01, at, dur * .3, 'sine', vol * .08); };
-const sparkle = (at, n, vol = .03) => { for (let i = 0; i < n; i++) tone([2093, 2349, 2637, 3136, 3520][(Math.random() * 5) | 0], at + i * .07 + Math.random() * .03, .16, 'sine', vol); };
+const snap = (at, vol, f = 3200) => hiss(at, .012, vol, f, f * .8, .9, .002);
+// layered bell/marimba note: sine fundamental + triangle octave + sine octave-and-a-fifth + click transient, 3 ms attack, quick decay
+const bell = (f, at, dur, vol) => { tone(f, at, dur, 'sine', vol); tone(f * 2, at, dur * .55, 'triangle', vol * .32); tone(f * 3, at, dur * .3, 'sine', vol * .16); snap(at, vol * .35); };
+const mallet = (f, at, dur, vol) => { tone(f, at, dur, 'sine', vol); tone(f * 2, at, dur * .4, 'square', vol * .07, { lp: 5000 }); tone(f * 3, at, dur * .2, 'sine', vol * .14); snap(at, vol * .4, 2600); };
+const sparkle = (at, n, vol = .1) => { for (let i = 0; i < n; i++) tone([2093, 2349, 2637, 3136, 3520][(Math.random() * 5) | 0], at + i * .06 + Math.random() * .025, .14, 'sine', vol); };
 const fanfare = (notes, gap, chord, cAt, cLen, vol, sp) => {
-  notes.forEach((f, i) => bell(f, i * gap, .3, vol));
-  chord.forEach(f => { tone(f, cAt, cLen, 'triangle', vol * .55, { a: .02 }); tone(f * 2, cAt, cLen * .7, 'sine', vol * .2, { a: .02 }); });
-  sparkle(cAt + .05, sp);
+  notes.forEach((f, i) => mallet(f, i * gap, .24, vol));
+  chord.forEach(f => { tone(f, cAt, cLen, 'sine', vol * .42, { a: .004 }); tone(f * 2, cAt, cLen * .6, 'triangle', vol * .14, { a: .004 }); });
+  snap(cAt, vol * .4); sparkle(cAt + .06, sp, vol * .3);
 };
 const SFX = {
-  good: () => { bell(784, 0, .22, .12); bell(988, .07, .24, .12); bell(1568, .14, .34, .1); },          // bright rising G–B–G chime
-  bad: () => { tone(196, 0, .2, 'sine', .16, { to: 140, a: .012 }); tone(98, 0, .18, 'triangle', .07, { to: 80 }); }, // soft low bonk
-  tap: () => tone(880, 0, .05, 'sine', .05, { to: 620 }),                                           // tiny pop for select/tap
-  toggle: () => { tone(1900, 0, .018, 'triangle', .03); tone(620, .012, .04, 'sine', .045); },       // switch click
-  drag: () => tone(520, 0, .07, 'sine', .045, { to: 780 }),                                         // pick-up blip
-  drop: () => { tone(240, 0, .11, 'sine', .1, { to: 110 }); hiss(0, .06, .03, 900, 300); },          // soft thunk
-  tick: () => { const n = Date.now(); if (n - SND.tick < 70) return; SND.tick = n; tone(1500, 0, .02, 'sine', .018); }, // throttled slider tick
-  flip: () => hiss(0, .2, .06, 500, 2600, .8),                                                      // card whoosh
-  zap: () => { hiss(0, .12, .08, 3000, 800, .7); tone(1400, 0, .12, 'square', .02, { to: 200 }); },  // static spark
-  coin: () => { tone(988, 0, .08, 'square', .03); tone(1319, .07, .3, 'square', .03); bell(2637, .07, .25, .03); }, // token spend
-  reward: () => { [1319, 1568, 2093].forEach((f, i) => bell(f, i * .08, .25, .06)); sparkle(.22, 4, .022); }, // tokens earned
-  done: () => fanfare([523, 659, 784, 1047], .085, [523, 659, 784, 1047], .36, .8, .1, 6),        // lesson complete (~1.2 s)
-  test: () => { fanfare([392, 523, 659, 784, 1047, 1319], .075, [392, 523, 659, 784, 1047], .48, 1, .1, 9); tone(131, .48, 1, 'sine', .08, { a: .03 }); }, // unit test pass (~1.5 s)
-  level: () => fanfare([523, 784, 659, 1047, 784, 1319], .07, [659, 784, 1047, 1319], .44, .85, .09, 8), // level up / goal reached
+  good: () => { mallet(1047, 0, .16, .55); mallet(1568, .085, .34, .6); },                               // quick rising fifth: two bright notes
+  bad: () => { tone(523, 0, .14, 'triangle', .55, { to: 494, lp: 2600 }); tone(1046, 0, .1, 'sine', .14); snap(0, .12, 1800);  // friendly two-note descending "bwomp"
+    tone(392, .13, .26, 'triangle', .6, { to: 349, lp: 2200 }); tone(784, .13, .18, 'sine', .16); },
+  tap: () => { tone(1250, 0, .045, 'sine', .22, { to: 950 }); snap(0, .1, 3500); },                    // short pop for select/tap
+  toggle: () => { snap(0, .2, 4000); tone(1900, 0, .02, 'triangle', .1); tone(1100, .012, .04, 'sine', .16); }, // switch click
+  drag: () => { tone(800, 0, .07, 'sine', .2, { to: 1250 }); snap(0, .07); },                          // pick-up blip
+  drop: () => { tone(700, 0, .09, 'sine', .24, { to: 420 }); hiss(0, .05, .12, 1400, 600, 1, .003); }, // soft thunk (no sub-bass: phones can't play it)
+  tick: () => { const n = Date.now(); if (n - SND.tick < 70) return; SND.tick = n; tone(1800, 0, .022, 'sine', .1); snap(0, .05, 4200); }, // throttled slider tick
+  flip: () => hiss(0, .18, .3, 800, 3000, .8),                                                       // card whoosh
+  zap: () => { hiss(0, .12, .3, 3200, 1200, .7, .002); tone(1600, 0, .12, 'square', .07, { to: 500, lp: 4500 }); }, // static spark
+  coin: () => { mallet(1319, 0, .08, .4); mallet(1976, .065, .3, .45); },                              // token spend
+  reward: () => { [1319, 1568, 2093].forEach((f, i) => bell(f, i * .07, .24, .4)); sparkle(.2, 5, .12); }, // tokens earned
+  done: () => fanfare([1047, 1319, 1568, 2093], .075, [1047, 1319, 1568, 2093], .32, .8, .5, 6),         // lesson complete: rising major arpeggio → held chord + sparkle
+  test: () => fanfare([784, 1047, 1319, 1568, 2093, 2637], .07, [784, 1047, 1319, 1568, 2093], .44, 1, .5, 9), // unit test pass (~1.5 s)
+  level: () => fanfare([1047, 1568, 1319, 2093, 1568, 2637], .065, [1319, 1568, 2093, 2637], .4, .85, .48, 8), // level up / goal reached
 };
 // iOS Safari: audio may only start inside a user gesture, so create/resume on the first one (and prime with a silent buffer)
 ['pointerdown', 'touchend', 'keydown'].forEach(ev => addEventListener(ev, () => {
   if (!S.sound || (SND.primed && SND.ctx && SND.ctx.state === 'running')) return;
-  const c = audio(); if (!c) return;
+  audioSession(); const c = audio(); if (!c) return;
   if (!SND.primed) { try { const s = c.createBufferSource(); s.buffer = c.createBuffer(1, 1, 22050); s.connect(c.destination); s.start(0); SND.primed = true; } catch (e) { } }
 }, { capture: true, passive: true }));
 // returning to the tab (or iOS interruptions) can leave the context suspended
-document.addEventListener('visibilitychange', () => { if (!document.hidden && S.sound && SND.ctx && SND.ctx.state !== 'running') audio(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.sound && SND.ctx && SND.ctx.state !== 'running') { audioSession(); audio(); } });
 addEventListener('input', e => { if (e.target && e.target.type === 'range') SFX.tick(); }, true);
 function setSound(on) { S.sound = on; save(); if (!on && SND.ctx) SND.ctx.suspend().catch(() => { }); renderTop(); if (on) SFX.toggle(); }
 function confetti(count = 150) {
