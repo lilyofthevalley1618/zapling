@@ -382,6 +382,24 @@ body:has(#v-games.on) #askFab{display:none}
 @media (min-width:980px){body:has(#v-games.on) #app{max-width:1060px}.labwrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}.labchat{margin-top:0;position:sticky;top:76px}.labchat .msgs{max-height:420px;min-height:260px}}
 .gover{position:fixed;inset:0;z-index:90;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto;pointer-events:auto}
 .gover .gobox{width:100%;max-width:440px}.gover .btn{touch-action:manipulation;position:relative;z-index:1}
+.labbw{position:relative}
+.labtrash{position:absolute;left:8px;bottom:14px;width:44px;height:44px;border-radius:14px;border:2px solid var(--line);background:#fff;color:#9E99C2;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .12s,background .12s,color .12s;touch-action:none;z-index:2}
+.labtrash svg{width:24px;height:24px}.labtrash.hot{transform:scale(1.3);background:var(--coral);border-color:var(--corald);color:#fff;box-shadow:0 0 0 6px rgba(255,127,110,.25)}
+.labhandles{position:absolute;z-index:3;display:flex;gap:6px;filter:drop-shadow(0 3px 6px rgba(46,42,90,.25))}
+.labhandles button{min-width:44px;height:44px;border-radius:999px;border:2px solid var(--peri);background:#fff;color:var(--perid);font:inherit;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0 10px;touch-action:manipulation}
+.labhandles button svg{width:22px;height:22px}.labhandles button.x{border-color:var(--coral);color:var(--corald);font-size:24px;line-height:1}.labhandles button[hidden],.labhandles[hidden]{display:none}
+.cookrow{display:flex;justify-content:flex-end;margin:8px 14px -12px}
+.cookbtn{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px 5px 9px;font:inherit;font-weight:900;font-size:13.5px;color:var(--perid);cursor:pointer;box-shadow:0 3px 0 var(--line)}
+.cookbtn svg{width:20px;height:20px}
+.cookbook .cbbox{max-width:460px;text-align:left;max-height:88vh;overflow:auto;padding:14px 14px 16px}
+.cbhead{display:flex;align-items:center;gap:8px;margin-bottom:4px;color:var(--perid)}.cbhead svg{width:24px;height:24px}.cbhead b{flex:1;font-size:19px;color:var(--ink)}
+.cblist{display:flex;flex-direction:column;gap:12px}
+.cbcard{border:2px solid var(--line);border-radius:18px;padding:10px;background:var(--bg)}
+.cbt{display:flex;align-items:center;justify-content:space-between;gap:8px}.cbt b{font-size:15.5px}
+.diff{font-size:11.5px;font-weight:900;border-radius:999px;padding:2px 9px}.diff.d0{background:var(--mintl);color:var(--mintd)}.diff.d1{background:var(--sunl);color:#8A5A00}.diff.d2{background:var(--corall);color:var(--corald)}
+.cbprev{margin:6px 0}.cbprev svg{display:block;width:100%;height:auto;max-height:190px}
+.cbblurb{margin:0 0 6px;font-size:14px;font-weight:700}.cbnote{margin:0 0 6px}
+.cbact{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.cbact .btn{padding:9px 12px;font-size:13px;width:auto;flex:1}.cbq{width:100%;font-size:13px;font-weight:800;color:var(--corald)}
 </style>
 </head>
 <body>
@@ -873,7 +891,7 @@ function bbPartSVG(p, sol, o) {
   const leg = (xa, ya, xb, yb, w = 2.4) => `<path d="M${xa} ${ya}L${xb} ${yb}" stroke="#9AA3B5" stroke-width="${w}" stroke-linecap="round"/>`;
   if (p.kind === 'wire') {
     const lift = Math.min(26, 8 + Math.hypot(x2 - x1, y2 - y1) * .18), c = p.color || '#2EC4A0';
-    g = `<path d="M${x1} ${y1}C${x1} ${Math.min(y1, y2) - lift} ${x2} ${Math.min(y1, y2) - lift} ${x2} ${y2}" fill="none" stroke="${c}" stroke-width="3.6" stroke-linecap="round"/><circle cx="${x1}" cy="${y1}" r="3" fill="${c}"/><circle cx="${x2}" cy="${y2}" r="3" fill="${c}"/>${o.lab ? `<path d="M${x1} ${y1}C${x1} ${Math.min(y1, y2) - lift} ${x2} ${Math.min(y1, y2) - lift} ${x2} ${y2}" fill="none" stroke="transparent" stroke-width="12"/>` : ''}`;
+    g = `<path d="M${x1} ${y1}C${x1} ${Math.min(y1, y2) - lift} ${x2} ${Math.min(y1, y2) - lift} ${x2} ${y2}" fill="none" stroke="${c}" stroke-width="3.6" stroke-linecap="round"/><circle cx="${x1}" cy="${y1}" r="3" fill="${c}"/><circle cx="${x2}" cy="${y2}" r="3" fill="${c}"/>${o.lab ? `<path d="M${x1} ${y1}C${x1} ${Math.min(y1, y2) - lift} ${x2} ${Math.min(y1, y2) - lift} ${x2} ${y2}" fill="none" stroke="transparent" stroke-width="24"/>` : ''}`;
   }
   if (p.kind === 'res' || p.kind === 'ldr') {
     g = `<path d="M${x1} ${y1}L${x2} ${y2}" stroke="#9AA3B5" stroke-width="2.4" stroke-linecap="round"/><g transform="translate(${mx},${my - 7}) rotate(${Math.abs(ang) > 90 ? ang - 180 : ang}) scale(.62)">${p.kind === 'res' ? resistorDraw(bandsFor(p.ohms)).replace('M-27 0H27', 'M-17 0H17') : `<circle r="13" fill="#F6E7C8" stroke="#C9831A" stroke-width="2.4"/><path d="M-8 -4h4v8h4v-8h4v8h4" fill="none" stroke="#E0604F" stroke-width="2.2" stroke-linejoin="round"/>`}</g><path d="M${x1} ${y1}L${mx - 6} ${my - 7}M${x2} ${y2}L${mx + 6} ${my - 7}" stroke="#9AA3B5" stroke-width="2.4" stroke-linecap="round"/>`;
@@ -910,7 +928,8 @@ function bbPartSVG(p, sol, o) {
   const xs = [x1, x2], ys = [y1, y2]; if (p.c) { const q = bbPos(p.c); xs.push(q[0]); ys.push(q[1]); } if (p.w) { const q = bbPos(p.w); xs.push(q[0]); ys.push(q[1]); }
   if (p.kind === 'bat') { xs.push(7, 39); ys.push(130, 162); }
   const bx = Math.min(...xs) - 11, by = Math.min(...ys) - 30, bw = Math.max(...xs) - Math.min(...xs) + 22, bh = Math.max(...ys) - Math.min(...ys) + 40;
-  return `<g class="bbp" data-id="${p.id}">${g}<rect class="hl" x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="10" fill="#7C83FD" fill-opacity="${o.sel === p.id ? .08 : 0}" stroke="#7C83FD" stroke-opacity="${o.sel === p.id ? .9 : 0}" stroke-width="2.5" stroke-dasharray="5 4" pointer-events="${o.partTap ? 'all' : 'none'}" style="cursor:pointer"/></g>`;
+  const hw = Math.max(bw, 54), hh = Math.max(bh, 54), hit = o.lab && p.kind !== 'wire' ? `<rect class="hit" x="${bx + bw / 2 - hw / 2}" y="${by + bh / 2 - hh / 2}" width="${hw}" height="${hh}" fill="transparent"/>` : '';
+  return `<g class="bbp" data-id="${p.id}"${o.ghost === p.id ? ' opacity=".38"' : ''}>${hit}${g}<rect class="hl" x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="10" fill="#7C83FD" fill-opacity="${o.sel === p.id ? .08 : 0}" stroke="#7C83FD" stroke-opacity="${o.sel === p.id ? .9 : 0}" stroke-width="2.5" stroke-dasharray="5 4" pointer-events="${o.partTap ? 'all' : 'none'}" style="cursor:pointer"/></g>`;
 }
 // o: { volts, split, strips, bottom, blind, holesTap, partTap, marks:[{h,k}], probes:{red,black}, aria }
 function bbSVG(parts = [], o = {}, sol) {
@@ -2647,6 +2666,7 @@ const SFX = {
   tick: () => { const n = Date.now(); if (n - SND.tick < 70) return; SND.tick = n; tone(1800, 0, .022, 'sine', .1); snap(0, .05, 4200); }, // throttled slider tick
   flip: () => hiss(0, .18, .3, 800, 3000, .8),                                                       // card whoosh
   zap: () => { hiss(0, .12, .3, 3200, 1200, .7, .002); tone(1600, 0, .12, 'square', .07, { to: 500, lp: 4500 }); }, // static spark
+  trash: () => { hiss(0, .14, .2, 1500, 500, 1, .004); tone(820, 0, .13, 'sine', .2, { to: 420 }); },     // soft crumple + drop for deleting
   coin: () => { mallet(1319, 0, .08, .4); mallet(1976, .065, .3, .45); },                              // token spend
   reward: () => { [1319, 1568, 2093].forEach((f, i) => bell(f, i * .07, .24, .4)); sparkle(.2, 5, .12); }, // tokens earned
   done: () => fanfare([1047, 1319, 1568, 2093], .075, [1047, 1319, 1568, 2093], .32, .8, .5, 6),         // lesson complete: rising major arpeggio → held chord + sparkle
@@ -4159,6 +4179,7 @@ const gameUnlocked = g => !!S.done[unitOf(g.u).lessons[0]];
 const SKILLS = [['Electricity basics', ['G1', 'G2']], ["Ohm's law & networks", ['G3', 'G4']], ['Schematics & analysis', ['G5', 'G6']], ['Breadboard skills', ['G7', 'G8']], ['Building circuits', ['G9', 'G10']], ['Debugging & sensors', ['G11', 'G12']]];
 function renderGames() {
   const v = $('#v-games'), G = gstate(); v.innerHTML = '';
+  const cb = el(`<div class="cookrow"><button class="cookbtn" id="cookBtn" aria-label="Open the Circuit Cookbook">${BOOKICON}Cookbook</button></div>`); $('button', cb).onclick = openCookbook; v.appendChild(cb);
   v.appendChild(el(`<div class="pagehead"><span style="width:60px">${mascot('cheer')}</span><div><h1>Practice</h1><p>Build circuits, beat challenges and play quick games. Practice never costs hearts.</p></div></div>`));
   const host = el('<div id="labHost"></div>'); v.appendChild(host); renderLab(host);
   const q = el(`<div class="panel qgames"><h3>Quick games</h3><p class="small" style="margin:0 0 6px">Short timed rounds. Up to +${GAME_XP_ROUND} XP a round, ${GAME_XP_DAY} XP a day (today ${G.xd.xp}/${GAME_XP_DAY}).</p></div>`);
@@ -4725,7 +4746,7 @@ const LAB_O = { lab: true };
 const LAB_ROWS = ['T+', 'T-', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'B+', 'B-'];
 const LAB_RES = [100, 220, 330, 470, 680, 1000, 2200, 4700, 10000], LAB_VOLTS = [3, 4.5, 6, 9], LAB_COLORS = ['red', 'green', 'yellow', 'blue', 'white'];
 const LAB_TOK = 10, LAB_XP = 20;
-const LAB_KIND = { bat: 'battery', wire: 'jumper wire', res: 'resistor', led: 'LED', spst: 'slide switch', btn: 'pushbutton' };
+const LAB_KIND = { sw: '2-way switch', bat: 'battery', wire: 'jumper wire', res: 'resistor', led: 'LED', spst: 'slide switch', btn: 'pushbutton' };
 const LAB_PAL = [['bat', 'Battery', '<rect x="5" y="7" width="18" height="14" rx="3" fill="#4A4580"/><rect x="8" y="4" width="4" height="3" fill="#E0604F"/><rect x="16" y="4" width="4" height="3" fill="#9E99C2"/>'],
   ['wire', 'Wire', '<path d="M5 21C5 6 23 6 23 21" fill="none" stroke="#2EC4A0" stroke-width="3" stroke-linecap="round"/>'],
   ['res', 'Resistor', '<path d="M2 14H26" stroke="#9AA3B5" stroke-width="2"/><rect x="8" y="9" width="12" height="10" rx="4" fill="#E9C99A"/><path d="M11 9v10M14 9v10M17 9v10" stroke="#B5462B" stroke-width="1.6"/>'],
@@ -4736,7 +4757,11 @@ const fmtOhm = r => r >= 1000 ? r / 1000 + ' kΩ' : r + ' Ω';
 const fmtmA = i => (i * 1000).toFixed(i < .01 ? 1 : 0) + ' mA';
 const capF = s => s.charAt(0).toUpperCase() + s.slice(1);
 const labS = () => { if (!S.lab || typeof S.lab !== 'object') S.lab = {}; const L = S.lab; if (!Array.isArray(L.parts)) L.parts = []; L.done = L.done || {}; L.n = L.n || 1; L.stage = L.stage || 0; return L; };
-const LAB = { tool: null, legs: [], sel: null, hist: [], press: null, opt: { res: 1000, led: 'red', volts: 9 }, chat: null, chatOpen: true, last: null };
+const LAB = { tool: null, legs: [], sel: null, hist: [], press: null, opt: { res: 1000, led: 'red', volts: 9 }, chat: null, chatOpen: true, last: null, lastTap: null };
+const LAB_LIFT = 26; // svg units a dragged part floats above the finger
+const labLegs = p => p.c ? ['a', 'c', 'b'] : ['a', 'b'];
+const labSig = P => JSON.stringify(P.map(p => [p.kind, p.a, p.b, p.c || '', p.ohms || 0, p.color || '', p.volts || 0].join('|')).sort());
+const labExample = () => { const L = labS(); return !!(L.example && labSig(L.parts) === L.exSig); };
 const labPart = id => labS().parts.find(p => p.id === id);
 
 /* ---------- grid helpers ---------- */
@@ -4779,6 +4804,7 @@ function labDiag(parts) {
     const flip = parts.map(p => p.id === l.id ? Object.assign({}, p, { a: p.b, b: p.a }) : p);
     if (ledState(bbSolve(flip, LAB_O), l.id) !== 'dark') return add('bad', 'LED is backwards: turn it so the long + leg faces battery +');
     if (open.length) { const closed = parts.map(p => open.includes(p) ? Object.assign({}, p, { on: true }) : p); if (ledState(bbSolve(closed, LAB_O), l.id) !== 'dark') return add('warn', open.some(p => p.kind === 'spst') ? 'Switch is open: tap it to close the circuit' : 'Switch is open: press and hold the button'); }
+    if (parts.some(p => p.kind === 'sw') && ledState(bbSolve(parts.map(p => p.kind === 'sw' ? Object.assign({}, p, { on: !p.on }) : p), LAB_O), l.id) !== 'dark') return add('', `The 2-way switch points at the other path: tap it to light the ${nm}`);
     if (!labLinked(parts, sol, l)) return add('bad', 'Open circuit, nothing connects back to the battery');
     add('warn', `Not enough voltage to light the ${nm}`);
   });
@@ -4798,13 +4824,14 @@ function labDescribe(parts, sol) {
     : p.kind === 'res' ? `${fmtOhm(p.ohms)} resistor from ${loc(p.a)} to ${loc(p.b)}`
     : p.kind === 'led' ? `${p.color} LED with its + leg (anode) in ${loc(p.a)} and its − leg (cathode) in ${loc(p.b)}, ${ls(p)}`
     : p.kind === 'wire' ? `jumper wire from ${loc(p.a)} to ${loc(p.b)}`
+    : p.kind === 'sw' ? `2-way switch with its middle (common) pin in ${loc(p.c)}, connecting it to ${loc(p.on ? p.b : p.a)} right now (other side: ${loc(p.on ? p.a : p.b)})`
     : `${LAB_KIND[p.kind]} (${p.on ? (p.kind === 'btn' ? 'pressed' : 'closed') : (p.kind === 'btn' ? 'not pressed' : 'open')}) between ${loc(p.a)} and ${loc(p.b)}`).join('; ') + '.';
 }
 
 /* ---------- challenges ---------- */
 const litLeds = (P, sol) => P.filter(p => p.kind === 'led' && ledState(sol, p.id) === 'lit');
 function labSwitchOk(P, sol) {
-  return P.some(s => (s.kind === 'spst' || s.kind === 'btn') && P.some(l => {
+  return P.some(s => (s.kind === 'spst' || s.kind === 'btn' || s.kind === 'sw') && P.some(l => {
     if (l.kind !== 'led') return false; const a = ledState(sol, l.id), b = ledState(bbSolve(P.map(p => p.id === s.id ? Object.assign({}, p, { on: !p.on }) : p), LAB_O), l.id);
     return (a === 'lit' && b === 'dark') || (a === 'dark' && b === 'lit');
   }));
@@ -4826,6 +4853,7 @@ const LAB_CH = [
 const labGoal = ch => ch.goal[Math.min(labS().stage, ch.goal.length - 1)] || ch.goal[0];
 function labCheck(P, sol) {
   const L = labS(), ch = LAB_CH.find(c => c.id === L.ch); if (!ch || ch.soon || L.done[ch.id] || sol.nobat || sol.short) return;
+  if (labExample()) return; // an unmodified Cookbook example never completes (or pays) a challenge
   if (!ch.ok(P, sol, L.stage)) return;
   if (L.stage + 1 < ch.goal.length) { L.stage++; save(); SFX.good(); toast(`Step done! ${labGoal(ch)}`, ICON.check()); renderLabCh(); return; }
   L.done[ch.id] = today(); L.stage = 0; S.tokens = (S.tokens || 0) + LAB_TOK; const lv = addXp(LAB_XP); save();
@@ -4843,16 +4871,28 @@ function labLeg(h) {
   if (LAB.legs.length === 2) labAdd(labNew(LAB.tool, LAB.legs[0], LAB.legs[1])); else labRefresh(false);
 }
 function labMove(orig, dx, dy) {
-  const [ax, ay] = bbPos(orig.a), nh = labNearest(ax + dx, ay + dy, 14); if (!nh) return null;
-  const [c0, r0] = labIdx(orig.a), [c1, r1] = labIdx(nh), a = labShift(orig.a, c1 - c0, r1 - r0), b = labShift(orig.b, c1 - c0, r1 - r0);
-  return a && b ? { a, b } : null;
+  const [ax, ay] = bbPos(orig.a), nh = labNearest(ax + dx, ay + dy, 20); if (!nh) return null;
+  const [c0, r0] = labIdx(orig.a), [c1, r1] = labIdx(nh), out = {};
+  for (const k of labLegs(orig)) { const h = labShift(orig[k], c1 - c0, r1 - r0); if (!h) return null; out[k] = h; }
+  return out;
 }
 function labRotate() {
-  const p = labPart(LAB.sel); if (!p) return; labPush();
-  if (p.kind === 'bat') { [p.a, p.b] = [p.b, p.a]; }
-  else { const [c0, r0] = labIdx(p.a), [c1, r1] = labIdx(p.b); let dc = c1 - c0, dr = r1 - r0;
-    for (let k = 0; k < 3; k++) { [dc, dr] = [-dr, dc]; const nb = labHole(c0 + dc, r0 + dr); if (nb) { p.b = nb; break; } } }
-  SFX.toggle(); labCommit();
+  const p = labPart(LAB.sel); if (!p) return;
+  if (p.kind === 'sw') { labHint('The 2-way switch can be moved, but not rotated.'); return; }
+  const A = labIdx(p.a), B = labIdx(p.b), cx = (A[0] + B[0]) / 2, cy = (A[1] + B[1]) / 2;
+  let a2 = [Math.round(cx - (A[1] - cy)), Math.round(cy + (A[0] - cx))], b2 = [a2[0] - (B[1] - A[1]), a2[1] + (B[0] - A[0])]; // 90° about the centre
+  const sx = Math.max(0, 1 - Math.min(a2[0], b2[0])) - Math.max(0, Math.max(a2[0], b2[0]) - BBC), sy = Math.max(0, -Math.min(a2[1], b2[1])) - Math.max(0, Math.max(a2[1], b2[1]) - (LAB_ROWS.length - 1));
+  const na = labHole(a2[0] + sx, a2[1] + sy), nb = labHole(b2[0] + sx, b2[1] + sy);
+  if (!na || !nb || na === nb) { labHint('Not enough room to rotate it here. Move it first.'); return; }
+  labPush(); p.a = na; p.b = nb; SFX.toggle(); labCommit();
+}
+function labFlip() { const p = labPart(LAB.sel); if (!p || (p.kind !== 'led' && p.kind !== 'bat')) return; labPush(); [p.a, p.b] = [p.b, p.a]; SFX.toggle(); labCommit(); }
+function labLoad(r) {
+  const L = labS(); labPush();
+  L.parts = r.parts.map(x => Object.assign({ id: 'p' + (L.n++) }, JSON.parse(JSON.stringify(x))));
+  L.example = r.id; L.exSig = labSig(L.parts); LAB.sel = null; LAB.tool = null; LAB.legs = [];
+  $('.modal.cookbook')?.remove(); SFX.drop(); labCommit(); toast(`Loaded “${r.name}”. Undo brings back your build.`, ICON.check());
+  $('#labBoard')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 function labDelete() { const L = labS(); if (!LAB.sel) return; labPush(); L.parts = L.parts.filter(p => p.id !== LAB.sel); LAB.sel = null; SFX.drop(); labCommit(); }
 function labUndo() { if (!LAB.hist.length) return; labS().parts = JSON.parse(LAB.hist.pop()); LAB.sel = null; LAB.tool = null; LAB.legs = []; SFX.tap(); labCommit(); }
@@ -4866,7 +4906,9 @@ function renderLab(host) {
     <div class="labwrap"><div class="labmain">
       <div class="labpal" id="labPal">${LAB_PAL.map(([k, n, ic]) => `<button class="palbtn" data-k="${k}" aria-label="Add ${LAB_KIND[k]}"><svg viewBox="0 0 28 28" aria-hidden="true">${ic}</svg><span>${n}</span></button>`).join('')}</div>
       <div class="labopts"><label>Resistor <select id="labRes">${LAB_RES.map(r => `<option value="${r}" ${r === o.res ? 'selected' : ''}>${fmtOhm(r)}</option>`).join('')}</select></label><label>LED <select id="labLed">${LAB_COLORS.map(c => `<option ${c === o.led ? 'selected' : ''}>${c}</option>`).join('')}</select></label><label>Battery <select id="labV">${LAB_VOLTS.map(v => `<option value="${v}" ${v === o.volts ? 'selected' : ''}>${v} V</option>`).join('')}</select></label></div>
-      <div class="sim labboard" id="labBoard"></div>
+      <div class="labbw" id="labBW"><div class="sim labboard" id="labBoard"></div>
+        <button class="labtrash" id="labTrash" aria-label="Trash: drag a part here to delete it"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M7 9h14l-1.2 14a2 2 0 0 1-2 1.8h-7.6a2 2 0 0 1-2-1.8z" fill="currentColor"/><rect x="5" y="5.5" width="18" height="3" rx="1.5" fill="currentColor"/><rect x="11" y="3" width="6" height="3" rx="1.2" fill="currentColor"/><path d="M11.5 12.5v8M16.5 12.5v8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+        <div class="labhandles" id="labHandles" hidden><button data-act="rot" aria-label="Rotate 90°"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.5 9.5A7 7 0 1 0 19 15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M19.5 4.5v5.5H14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button data-act="flip" aria-label="Flip direction">Flip</button><button data-act="del" class="x" aria-label="Delete part">×</button></div></div>
       <div class="labtools"><button class="btn ghost" id="labUndo">Undo</button><button class="btn ghost" id="labRot">Rotate</button><button class="btn ghost" id="labDel">Delete</button><button class="btn ghost" id="labClr">Clear</button></div>
       <p class="labhint" id="labHint"></p><div class="labchips" id="labChips" aria-live="polite"></div>
     </div><div class="labchat" id="labChat"></div></div></div>`;
@@ -4882,31 +4924,47 @@ function renderLab(host) {
   const opt = (id, key, prop, kinds, num) => $('#' + id, host).onchange = e => { o[key] = num ? +e.target.value : e.target.value; const p = labPart(LAB.sel); if (p && kinds.includes(p.kind)) { labPush(); p[prop] = o[key]; labCommit(); } };
   opt('labRes', 'res', 'ohms', ['res'], 1); opt('labLed', 'led', 'color', ['led']); opt('labV', 'volts', 'volts', ['bat'], 1);
   $('#labUndo', host).onclick = labUndo; $('#labRot', host).onclick = labRotate; $('#labDel', host).onclick = labDelete; $('#labClr', host).onclick = labClear;
-  const bd = $('#labBoard', host);
+  const bd = $('#labBoard', host), trash = $('#labTrash', host);
+  const overTrash = (x, y) => { const r = trash.getBoundingClientRect(); return x > r.left - 12 && x < r.right + 12 && y > r.top - 12 && y < r.bottom + 12; };
+  trash.onclick = () => { if (LAB.sel) { labDelete(); SFX.trash(); } else labHint('Drag a part onto the trash can to delete it.'); };
+  $$('#labHandles button', host).forEach(b => b.onclick = e => { e.stopPropagation(); const k = b.dataset.act; if (k === 'rot') labRotate(); else if (k === 'flip') labFlip(); else { labDelete(); SFX.trash(); } });
   bd.onpointerdown = e => {
+    if (e.button > 0) return;
     const svg = $('svg', bd), pt = svgPt(svg, e.clientX, e.clientY), g = !LAB.tool && e.target.closest && e.target.closest('.bbp');
-    LAB.press = { pt0: pt, id: g ? g.dataset.id : null, moved: false }; try { bd.setPointerCapture(e.pointerId); } catch (er) { }
+    LAB.press = { pt0: pt, c0: [e.clientX, e.clientY], id: g ? g.dataset.id : null, moved: false }; try { bd.setPointerCapture(e.pointerId); } catch (er) { }
     const p = LAB.press.id && labPart(LAB.press.id); if (p && p.kind === 'btn') { p.on = true; SFX.toggle(); labRefresh(false); }
   };
   bd.onpointermove = e => {
-    const P = LAB.press; if (!P || !P.id) return; const pt = svgPt($('svg', bd), e.clientX, e.clientY);
-    if (!P.moved && Math.hypot(pt.x - P.pt0.x, pt.y - P.pt0.y) < 7) return;
-    if (!P.moved) { P.moved = true; P.orig = JSON.parse(JSON.stringify(labPart(P.id))); SFX.drag(); }
-    const m = labMove(P.orig, pt.x - P.pt0.x, pt.y - P.pt0.y); if (m) { Object.assign(labPart(P.id), m); LAB.sel = P.id; labRefresh(false); }
+    const P = LAB.press; if (!P || !P.id) return;
+    if (!P.moved && Math.hypot(e.clientX - P.c0[0], e.clientY - P.c0[1]) < 6) return; // small threshold: taps stay taps
+    const pt = svgPt($('svg', bd), e.clientX, e.clientY), p = labPart(P.id); if (!p) return;
+    if (!P.moved) { P.moved = true; if (p.kind === 'btn') p.on = false; P.orig = JSON.parse(JSON.stringify(p)); LAB.sel = P.id; SFX.drag(); }
+    P.lift = [pt.x - P.pt0.x, pt.y - P.pt0.y - LAB_LIFT]; P.over = overTrash(e.clientX, e.clientY);
+    trash.classList.toggle('hot', P.over);
+    const m = labMove(P.orig, P.lift[0], P.lift[1]); if (m) Object.assign(p, m);
+    labRefresh(false);
   };
   bd.onpointerup = e => {
-    const P = LAB.press; LAB.press = null; if (!P) return; const pt = svgPt($('svg', bd), e.clientX, e.clientY);
+    const P = LAB.press; LAB.press = null; trash.classList.remove('hot'); if (!P) return; const pt = svgPt($('svg', bd), e.clientX, e.clientY);
     if (P.id) {
       const p = labPart(P.id); if (!p) return; if (p.kind === 'btn') p.on = false;
-      if (P.moved) { LAB.hist.push(JSON.stringify(labS().parts.map(x => x.id === P.id ? Object.assign({}, P.orig, { on: false }) : x))); SFX.drop(); }
-      else { LAB.sel = P.id; if (p.kind === 'spst') { labPush(); p.on = !p.on; SFX.toggle(); } else SFX.tap(); }
+      if (P.moved) {
+        LAB.hist.push(JSON.stringify(labS().parts.map(x => x.id === P.id ? P.orig : x)));
+        if (overTrash(e.clientX, e.clientY)) { labS().parts = labS().parts.filter(x => x.id !== P.id); LAB.sel = null; SFX.trash(); toast('Part deleted. Tap Undo to bring it back.', ICON.check()); }
+        else SFX.drop();
+        labCommit(); return;
+      }
+      const now = Date.now(), dbl = LAB.lastTap && LAB.lastTap.id === P.id && now - LAB.lastTap.t < 350;
+      LAB.lastTap = dbl ? null : { id: P.id, t: now }; LAB.sel = P.id;
+      if (dbl) { labRotate(); return; } // double-tap rotates
+      if (p.kind === 'spst' || p.kind === 'sw') { labPush(); p.on = !p.on; SFX.toggle(); } else SFX.tap();
       labCommit(); return;
     }
     const h = labNearest(pt.x, pt.y, 10);
     if (LAB.tool) { if (h) labLeg(h); return; }
     if (LAB.sel) { LAB.sel = null; labRefresh(false); }
   };
-  bd.onpointercancel = () => { LAB.press = null; };
+  bd.onpointercancel = () => { const P = LAB.press; LAB.press = null; trash.classList.remove('hot'); if (P && P.moved && P.orig) { Object.assign(labPart(P.id) || {}, P.orig); labRefresh(false); } };
   renderLabCh(); labChat($('#labChat', host)); labRefresh(false);
 }
 function labHint(t) { const h = $('#labHint'); if (h) h.innerHTML = t; }
@@ -4920,16 +4978,65 @@ function renderLabCh() {
 function labRefresh(commit) {
   const L = labS(), P = L.parts, bd = $('#labBoard'); if (!bd) return;
   const d = labDiag(P); LAB.last = d;
-  bd.innerHTML = bbSVG(P, Object.assign({}, LAB_O, { sel: LAB.sel, marks: LAB.legs.map(h => ({ h, k: 'sel' })), aria: 'Circuit Lab breadboard: ' + labDescribe(P, d.sol) }), d.sol);
+  const dr = LAB.press && LAB.press.moved ? LAB.press : null, oo = Object.assign({}, LAB_O, { sel: dr ? null : LAB.sel, ghost: dr && dr.id, marks: LAB.legs.map(h => ({ h, k: 'sel' })), aria: 'Circuit Lab breadboard: ' + labDescribe(P, d.sol) });
+  let svg = bbSVG(P, oo, d.sol);
+  if (dr) { const cur = labPart(dr.id); svg = svg.replace(/<\/svg>$/, `<g transform="translate(${dr.lift[0] + bbPos(dr.orig.a)[0] - bbPos(cur.a)[0]},${dr.lift[1] + bbPos(dr.orig.a)[1] - bbPos(cur.a)[1]})" pointer-events="none" style="filter:drop-shadow(0 6px 4px rgba(46,42,90,.35))"${dr.over ? ' opacity=".35"' : ''}>${bbPartSVG(cur, d.sol, Object.assign({}, oo, { ghost: null }))}</g></svg>`); }
+  bd.innerHTML = svg; labHandles();
+  if (labExample()) d.chips.unshift({ k: '', t: 'Cookbook example loaded: change something to make it yours (challenges are paused)' });
   $('#labChips').innerHTML = d.chips.map(c => `<span class="status ${c.k}">${esc(c.t)}</span>`).join('');
   const sp = labPart(LAB.sel);
   labHint(LAB.tool ? `Placing a ${LAB_KIND[LAB.tool]}: tap a hole for its <b>${legName(LAB.tool, LAB.legs.length)}</b>. <button class="linkbtn" id="labCancel">Cancel</button>`
-    : sp ? `Selected: <b>${sp.kind === 'res' ? fmtOhm(sp.ohms) + ' ' : sp.kind === 'led' ? sp.color + ' ' : sp.kind === 'bat' ? sp.volts + ' V ' : ''}${LAB_KIND[sp.kind]}</b>. Drag it to move${sp.kind === 'spst' ? ', tap to flip it' : sp.kind === 'btn' ? ', press and hold to push it' : ''}, or Rotate / Delete.`
+    : sp ? `Selected: <b>${sp.kind === 'res' ? fmtOhm(sp.ohms) + ' ' : sp.kind === 'led' ? sp.color + ' ' : sp.kind === 'bat' ? sp.volts + ' V ' : ''}${LAB_KIND[sp.kind]}</b>. Drag it to move (or onto the trash)${sp.kind === 'spst' || sp.kind === 'sw' ? ', tap to flip it' : sp.kind === 'btn' ? ', press and hold to push it' : ''}, or Rotate / Delete.`
     : 'Drag a part onto the board, or tap a part, then tap two holes.');
   if ($('#labCancel')) $('#labCancel').onclick = () => { LAB.tool = null; LAB.legs = []; labRefresh(false); };
   $$('.palbtn').forEach(b => b.classList.toggle('on', b.dataset.k === LAB.tool));
   $('#labRot').disabled = $('#labDel').disabled = !sp; $('#labUndo').disabled = !LAB.hist.length; $('#labClr').disabled = !P.length;
   if (commit) labCheck(P, d.sol);
+}
+
+function labHandles() {
+  const H = $('#labHandles'), p = !LAB.press && !LAB.tool && labPart(LAB.sel), svg = $('#labBoard svg'), W = $('#labBW'); if (!H) return;
+  if (!p || !svg) { H.hidden = true; return; }
+  const m = svg.getScreenCTM(), wr = W.getBoundingClientRect(); if (!m) { H.hidden = true; return; }
+  const pts = labLegs(p).map(k => new DOMPoint(...bbPos(p[k])).matrixTransform(m)), xs = pts.map(q => q.x), ys = pts.map(q => q.y);
+  $('[data-act="flip"]', H).hidden = !(p.kind === 'led' || p.kind === 'bat'); $('[data-act="rot"]', H).hidden = p.kind === 'sw';
+  H.hidden = false; const hw = H.offsetWidth || 140, hh = H.offsetHeight || 44;
+  let left = (Math.min(...xs) + Math.max(...xs)) / 2 - wr.left - hw / 2, top = Math.min(...ys) - wr.top - hh - 30;
+  if (top < 2) top = Math.max(...ys) - wr.top + 18;
+  H.style.left = Math.max(2, Math.min(wr.width - hw - 2, left)) + 'px'; H.style.top = Math.max(2, Math.min(wr.height - hh - 2, top)) + 'px';
+}
+
+/* ---------- Circuit Cookbook: example builds, easy → hard ---------- */
+const CBB = { kind: 'bat', a: 'T+1', b: 'T-1', volts: 9 }, cbR = (a, b, ohms) => ({ kind: 'res', a, b, ohms }), cbL = (a, b, color = 'red') => ({ kind: 'led', a, b, color }), cbW = (a, b, color = '#5AB8F0') => ({ kind: 'wire', a, b, color });
+const COOKBOOK = [
+  { id: 'glow', name: 'First Glow', lvl: 0, lit: 1, blurb: 'Battery → 470 Ω resistor → LED → back to −. The resistor keeps the LED from burning out.', parts: [CBB, cbR('T+3', 'c4', 470), cbL('d4', 'd6'), cbW('a6', 'T-6')] },
+  { id: 'traffic', name: 'Traffic Light Trio', lvl: 0, lit: 3, blurb: 'Three LEDs in parallel, each with its own resistor, so each one gets its own safe current.', parts: [CBB, cbR('T+3', 'c4', 470), cbL('d4', 'd5', 'red'), cbW('a5', 'T-5'), cbR('T+7', 'c8', 470), cbL('d8', 'd9', 'yellow'), cbW('a9', 'T-9'), cbR('T+11', 'c12', 470), cbL('d12', 'd13', 'green'), cbW('a13', 'T-13')] },
+  { id: 'switch', name: 'Flip the Switch', lvl: 0, lit: 1, blurb: 'A slide switch in the loop. Tap it: open breaks the path, closed completes it.', parts: [CBB, { kind: 'spst', a: 'T+3', b: 'c4', on: true }, cbR('d4', 'd8', 470), cbL('e8', 'e9'), cbW('a9', 'T-9')] },
+  { id: 'push', name: 'Push to Glow', lvl: 1, lit: 0, press: 1, blurb: 'A pushbutton only connects while pressed. Press and hold it to light the LED.', parts: [CBB, { kind: 'btn', a: 'T+3', b: 'c5', on: false }, cbR('d5', 'd8', 470), cbL('e8', 'e9', 'blue'), cbW('a9', 'T-9')] },
+  { id: 'series', name: 'Series Pair', lvl: 1, lit: 2, blurb: 'Two LEDs one after the other share a single 330 Ω resistor. The same current flows through both.', parts: [CBB, cbR('T+3', 'c4', 330), cbL('d4', 'd6'), cbL('e6', 'e8'), cbW('a8', 'T-8')] },
+  { id: 'parallel', name: 'Parallel Pair', lvl: 1, lit: 2, blurb: 'Two LEDs side by side, each with its own resistor.', note: 'Compared with Series Pair: each LED gets the full battery (minus its own resistor), so they stay bright and one failing doesn’t switch off the other, but the battery supplies both currents, so it drains faster.', parts: [CBB, cbR('T+3', 'c4', 470), cbL('d4', 'd6'), cbW('a6', 'T-6'), cbR('T+10', 'c11', 470), cbL('d11', 'd13', 'green'), cbW('a13', 'T-13')] },
+  { id: 'twoway', name: 'Two-Way Choice', lvl: 2, lit: 1, toggle: 1, blurb: 'A 2-way (SPDT) switch sends current to one LED or the other. Tap it to choose.', parts: [CBB, cbW('T+8', 'a8', '#FF7F6E'), { kind: 'sw', a: 'c7', c: 'c8', b: 'c9', on: false }, cbR('d7', 'd3', 470), cbL('e3', 'e2'), cbW('a2', 'T-2'), cbR('d9', 'd13', 470), cbL('e13', 'e14', 'green'), cbW('a14', 'T-14')] },
+  { id: 'ladder', name: 'Brightness Ladder', lvl: 2, lit: 4, blurb: 'The same red LED with 220 Ω, 470 Ω, 1 kΩ and 2.2 kΩ. Bigger resistor, less current, dimmer glow.', parts: [CBB, cbR('T+3', 'c4', 220), cbL('d4', 'd5'), cbW('a5', 'T-5'), cbR('T+6', 'c7', 470), cbL('d7', 'd8'), cbW('a8', 'T-8'), cbR('T+9', 'c10', 1000), cbL('d10', 'd11'), cbW('a11', 'T-11'), cbR('T+12', 'c13', 2200), cbL('d13', 'd14'), cbW('a14', 'T-14')] }];
+const BOOKICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5C5.5 4 8.5 4 12 6c3.5-2 6.5-2 9-.5V19c-2.5-1.5-5.5-1.5-9 .5-3.5-2-6.5-2-9-.5z" fill="currentColor"/><path d="M12 6v13.5" stroke="#fff" stroke-width="1.6"/></svg>';
+function openCookbook() {
+  SFX.tap(); $('.modal.cookbook')?.remove();
+  const m = el(`<div class="modal cookbook" role="dialog" aria-modal="true" aria-label="Circuit Cookbook"><div class="box cbbox"><div class="cbhead">${BOOKICON}<b>Circuit Cookbook</b><button class="iconbtn" id="cbX" aria-label="Close cookbook">${ICON.close()}</button></div>
+    <p class="small" style="margin:0 0 8px">Example builds from easy to hard. Load one, then change it to make it yours. Examples don't count toward challenges.</p>
+    <div class="cblist">${COOKBOOK.map((r, i) => `<div class="cbcard" data-r="${r.id}"><div class="cbt"><b>${i + 1}. ${r.name}</b><span class="diff d${r.lvl}">${['Easy', 'Medium', 'Harder'][r.lvl]}</span></div>
+      <div class="cbprev">${bbSVG(r.parts.map((x, j) => Object.assign({ id: 'cb' + i + '_' + j }, x)), Object.assign({}, LAB_O, { aria: r.name + ' example' }))}</div>
+      <p class="cbblurb">${r.blurb}</p>${r.note ? `<p class="small cbnote">${r.note}</p>` : ''}<div class="cbact"><button class="btn primary cbload">Load onto breadboard</button></div></div>`).join('')}</div></div></div>`);
+  document.body.appendChild(m);
+  $('#cbX', m).onclick = () => { SFX.tap(); m.remove(); }; m.onclick = e => { if (e.target === m) m.remove(); };
+  $$('.cbcard', m).forEach(cd => {
+    const r = COOKBOOK.find(x => x.id === cd.dataset.r), act = $('.cbact', cd);
+    const arm = () => { act.innerHTML = `<button class="btn primary cbload">Load onto breadboard</button>`; $('.cbload', act).onclick = ask; };
+    const ask = () => {
+      if (!labS().parts.length || labExample()) return labLoad(r);
+      SFX.tap(); act.innerHTML = `<span class="cbq">Replace your current build? (Undo brings it back.)</span><button class="btn ghost cbno">Cancel</button><button class="btn coral cbyes">Replace</button>`;
+      $('.cbno', act).onclick = () => { SFX.tap(); arm(); }; $('.cbyes', act).onclick = () => labLoad(r);
+    };
+    arm();
+  });
 }
 
 /* ---------- inline Ask Sprig (reuses the offline helper, Copy for any AI and BYO key) ---------- */
