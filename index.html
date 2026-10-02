@@ -400,6 +400,9 @@ body:has(#v-games.on) #askFab{display:none}
 .cbprev{margin:6px 0}.cbprev svg{display:block;width:100%;height:auto;max-height:190px}
 .cbblurb{margin:0 0 6px;font-size:14px;font-weight:700}.cbnote{margin:0 0 6px}
 .cbact{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.cbact .btn{padding:9px 12px;font-size:13px;width:auto;flex:1}.cbq{width:100%;font-size:13px;font-weight:800;color:var(--corald)}
+.mbadge{position:absolute;right:-4px;top:-6px;width:26px;height:26px;border-radius:50%;background:var(--sun);color:#fff;border:3px solid #fff;font-size:14px;line-height:20px;text-align:center;font-weight:900;box-shadow:0 2px 0 var(--sund);z-index:2}
+.mastnote{margin:4px 16px 0;align-self:center;font-size:12.5px;font-weight:800;color:#8A5A00;background:var(--sunl);border-radius:999px;padding:4px 12px}
+.mastnote.end{display:inline-block;margin:6px auto 4px}.mastnote.ok{color:var(--mintd);background:var(--mintl)}
 </style>
 </head>
 <body>
@@ -2779,7 +2782,7 @@ function renderPath() {
       const icon = n.state === 'done' ? (isTest ? ICON.trophy() : ICON.check('#fff')) : n.state === 'locked' ? (isTest ? ICON.trophy('#A9A3CF') : ICON.lock()) : (isTest ? ICON.trophy() : ICON.star());
       const b = el(`<button class="node ${n.state} ${isTest ? 'test' : ''}" style="left:${x}px;top:${y - 32}px" aria-label="${esc(n.title)} (${n.state})" data-id="${n.id}">
         ${n.state === 'current' ? `<span class="startbubble">${n.kind === 'test' ? 'TEST TIME' : (n.kind === 'soon' ? 'NEXT UP' : 'START')}</span>` : ''}
-        <span class="disc" style="${n.state === 'done' ? `background:${u.color};--sh:${u.dark}` : ''}">${icon}</span><span class="lbl">${esc(n.title)}</span></button>`);
+        <span class="disc" style="${n.state === 'done' ? `background:${u.color};--sh:${u.dark}` : ''}">${icon}</span>${S.mastered && S.mastered[n.id] ? '<span class="mbadge" title="Mastered: 100%" aria-label="Mastered">★</span>' : ''}<span class="lbl">${esc(n.title)}</span></button>`);
       b.onclick = (e) => { e.stopPropagation(); SFX.tap(); openPop(pw, n, x, y, u); };
       pw.appendChild(b);
       if (n.state === 'current' && !mascotPlaced) {
@@ -2844,12 +2847,15 @@ function startLesson(id) {
   const L = LESSONS[id];
   regenHearts(); if (S.hearts <= 0) return noHeartsModal();
   R = { kind: 'lesson', id, phase: 'main', steps: L.steps, idx: 0, missed: [], correct: 0, graded: 0, xp: 0 };
-  lessonShell(); renderStep();
+  lessonShell(); mastNote(id); renderStep();
 }
 function startTest(tid) {
   R = { kind: 'test', id: tid, phase: 'main', steps: TESTS[tid].steps, idx: 0, results: [], xp: 0 };
-  lessonShell(); renderStep();
+  lessonShell(); mastNote(tid); renderStep();
 }
+const isMastered = id => !!(S.mastered && S.mastered[id]);
+const MAST_NOTE = '★ Already mastered, no tokens';
+function mastNote(id) { if (!isMastered(id)) return; const h = $('.lesson .lhead'); if (h) h.insertAdjacentHTML('afterend', `<div class="mastnote" role="note">${MAST_NOTE}</div>`); }
 function setHead() {
   const hs = $('#hearts'); const pr = $('.prog i');
   if (R.kind === 'lesson' && (R.phase === 'main' || R.phase === 'ooh')) hs.innerHTML = ICON.heart(S.hearts ? '' : 'lost') + `<span style="margin-left:2px">${S.hearts}/${MAX_HEARTS}</span>` + (S.hearts < MAX_HEARTS ? `<span class="cd">${mmss(nextHeartMs())}</span>` : '');
@@ -2976,7 +2982,9 @@ function complete() {
   const leveled = addXp(R.xp);
   const first = !S.done[R.id];
   S.done[R.id] = { at: today() };
-  const tok = lessonTokens(R.id);
+  const wasM = isMastered(R.id), perfect = R.graded ? R.correct === R.graded : true;
+  const tok = wasM ? 0 : lessonTokens(R.id);
+  if (perfect) { if (!S.mastered) S.mastered = {}; S.mastered[R.id] = 1; }
   LESSONS[R.id].cards.forEach(id => { if (!S.cards[id]) S.cards[id] = { box: 1, due: today() }; });
   const bumped = bumpStreak(); save();
   const acc = R.graded ? Math.round(R.correct / R.graded * 100) : 100;
@@ -2985,8 +2993,8 @@ function complete() {
     <div class="statrow">
       <div class="stat" style="border-color:var(--sun)"><div class="h" style="background:var(--sun)">XP earned</div><div class="v">${ICON.bolt()}${R.xp}</div></div>
       <div class="stat" style="border-color:var(--mint)"><div class="h" style="background:var(--mint)">Accuracy</div><div class="v">${acc}%</div></div>
-      <div class="stat" style="border-color:var(--sund)"><div class="h" style="background:var(--sund)">Tokens</div><div class="v">${ICON.token()}+${tok}</div></div>
-    </div>
+      ${wasM ? '' : `<div class="stat" style="border-color:var(--sund)"><div class="h" style="background:var(--sund)">Tokens</div><div class="v">${ICON.token()}+${tok}</div></div>`}
+    </div>${wasM ? `<p class="mastnote end">${MAST_NOTE}</p>` : perfect ? '<p class="mastnote end ok">★ Mastered: 100% with no mistakes!</p>' : ''}
     ${bumped ? `<p class="status ok" style="margin:0 auto 8px">${S.streak === 1 ? 'Streak started! Come back tomorrow.' : 'Streak extended!'}</p>` : ''}
     <p class="small">${first ? `+${LESSONS[R.id].cards.length} flashcards added to your deck` : 'Practice makes perfect!'}</p></div>`;
   footer(`<button class="btn primary" id="btnNext">Continue</button>`);
@@ -3009,7 +3017,8 @@ function testResults() {
   ts.attempts++; ts.best = Math.max(ts.best, pct);
   let leveled = false;
   if (firstPass) { ts.passed = true; leveled = addXp(50); }
-  const tokT = pass ? testTokens(R.id) : 0; if (tokT) pendingToasts.push([`+${tokT} tokens for passing the unit test!`, ICON.token()]);
+  const wasM = isMastered(R.id); if (pct === 100) { if (!S.mastered) S.mastered = {}; S.mastered[R.id] = 1; }
+  const tokT = pass && !wasM ? testTokens(R.id) : 0; if (tokT) pendingToasts.push([`+${tokT} tokens for passing the unit test!`, ICON.token()]);
   if (pass) bumpStreak();
   save();
   const wrongTags = [...new Set(R.results.filter(r => !r.ok).map(r => r.step.tag))];
@@ -3022,7 +3031,7 @@ function testResults() {
     <div class="bigtitle">${pass ? `You passed Unit ${U.n}!` : 'So close. Let\'s review!'}</div>
     <p class="body" style="color:var(--ink2);margin:0 0 6px">${pass ? (firstPass ? (NU ? `Unit ${NU.n}: ${esc(NU.title)} is now unlocked. +50 XP bonus!` : 'That\'s every unit in this prototype. +50 XP bonus!') : 'Great retake. Nice to see it stick!') : `You need ${need} of ${n} (80%) to pass. Review the topics below and try again.`}</p>
     ${wrongTags.length ? `<div class="reviewlist"><h4>Topics to review</h4><ul style="margin:0;padding-left:20px">${wrongTags.map(t => `<li>Lesson ${LABEL[t]}: ${esc(LESSONS[t].title)} <span class="small">(${R.results.filter(r => !r.ok && r.step.tag === t).length} missed)</span></li>`).join('')}</ul></div>` : `<div class="reviewlist"><h4>Perfect score!</h4><span class="small">You nailed every topic in Unit ${U.n}.</span></div>`}
-    <div style="width:110px;margin:8px auto 0">${mascot(pass ? 'cheer' : 'think')}</div></div>`;
+    ${wasM ? `<p class="mastnote end">${MAST_NOTE}</p>` : ''}<div style="width:110px;margin:8px auto 0">${mascot(pass ? 'cheer' : 'think')}</div></div>`;
   footer(pass ? `<button class="btn primary" id="btnNext">Back to path</button>` : `<div class="row"><button class="btn ghost" id="btnBack">Back to path</button><button class="btn coral" id="btnRetry">Retake test</button></div>`);
   if (pass) { confetti(200); SFX.test(); if (tokT) setTimeout(SFX.reward, 1600); $('#btnNext').onclick = () => { closeLesson(); if (leveled) setTimeout(levelUp, 250); setTimeout(() => (NU && $('#unit-' + NU.id))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 400); }; }
   else { SFX.bad(); $('#btnBack').onclick = closeLesson; $('#btnRetry').onclick = () => startTest(R.id); }
@@ -4417,6 +4426,9 @@ function ensureShop() {
   }
   if (!BODIES[S.avatar.eq.body]) S.avatar.eq.body = 'battery';
   if (!S.tokPaid || typeof S.tokPaid !== 'object') S.tokPaid = {};
+  // mastered = a 100% run; mastered lessons/tests pay no more tokens. One-time: tests whose stored best is 100%
+  if (!S.mastered || typeof S.mastered !== 'object') S.mastered = {};
+  if (!S.mastMig1) { S.mastMig1 = 1; Object.entries(S.tests || {}).forEach(([id, t]) => { if (t && t.best >= 100 && TESTS[id]) S.mastered[id] = 1; }); }
   // one-time: turn the old yes/no "granted" flags into tokens actually credited per new lesson/test.
   // A merged lesson/test is credited its paid sources' share of the new tier (1 of 2 old lessons paid = half).
   // A flag with no paid legacy source was paid in full by the new system (lessons: tier, tests: the old flat 15).
