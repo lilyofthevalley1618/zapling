@@ -309,6 +309,7 @@ body:has(.lesson) #askFab,body:has(.sprigchat) #askFab{display:none}
 .msg .note{font-size:12.5px;color:var(--ink2);margin-top:6px}
 .msg.err{border-color:var(--coral);background:var(--corall)}
 .msg details{margin-top:6px;font-size:12.5px}.msg pre{white-space:pre-wrap;background:var(--bg2);border-radius:10px;padding:8px;font-size:12px;max-height:180px;overflow:auto;font-family:inherit}
+.morechip{margin-top:8px;border:2px solid var(--peri);background:var(--peril);color:var(--perid);border-radius:999px;padding:5px 12px;font:inherit;font-weight:900;font-size:13px;cursor:pointer}
 .copybtn{margin-top:8px;border:0;border-radius:12px;background:var(--mint);color:#fff;font-weight:900;padding:8px 12px;cursor:pointer;font-family:inherit;font-size:14px}
 .sugg{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 6px}
 .sugg button{border:2px solid var(--line);background:#fff;border-radius:999px;padding:5px 10px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;color:var(--ink)}
@@ -389,6 +390,10 @@ body:has(#v-games.on) #askFab{display:none}
 .labhandles button{min-width:44px;height:44px;border-radius:999px;border:2px solid var(--peri);background:#fff;color:var(--perid);font:inherit;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0 10px;touch-action:manipulation}
 .labhandles button svg{width:22px;height:22px}.labhandles button.x{border-color:var(--coral);color:var(--corald);font-size:24px;line-height:1}.labhandles button[hidden],.labhandles[hidden]{display:none}
 .cookrow{display:flex;justify-content:flex-end;margin:8px 14px -12px}
+.cookcard{display:flex;align-items:center;gap:12px;width:calc(100% - 32px);margin:0 16px 14px;padding:12px 14px;border:0;border-radius:18px;background:linear-gradient(135deg,#FF8A5C,#FF5E7E);color:#fff;font:inherit;text-align:left;cursor:pointer;box-shadow:0 5px 0 #D9435F;min-height:64px}
+.cookcard:active{transform:translateY(3px);box-shadow:0 2px 0 #D9435F}
+.cookcard .ci{flex:none;width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.25);display:grid;place-items:center}.cookcard .ci svg{width:28px;height:28px}
+.cookcard .ct{flex:1;display:flex;flex-direction:column;gap:2px}.cookcard b{font-size:17px;font-weight:900}.cookcard small{font-size:13.5px;font-weight:700;opacity:.95}.cookcard .cg{flex:none;width:22px;height:22px;opacity:.95}
 .cookbtn{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px 5px 9px;font:inherit;font-weight:900;font-size:13.5px;color:var(--perid);cursor:pointer;box-shadow:0 3px 0 var(--line)}
 .cookbtn svg{width:20px;height:20px}
 .cookbook .cbbox{max-width:460px;text-align:left;max-height:88vh;overflow:auto;padding:14px 14px 16px}
@@ -3584,6 +3589,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
+const APP_VERSION = '7.2 (2026-10-02)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -3604,7 +3610,7 @@ function renderProfile() {
   $('#profAv').onclick = () => showTab('shop');
   v.appendChild(goalPanel());
   v.appendChild(aiPanel());
-  v.appendChild(el(`<p class="small center" style="margin:4px 20px 30px">Zapling prototype · Units 1–6 · progress is saved in this browser only.</p>`));
+  v.appendChild(el(`<p class="small center" style="margin:4px 20px 30px">Zapling prototype · Units 1–${UNITS.length} · progress is saved in this browser only.<br><span id="appVer" style="opacity:.75">Version ${APP_VERSION}</span></p>`));
   $('#swSound').onclick = () => { setSound(!S.sound); renderProfile(); };
   $('#btnReset').onclick = async () => {
     const ok = await modal({ art: mascot('sad'), title: 'Reset all progress?', text: 'This erases your XP, streak, lessons, test scores and flashcards. It can\'t be undone.', buttons: [['Keep my progress', 'primary', false], ['Yes, reset', 'coral', true]] });
@@ -4138,20 +4144,38 @@ function offlineAnswer(c, q) {
   return parts.join('');
 }
 
+/* ---------- brevity: short by default, longer only when asked ---------- */
+const MORE_Q = 'Want more detail?';
+const wantsDetail = q => /\b(explain more|more detail|in detail|details?|step[- ]by[- ]step|tell me more|go deeper|elaborate|longer|full explanation|explain why|why exactly)\b/i.test(q || '') || /^\s*(but\s+|and\s+)?why\s*[?!.]*\s*$/i.test(q || '');
+const brief = (t, n = 2, max = 230) => { const s = String(t || '').replace(/\s+/g, ' ').trim(), ps = s.split(/(?<=[.!?])\s+(?=[A-Z("'])/); let o = ps.slice(0, n).join(' ').replace(/\s+/g, ' ').trim(); if (o.length > max) o = o.slice(0, max).replace(/[\s,;:]+\S*$/, '') + '…'; return o; };
+// returns { html, more }: html is 1–3 short sentences, more is the long version (null when the long one was asked for)
+function offlineBrief(c, q) {
+  const full = offlineAnswer(c, q);
+  if (wantsDetail(q)) return { html: full, more: null };
+  const qq = [q, c.question, c.conceptTitle].filter(Boolean).join(' ');
+  if (c.hintOnly) { const k = c.conceptTitle && !q ? { text: c.concept } : sprigSearch(qq, c, 'concept', 1)[0]; return { html: `Hint: re-read the question slowly.${k ? ' ' + esc(brief(k.text, 1)) : ''}`, more: full }; }
+  if (c.why) return { html: `${esc(c.why)}${c.correct && c.kind === 'mistake' ? `<div class="note">Correct answer: <b>${esc(c.correct)}</b></div>` : ''}`, more: full }; // lesson "Why" text, unchanged
+  const card = q && sprigSearch(q, c, 'card', 1)[0], con = c.conceptTitle && !q ? { title: c.conceptTitle, text: c.concept } : sprigSearch(qq, c, 'concept', 1)[0], best = card || con;
+  if (!best) return { html: `I couldn't find that in my lessons yet. Try other words, like "series" or "ground".`, more: null };
+  return { html: card ? `<b>${esc(card.title)}:</b> ${esc(brief(card.text, 2))}` : esc(brief(best.text, 2)), more: full };
+}
+const moreChip = '<div><button class="morechip">' + MORE_Q + '</button></div>';
+
 /* ---------- Mode 2: bring your own key ---------- */
 function sprigSystem(c) {
   return 'You are Sprig, the friendly sprout mascot and electronics tutor in Zapling, a beginner app. The learner is a complete beginner. '
-    + 'Answer in short, plain sentences (usually under 120 words). Define any term or symbol the first time you use it. Prefer tiny worked examples with simple numbers. '
+    + 'BREVITY RULE: reply in 1–3 short sentences of plain, beginner-friendly words. Lead with the single most important point or next step. No lists, headings or long explanations unless the learner asks for more ("explain more", "why", "details", "step by step"); then you may use up to about 150 words and short steps. Define any term or symbol the first time you use it. '
     + 'Use the lesson or mistake context you are given; if the app\'s explanation is included, build on it. If you are unsure, say so. Stay on electronics and learning. Use plain text, no LaTeX.'
     + (c.kind === 'lab' ? ' The learner is building on a virtual breadboard in Circuit Lab. Base your answer on the circuit description you are given (holes a–e in one numbered row are connected, f–j likewise; rails run along the edges). Point to specific parts and holes, and suggest one fix at a time.' : '')
     + (c.hintOnly ? ' IMPORTANT: the learner is in the middle of a unit test and has not answered yet. Give a hint or remind them of the relevant idea only. Do NOT say which option is correct and do NOT compute the final answer.' : '');
 }
 async function aiAsk(c, hist, q) {
+  const detail = wantsDetail(q);
   const cfg = aiLoad(); const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 30000);
   const ctxMsg = ctxLines(c).join('\n');
   const messages = [{ role: 'system', content: sprigSystem(c) + (ctxMsg ? '\n\nContext from the app:\n' + ctxMsg : '') }, ...hist.slice(-10), { role: 'user', content: q }];
   try {
-    const r = await fetch(cfg.base.replace(/\/+$/, '') + '/chat/completions', { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + cfg.key }, body: JSON.stringify({ model: cfg.model, messages }) });
+    const r = await fetch(cfg.base.replace(/\/+$/, '') + '/chat/completions', { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + cfg.key }, body: JSON.stringify({ model: cfg.model, messages, max_tokens: detail ? 600 : 150 }) });
     let data = null; try { data = await r.json(); } catch (e) { }
     if (!r.ok) {
       const m = (data && data.error && (data.error.message || data.error)) || '';
@@ -4210,6 +4234,7 @@ function renderChat() {
         d.insertAdjacentHTML('beforeend', `<div><button class="copybtn" data-i="${i}">Copy question for any AI</button><div class="note">Paste it into Grok, ChatGPT or any AI chat for a longer explanation.</div><details><summary>See what gets copied</summary><pre>${esc(pr)}</pre></details></div>`);
         $('.copybtn', d).onclick = async () => { const ok = await copyText(pr); toast(ok ? 'Copied! Paste it into any AI chat.' : 'Couldn\'t copy. Open "See what gets copied" and copy it by hand.', ICON.check()); };
       }
+      if (m.who === 'bot' && m.more) { d.insertAdjacentHTML('beforeend', moreChip); $('.morechip', d).onclick = () => { const mo = m.more; m.more = null; if (mo === true) return send(MORE_Q); th.msgs.push({ who: 'me', html: MORE_Q }, { who: 'bot', html: mo, q: m.q, copy: true }); SFX.tap(); paint(); }; }
       box.appendChild(d);
     });
     box.scrollTop = box.scrollHeight;
@@ -4225,14 +4250,14 @@ function renderChat() {
       try {
         const a = await aiAsk(c, th.hist, q);
         th.hist.push({ role: 'user', content: q }, { role: 'assistant', content: a });
-        th.msgs = th.msgs.filter(m => !m.tmp); th.msgs.push({ who: 'bot', html: mdLite(a), q, copy: false });
+        th.msgs = th.msgs.filter(m => !m.tmp); th.msgs.push({ who: 'bot', html: mdLite(a), q, copy: false, more: wantsDetail(q) ? null : true });
       } catch (e) {
         th.msgs = th.msgs.filter(m => !m.tmp);
         th.msgs.push({ who: 'bot', err: true, html: `<b>AI help didn't work:</b> ${esc(e.message)}${e.detail ? `<div class="note">${esc(e.detail)}</div>` : ''}<div class="note">Here's the offline helper instead.</div>` });
-        th.msgs.push({ who: 'bot', html: offlineAnswer(c, q), q, copy: true });
+        { const o = offlineBrief(c, q); th.msgs.push({ who: 'bot', html: o.html, more: o.more, q, copy: true }); }
       }
       th.busy = false;
-    } else th.msgs.push({ who: 'bot', html: offlineAnswer(c, q), q, copy: true });
+    } else { const o = offlineBrief(c, q); th.msgs.push({ who: 'bot', html: o.html, more: o.more, q, copy: true }); }
     if (CHAT.cur === th && document.body.contains(w)) paint();
   };
   $('#sprigSend', w).onclick = () => send($('#sprigIn', w).value);
@@ -4472,8 +4497,8 @@ const gameUnlocked = g => !!S.done[unitOf(g.u).lessons[0]];
 const SKILLS = [['Electricity basics', ['G1', 'G2']], ["Ohm's law & networks", ['G3', 'G4']], ['Schematics & analysis', ['G5', 'G6']], ['Breadboard skills', ['G7', 'G8']], ['Building circuits', ['G9', 'G10']], ['Debugging & sensors', ['G11', 'G12']], ['Capacitors & transistors', ['G13', 'G14']]];
 function renderGames() {
   const v = $('#v-games'), G = gstate(); v.innerHTML = '';
-  const cb = el(`<div class="cookrow"><button class="cookbtn" id="cookBtn" aria-label="Open the Circuit Cookbook">${BOOKICON}Cookbook</button></div>`); $('button', cb).onclick = openCookbook; v.appendChild(cb);
   v.appendChild(el(`<div class="pagehead"><span style="width:60px">${mascot('cheer')}</span><div><h1>Practice</h1><p>Build circuits, beat challenges and play quick games. Practice never costs hearts.</p></div></div>`));
+  const cb = el(`<button class="cookcard" id="cookBtn" aria-label="Open the Circuit Cookbook: example LED circuits to load and try"><span class="ci">${BOOKICON}</span><span class="ct"><b>Circuit Cookbook</b><small>Example LED circuits to load and try.</small></span><svg class="cg" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`); cb.onclick = openCookbook; v.appendChild(cb);
   const host = el('<div id="labHost"></div>'); v.appendChild(host); renderLab(host);
   const q = el(`<div class="panel qgames"><h3>Quick games</h3><p class="small" style="margin:0 0 6px">Short timed rounds. Up to +${GAME_XP_ROUND} XP a round, ${GAME_XP_DAY} XP a day (today ${G.xd.xp}/${GAME_XP_DAY}).</p></div>`);
   SKILLS.forEach(([name, ids]) => {
@@ -4678,7 +4703,18 @@ function goalPanel() {
 function initPWA() {
   if (!/^https?:$/.test(location.protocol)) return;
   document.head.insertAdjacentHTML('beforeend', '<link rel="manifest" href="manifest.webmanifest">');
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
+  if (!('serviceWorker' in navigator)) return;
+  const sw = navigator.serviceWorker, hadCtl = !!sw.controller; // first install shouldn't reload
+  sw.register('sw.js').then(reg => {
+    const up = () => reg.update().catch(() => { });
+    up(); document.addEventListener('visibilitychange', () => { if (!document.hidden) up(); });
+  }).catch(() => { });
+  // a new worker took over: reload once so the fresh index.html shows (guarded so it can't loop)
+  sw.addEventListener('controllerchange', () => {
+    if (!hadCtl || window.__zapReloaded) return; window.__zapReloaded = true;
+    const k = 'zapling.swReload', last = +sessionStorage.getItem(k) || 0; if (Date.now() - last < 30000) return;
+    sessionStorage.setItem(k, Date.now()); location.reload();
+  });
 }
 function initGoal() {
   ensurePrefs(); save(); initPWA();
@@ -5351,6 +5387,19 @@ function labAnswer(c, q) {
   if (more && !/couldn't find that/.test(more)) out.push(more);
   return out.join('');
 }
+// short lab reply: the single most important issue or next step, 1–2 sentences; labAnswer is the long version
+function labBrief(c, q) {
+  const full = labAnswer(c, q); if (wantsDetail(q)) return { html: full, more: null };
+  const L = labS(), d = LAB.last || labDiag(L.parts), probs = d.chips.filter(x => x.k === 'bad' || x.k === 'warn'), bat = L.parts.find(p => p.kind === 'bat'), V = bat ? bat.volts : 9;
+  const nextCh = (LAB_CH.find(ch => !ch.soon && !L.done[ch.id]) || { name: 'a free build' }).name;
+  const top = probs[0] ? `<b>${esc(probs[0].t)}.</b> ${esc(brief(labFix(probs[0].t), 1))}${probs.length > 1 ? ` Fix that first, then ask again.` : ''}` : '';
+  let h;
+  if (/resist|ohm|size|value/i.test(q)) h = `Use about ${Math.max(0, Math.round((V - 2) / .015))} Ω: (${V} V − 2 V for a red LED) ÷ 0.015 A. A bigger value is safer, just dimmer.`;
+  else if (/next|try|idea|build/i.test(q)) h = top || `Nice, no problems on your board. Try the ${esc(nextCh)} challenge next.`;
+  else if (/led|light|work|on\b|off\b|wrong|circuit|board|fix|broke|dark|dim|glow|bright|wire|battery|switch|hole|row|rail/i.test(q) || !q) h = top || (d.chips.some(x => x.k === 'ok') ? 'No problems spotted: your circuit looks good!' : esc(brief((d.chips[0] ? d.chips[0].t + '. ' + labFix(d.chips[0].t) : 'Your board is empty. Tap a part, then tap two holes to place it.'), 2)));
+  else { const o = offlineBrief(Object.assign({}, c, { kind: 'topic' }), q); h = o.html; }
+  return { html: h, more: full };
+}
 function labChat(host) {
   if (!LAB.chat) LAB.chat = { msgs: [{ who: 'bot', html: esc('Hi! I can see your breadboard. Ask me why something isn\'t working, or what to try next.') }], hist: [] };
   const th = LAB.chat, ai = aiReady(), cfg = aiLoad();
@@ -5364,6 +5413,7 @@ function labChat(host) {
     th.msgs.forEach(m => {
       const d = el(`<div class="msg ${m.who} ${m.err ? 'err' : ''}">${m.html}</div>`);
       if (m.who === 'bot' && m.copy) { d.insertAdjacentHTML('beforeend', `<div><button class="copybtn">Copy question for any AI</button></div>`); $('.copybtn', d).onclick = async () => { const ok = await copyText(copyPrompt(labCtx(), m.q)); toast(ok ? 'Copied with your circuit! Paste it into any AI chat.' : 'Couldn\'t copy on this browser.', ICON.check()); }; }
+      if (m.who === 'bot' && m.more) { d.insertAdjacentHTML('beforeend', moreChip); $('.morechip', d).onclick = () => { const mo = m.more; m.more = null; if (mo === true) return send(MORE_Q); th.msgs.push({ who: 'me', html: MORE_Q }, { who: 'bot', html: mo, q: m.q, copy: true }); SFX.tap(); paint(); }; }
       box.appendChild(d);
     });
     box.scrollTop = box.scrollHeight;
@@ -5373,10 +5423,10 @@ function labChat(host) {
     th.msgs.push({ who: 'me', html: esc(q) }); $('#labIn', host).value = ''; paint();
     if (aiReady()) {
       th.busy = true; th.msgs.push({ who: 'bot', html: '<i>Sprig is thinking…</i>', tmp: true }); paint();
-      try { const a = await aiAsk(c, th.hist, q); th.hist.push({ role: 'user', content: q }, { role: 'assistant', content: a }); th.msgs = th.msgs.filter(m => !m.tmp); th.msgs.push({ who: 'bot', html: mdLite(a), q }); }
-      catch (e) { th.msgs = th.msgs.filter(m => !m.tmp); th.msgs.push({ who: 'bot', err: true, html: `<b>AI help didn't work:</b> ${esc(e.message)}<div class="note">Here's the offline helper instead.</div>` }); th.msgs.push({ who: 'bot', html: labAnswer(c, q), q, copy: true }); }
+      try { const a = await aiAsk(c, th.hist, q); th.hist.push({ role: 'user', content: q }, { role: 'assistant', content: a }); th.msgs = th.msgs.filter(m => !m.tmp); th.msgs.push({ who: 'bot', html: mdLite(a), q, more: wantsDetail(q) ? null : true }); }
+      catch (e) { th.msgs = th.msgs.filter(m => !m.tmp); th.msgs.push({ who: 'bot', err: true, html: `<b>AI help didn't work:</b> ${esc(e.message)}<div class="note">Here's the offline helper instead.</div>` }); { const o = labBrief(c, q); th.msgs.push({ who: 'bot', html: o.html, more: o.more, q, copy: true }); } }
       th.busy = false;
-    } else th.msgs.push({ who: 'bot', html: labAnswer(c, q), q, copy: true });
+    } else { const o = labBrief(c, q); th.msgs.push({ who: 'bot', html: o.html, more: o.more, q, copy: true }); }
     if (document.body.contains(box)) paint();
   };
   if (!LAB.chatOpen) return;
