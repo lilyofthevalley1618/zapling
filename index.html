@@ -353,6 +353,33 @@ body:has(.lesson) #askFab,body:has(.sprigchat) #askFab{display:none}
 .plunits{display:flex;flex-direction:column;gap:6px;align-items:center;margin:6px 0}
 @media (max-width:400px){.tab{font-size:10.5px;padding:6px 1px}.tab svg{width:24px;height:24px}.bottomnav .inner{gap:2px}}
 @media (max-width:380px){#btnSound,.chip .lv,.brand{display:none}.chip .cd{display:none}}
+/* Practice › Circuit Lab */
+.lab h3{margin-top:0}
+.chrow{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin}
+.chcard{flex:none;width:128px;border:2px solid var(--line);border-radius:16px;background:#fff;padding:8px 10px;text-align:left;cursor:pointer;font-family:inherit;color:var(--ink);display:flex;flex-direction:column;gap:3px;box-shadow:0 3px 0 var(--line)}
+.chcard b{font-size:14px}.chcard span{font-size:11.5px;font-weight:800;color:var(--mintd)}
+.chcard.on{border-color:var(--peri);box-shadow:0 3px 0 var(--peri)}.chcard.done span{color:var(--mintd)}.chcard.soon{opacity:.75;cursor:default}
+.soonb{font-style:normal;background:var(--sunl);color:#8A5A00;border-radius:999px;padding:1px 7px;font-size:11px}
+.labgoal{background:var(--mintl);border-radius:14px;padding:8px 12px;margin:0 0 8px;font-size:14px;font-weight:700}.labgoal .small{margin-top:3px}
+.labpal{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:6px}
+.palbtn{border:2px solid var(--line);background:#fff;border-radius:12px;padding:4px 2px;display:flex;flex-direction:column;align-items:center;gap:1px;font:inherit;font-size:11px;font-weight:800;color:var(--ink);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.palbtn svg{width:26px;height:26px}.palbtn.on{border-color:var(--peri);background:#EEF0FF}
+.labghost{position:fixed;z-index:130;pointer-events:none;transform:translate(-50%,-60%);background:#fff;border:2px solid var(--peri);border-radius:12px;padding:4px 8px;display:flex;flex-direction:column;align-items:center;font-size:11px;font-weight:800;box-shadow:var(--shadow)}
+.labghost svg{width:28px;height:28px}
+.labopts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;font-size:12.5px;font-weight:800;color:var(--ink2)}
+.labopts select{font:inherit;font-size:13px;border:2px solid var(--line);border-radius:10px;padding:2px 4px;background:#fff;color:var(--ink)}
+.labboard{touch-action:none;user-select:none;-webkit-user-select:none;margin-bottom:6px}.labboard svg{display:block;width:100%;height:auto}
+.labtools{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.labtools .btn{padding:8px 4px;font-size:12.5px;box-shadow:0 3px 0 var(--line)}.labtools .btn:disabled{opacity:.45}
+.labhint{font-size:13px;font-weight:700;color:var(--ink2);margin:8px 2px 4px}.linkbtn{border:0;background:none;color:var(--corald);font:inherit;font-weight:900;cursor:pointer;padding:0;text-decoration:underline}
+.labchips{display:flex;flex-wrap:wrap;gap:6px}.labchips .status{font-size:13px;padding:5px 10px}
+.labchat{border:2px solid var(--line);border-radius:18px;background:var(--bg);overflow:hidden;margin-top:10px;display:flex;flex-direction:column}
+.labchat-h{display:flex;align-items:center;gap:8px;border:0;background:#fff;padding:8px 12px;cursor:pointer;font:inherit;color:var(--ink);width:100%;text-align:left}
+.labchat-h .m{width:34px;flex:none}.labchat-h .t{flex:1;display:flex;flex-direction:column}.labchat-h small{font-size:11.5px;font-weight:800;color:var(--ink2)}.labchat-h .chev{font-size:18px;color:var(--ink2)}
+.labchat-b{display:flex;flex-direction:column;border-top:1px solid var(--line)}.labchat .msgs{max-height:260px;min-height:90px}.labchat .composer{padding:8px 10px}
+.qgames .skillh{font-size:12px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;color:var(--ink2);margin:8px 0 4px}
+.ggrid.mini{gap:7px}.gcard.mini{padding:7px 10px;border-top-width:4px;border-radius:14px;box-shadow:0 3px 0 var(--line);gap:2px}.gcard.mini b{font-size:13.5px}.gcard.mini em{font-size:12px}
+body:has(#v-games.on) #askFab{display:none}
+@media (min-width:980px){body:has(#v-games.on) #app{max-width:1060px}.labwrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}.labchat{margin-top:0;position:sticky;top:76px}.labchat .msgs{max-height:420px;min-height:260px}}
 </style>
 </head>
 <body>
@@ -369,7 +396,7 @@ body:has(.lesson) #askFab,body:has(.sprigchat) #askFab{display:none}
   <main>
     <section id="v-learn" class="view on" aria-label="Lesson path"></section>
     <section id="v-review" class="view" aria-label="Flashcards"></section>
-    <section id="v-games" class="view" aria-label="Games"></section>
+    <section id="v-games" class="view" aria-label="Practice"></section>
     <section id="v-shop" class="view" aria-label="Avatar shop"></section>
     <section id="v-profile" class="view" aria-label="Profile and settings"></section>
   </main>
@@ -786,13 +813,17 @@ function bbSolve(parts, o = {}) {
   const P = {}, f = k => { if (P[k] === undefined) P[k] = k; while (P[k] !== k) k = P[k] = P[P[k]]; return k; };
   const U = (a, b) => { a = f(a); b = f(b); if (a !== b) P[a] = b; };
   const N = h => bbNet(h, o);
-  U('BAT+', 'T+'); U('BAT-', 'T-'); if (o.bottom) { U('T+', 'B+'); U('T-', 'B-'); }
+  const bat = o.lab ? parts.find(p => p.kind === 'bat') : null;
+  if (o.lab) { if (bat) { U('BAT+', N(bat.a)); U('BAT-', N(bat.b)); } }
+  else { U('BAT+', 'T+'); U('BAT-', 'T-'); }
+  if (o.bottom) { U('T+', 'B+'); U('T-', 'B-'); }
   parts.forEach(p => {
     if (p.kind === 'wire') U(N(p.a), N(p.b));
-    if (p.kind === 'btn' && p.on) U(N(p.a), N(p.b));
+    if ((p.kind === 'btn' || p.kind === 'spst') && p.on) U(N(p.a), N(p.b));
     if (p.kind === 'sw') U(N(p.c), N(p.on ? p.b : p.a));
   });
-  const V = o.volts ?? 9, vcc = f('BAT+'), gnd = f('BAT-'), net = h => f(N(h));
+  const V = bat ? bat.volts || 9 : o.volts ?? 9, vcc = f('BAT+'), gnd = f('BAT-'), net = h => f(N(h));
+  if (o.lab && !bat) return { nobat: true, short: false, I: {}, net, v: () => 0, V: 0 };
   if (vcc === gnd) return { short: true, I: {}, net, v: () => 0, V };
   const els = [];
   parts.forEach(p => {
@@ -840,11 +871,11 @@ function bbPartSVG(p, sol, o) {
   const leg = (xa, ya, xb, yb, w = 2.4) => `<path d="M${xa} ${ya}L${xb} ${yb}" stroke="#9AA3B5" stroke-width="${w}" stroke-linecap="round"/>`;
   if (p.kind === 'wire') {
     const lift = Math.min(26, 8 + Math.hypot(x2 - x1, y2 - y1) * .18), c = p.color || '#2EC4A0';
-    g = `<path d="M${x1} ${y1}C${x1} ${Math.min(y1, y2) - lift} ${x2} ${Math.min(y1, y2) - lift} ${x2} ${y2}" fill="none" stroke="${c}" stroke-width="3.6" stroke-linecap="round"/><circle cx="${x1}" cy="${y1}" r="3" fill="${c}"/><circle cx="${x2}" cy="${y2}" r="3" fill="${c}"/>`;
+    g = `<path d="M${x1} ${y1}C${x1} ${Math.min(y1, y2) - lift} ${x2} ${Math.min(y1, y2) - lift} ${x2} ${y2}" fill="none" stroke="${c}" stroke-width="3.6" stroke-linecap="round"/><circle cx="${x1}" cy="${y1}" r="3" fill="${c}"/><circle cx="${x2}" cy="${y2}" r="3" fill="${c}"/>${o.lab ? `<path d="M${x1} ${y1}C${x1} ${Math.min(y1, y2) - lift} ${x2} ${Math.min(y1, y2) - lift} ${x2} ${y2}" fill="none" stroke="transparent" stroke-width="12"/>` : ''}`;
   }
   if (p.kind === 'res' || p.kind === 'ldr') {
     g = `<path d="M${x1} ${y1}L${x2} ${y2}" stroke="#9AA3B5" stroke-width="2.4" stroke-linecap="round"/><g transform="translate(${mx},${my - 7}) rotate(${Math.abs(ang) > 90 ? ang - 180 : ang}) scale(.62)">${p.kind === 'res' ? resistorDraw(bandsFor(p.ohms)).replace('M-27 0H27', 'M-17 0H17') : `<circle r="13" fill="#F6E7C8" stroke="#C9831A" stroke-width="2.4"/><path d="M-8 -4h4v8h4v-8h4v8h4" fill="none" stroke="#E0604F" stroke-width="2.2" stroke-linejoin="round"/>`}</g><path d="M${x1} ${y1}L${mx - 6} ${my - 7}M${x2} ${y2}L${mx + 6} ${my - 7}" stroke="#9AA3B5" stroke-width="2.4" stroke-linecap="round"/>`;
-    if (p.label) g += lbl(mx, my - 20, p.label, '#6B6899', 8.5);
+    if (p.label && o._tags && o._tags[p.id]) g += `<circle cx="${mx}" cy="${my - 17}" r="5" fill="#6B6899"/>${lbl(mx, my - 14.6, o._tags[p.id], '#fff', 7)}`;
   }
   if (p.kind === 'led') {
     const col = LEDCOL[p.color || 'red'], st = o.blind ? 'dark' : ledState(sol, p.id), I = sol && sol.I[p.id] || 0;
@@ -863,17 +894,30 @@ function bbPartSVG(p, sol, o) {
     const [xc, yc] = bbPos(p.c);
     g = `${leg(x1, y1, x1, my - 6)}${leg(xc, yc, xc, my - 6)}${leg(x2, y2, x2, my - 6)}<rect x="${x1 - 8}" y="${my - 17}" width="${x2 - x1 + 16}" height="13" rx="4" fill="#6B6899" stroke="#2E2A5A" stroke-width="1.5"/><rect x="${(p.on ? (xc + x2) / 2 : (x1 + xc) / 2) - 5}" y="${my - 24}" width="10" height="11" rx="2.5" fill="#FFC94D" stroke="#C9831A" stroke-width="1.5"/>`;
   }
+  if (p.kind === 'spst') {
+    g = `${leg(x1, y1, mx, my)}${leg(x2, y2, mx, my)}<rect x="${mx - 13}" y="${my - 8}" width="26" height="14" rx="4" fill="#6B6899" stroke="#2E2A5A" stroke-width="1.5"/><rect x="${mx + (p.on ? 1 : -11)}" y="${my - 11}" width="10" height="11" rx="2.5" fill="${p.on ? '#2EC4A0' : '#FFC94D'}" stroke="${p.on ? '#1C9E80' : '#C9831A'}" stroke-width="1.5"/><rect x="${mx - 15}" y="${my - 8}" width="30" height="22" fill="transparent"/>`;
+  }
+  if (p.kind === 'bat') {
+    g = `<path d="M15.5 99V${y1}H${x1}" fill="none" stroke="#E0604F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M30.5 ${y2 < 130 ? 99 : 162}V${y2}H${x2}" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${x1}" cy="${y1}" r="3" fill="#E0604F"/><circle cx="${x2}" cy="${y2}" r="3" fill="${INK}"/>
+      <rect x="7" y="104" width="32" height="58" rx="7" fill="#4A4580" stroke="#2E2A5A" stroke-width="2"/><rect x="11" y="99" width="9" height="6" rx="1.5" fill="#E0604F"/><rect x="26" y="99" width="9" height="6" rx="1.5" fill="#9E99C2"/>${lbl(23, 131, (p.volts || 9) + '', '#fff', 12)}${lbl(23, 145, 'V', '#fff', 10)}`;
+  }
   if (p.kind === 'pot') {
     const [xw, yw] = bbPos(p.w), a0 = -135 + 270 * p.pos;
     g = `${leg(x1, y1, x1, my - 8)}${leg(xw, yw, xw, my - 8)}${leg(x2, y2, x2, my - 8)}<rect x="${x1 - 7}" y="${my - 26}" width="${x2 - x1 + 14}" height="20" rx="5" fill="#5AB8F0" stroke="#2A7FB8" stroke-width="1.6"/><g transform="translate(${xw},${my - 16})"><circle r="8.5" fill="#fff" stroke="#2A7FB8" stroke-width="1.6"/><path d="M0 0L0 -7" transform="rotate(${a0})" stroke="#2E2A5A" stroke-width="2.4" stroke-linecap="round"/></g>`;
   }
   const xs = [x1, x2], ys = [y1, y2]; if (p.c) { const q = bbPos(p.c); xs.push(q[0]); ys.push(q[1]); } if (p.w) { const q = bbPos(p.w); xs.push(q[0]); ys.push(q[1]); }
+  if (p.kind === 'bat') { xs.push(7, 39); ys.push(130, 162); }
   const bx = Math.min(...xs) - 11, by = Math.min(...ys) - 30, bw = Math.max(...xs) - Math.min(...xs) + 22, bh = Math.max(...ys) - Math.min(...ys) + 40;
-  return `<g class="bbp" data-id="${p.id}">${g}<rect class="hl" x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="10" fill="#7C83FD" fill-opacity="0" stroke="#7C83FD" stroke-opacity="0" stroke-width="2.5" stroke-dasharray="5 4" pointer-events="${o.partTap ? 'all' : 'none'}" style="cursor:pointer"/></g>`;
+  return `<g class="bbp" data-id="${p.id}">${g}<rect class="hl" x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="10" fill="#7C83FD" fill-opacity="${o.sel === p.id ? .08 : 0}" stroke="#7C83FD" stroke-opacity="${o.sel === p.id ? .9 : 0}" stroke-width="2.5" stroke-dasharray="5 4" pointer-events="${o.partTap ? 'all' : 'none'}" style="cursor:pointer"/></g>`;
 }
 // o: { volts, split, strips, bottom, blind, holesTap, partTap, marks:[{h,k}], probes:{red,black}, aria }
 function bbSVG(parts = [], o = {}, sol) {
   sol = sol || bbSolve(parts, o);
+  const named = parts.filter(p => p.label && (p.kind === 'res' || p.kind === 'ldr'));
+  o = Object.assign({}, o, { _tags: named.length > 1 ? Object.fromEntries(named.map((p, i) => [p.id, i + 1 + ''])) : {} });
+  const lines = [];
+  named.map((p, i) => (named.length > 1 ? `(${i + 1}) ` : '') + p.label).forEach(t => { const L = lines[lines.length - 1]; if (L && (L + '   ·   ' + t).length <= 46) lines[lines.length - 1] = L + '   ·   ' + t; else lines.push(t); });
+  const H = 251 + (lines.length ? 6 + lines.length * 15 : 0);
   let s = `<defs><filter id="bbglow" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="3"/></filter></defs><rect x="46" y="3" width="290" height="245" rx="10" fill="#F7F3E8" stroke="#DCD3BC" stroke-width="2"/><rect x="50" y="123" width="282" height="9" rx="4" fill="#E2D8BE"/>`;
   const rl = (y, c) => o.split ? `<path d="M54 ${y}H${BBX2(7) + 8}M${BBX2(8) - 8} ${y}H330" stroke="${c}" stroke-width="2"/>` : `<path d="M54 ${y}H330" stroke="${c}" stroke-width="2"/>`;
   s += rl(10, '#FF7F6E') + rl(39, '#7C83FD') + rl(214, '#FF7F6E') + rl(243, '#7C83FD');
@@ -886,7 +930,7 @@ function bbSVG(parts = [], o = {}, sol) {
   'abcdefghij'.split('').forEach(r => s += `<text x="53" y="${BBROW[r] + 2.5}" text-anchor="middle" font-size="7" font-weight="800" fill="#A99F86" style="font-family:inherit">${r}</text>`);
   bbHoles().forEach(h => { const [x, y] = bbPos(h); s += `<rect x="${x - 2.4}" y="${y - 2.4}" width="4.8" height="4.8" rx="1.1" fill="#BDB39A"/>`; });
   // battery pack wired to the top rails (left end)
-  s += `<rect x="7" y="104" width="32" height="58" rx="7" fill="#4A4580" stroke="#2E2A5A" stroke-width="2"/><rect x="11" y="99" width="9" height="6" rx="1.5" fill="#E0604F"/><rect x="26" y="99" width="9" height="6" rx="1.5" fill="#9E99C2"/>${lbl(23, 131, (o.volts ?? 9) + '', '#fff', 12)}${lbl(23, 145, 'V', '#fff', 10)}
+  if (!o.lab) s += `<rect x="7" y="104" width="32" height="58" rx="7" fill="#4A4580" stroke="#2E2A5A" stroke-width="2"/><rect x="11" y="99" width="9" height="6" rx="1.5" fill="#E0604F"/><rect x="26" y="99" width="9" height="6" rx="1.5" fill="#9E99C2"/>${lbl(23, 131, (o.volts ?? 9) + '', '#fff', 12)}${lbl(23, 145, 'V', '#fff', 10)}
     <path d="M15.5 99V18H58" fill="none" stroke="#E0604F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M30.5 99V31H58" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
   if (o.bottom) s += `<path d="M330 18H333V222H330" fill="none" stroke="#E0604F" stroke-width="2.6" stroke-linejoin="round"/><path d="M326 31H329V235H326" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linejoin="round"/>`;
   (o.marks || []).forEach(m => { const [x, y] = bbPos(m.h); const c = { ref: '#FFC94D', sel: '#7C83FD', ok: '#2EC4A0', bad: '#FF7F6E' }[m.k] || '#7C83FD'; s += `<circle cx="${x}" cy="${y}" r="6.2" fill="${c}" fill-opacity="${m.k === 'ref' ? .55 : .35}" stroke="${c}" stroke-width="2.2"/>`; });
@@ -894,7 +938,8 @@ function bbSVG(parts = [], o = {}, sol) {
   const pr = o.probes || {};
   ['red', 'black'].forEach(k => { if (!pr[k]) return; const [x, y] = bbPos(pr[k]), c = k === 'red' ? '#E0604F' : INK; s += `<g pointer-events="none"><path d="M${x} ${y}L${x + 10} ${y - 18}" stroke="${c}" stroke-width="3" stroke-linecap="round"/><rect x="${x + 6}" y="${y - 34}" width="9" height="18" rx="4" transform="rotate(28 ${x + 10} ${y - 25})" fill="${c}" stroke="#fff" stroke-width="1.5"/><circle cx="${x}" cy="${y}" r="3.4" fill="${c}" stroke="#fff" stroke-width="1.4"/></g>`; });
   if (o.holesTap) bbHoles().forEach(h => { const [x, y] = bbPos(h); s += `<circle class="bbh" data-h="${h}" cx="${x}" cy="${y}" r="${bbParse(h).rail ? 6.3 : 6.4}" fill="transparent" style="cursor:pointer"/>`; });
-  return `<svg viewBox="0 0 340 251" role="img" aria-label="${o.aria || 'A breadboard circuit'}"><rect width="340" height="251" rx="18" fill="${BG}"/>${s}</svg>`;
+  lines.forEach((t, i) => s += `<text x="170" y="${266 + i * 15}" text-anchor="middle" font-size="10.5" font-weight="800" fill="#6B6899" style="font-family:inherit">${esc(t)}</text>`);
+  return `<svg viewBox="0 0 340 ${H}" role="img" aria-label="${o.aria || 'A breadboard circuit'}"><rect width="340" height="${H}" rx="18" fill="${BG}"/>${s}</svg>`;
 }
 const bbArt = (parts, o = {}) => () => bbSVG(parts, o);
 /* =========================================================
@@ -2639,7 +2684,7 @@ function renderTop() {
   const due = dueCards().length;
   $('#tabLearn').innerHTML = ICON.path() + 'Learn';
   $('#tabReview').innerHTML = ICON.cards() + 'Flashcards' + (due ? `<span class="badge">${due}</span>` : '');
-  $('#tabGames').innerHTML = ICON.game() + 'Games';
+  $('#tabGames').innerHTML = ICON.game() + 'Practice';
   $('#tabShop').innerHTML = ICON.shop() + 'Shop';
   $('#chipTok').innerHTML = ICON.token() + `<span>${S.tokens || 0}</span>`;
   $('#tabProfile').innerHTML = ICON.user() + 'Profile';
@@ -3752,6 +3797,9 @@ function ctxLines(c) {
   if (c.her) out.push(`My answer: ${c.her}`);
   if (c.correct && !c.hintOnly) out.push(`Correct answer: ${c.correct}`);
   if (c.why && !c.hintOnly) out.push(`The app's explanation: ${c.why}`);
+  if (c.circuit) out.push(`My Circuit Lab breadboard right now: ${c.circuit}`);
+  if (c.problems) out.push(`Problems the app detects: ${c.problems}`);
+  if (c.challenge) out.push(`Challenge I'm working on: ${c.challenge}`);
   return out;
 }
 function copyPrompt(c, q) {
@@ -3780,6 +3828,7 @@ function sprigSystem(c) {
   return 'You are Sprig, the friendly sprout mascot and electronics tutor in Zapling, a beginner app. The learner is a complete beginner. '
     + 'Answer in short, plain sentences (usually under 120 words). Define any term or symbol the first time you use it. Prefer tiny worked examples with simple numbers. '
     + 'Use the lesson or mistake context you are given; if the app\'s explanation is included, build on it. If you are unsure, say so. Stay on electronics and learning. Use plain text, no LaTeX.'
+    + (c.kind === 'lab' ? ' The learner is building on a virtual breadboard in Circuit Lab. Base your answer on the circuit description you are given (holes a–e in one numbered row are connected, f–j likewise; rails run along the edges). Point to specific parts and holes, and suggest one fix at a time.' : '')
     + (c.hintOnly ? ' IMPORTANT: the learner is in the middle of a unit test and has not answered yet. Give a hint or remind them of the relevant idea only. Do NOT say which option is correct and do NOT compute the final answer.' : '');
 }
 async function aiAsk(c, hist, q) {
@@ -4087,17 +4136,20 @@ const GAMES = [
 /* ---------- state ---------- */
 const gstate = () => { if (!S.games || typeof S.games !== 'object') S.games = {}; S.games.best = S.games.best || {}; if (!S.games.xd || S.games.xd.d !== today()) S.games.xd = { d: today(), xp: 0 }; return S.games; };
 const gameUnlocked = g => !!S.done[unitOf(g.u).lessons[0]];
-/* ---------- Games tab ---------- */
+/* ---------- Practice tab (route id stays 'games'): Circuit Lab first, then quick games by skill ---------- */
+const SKILLS = [['Electricity basics', ['G1', 'G2']], ["Ohm's law & networks", ['G3', 'G4']], ['Schematics & analysis', ['G5', 'G6']], ['Breadboard skills', ['G7', 'G8']], ['Building circuits', ['G9', 'G10']], ['Debugging & sensors', ['G11', 'G12']]];
 function renderGames() {
   const v = $('#v-games'), G = gstate(); v.innerHTML = '';
-  v.appendChild(el(`<div class="pagehead"><span style="width:60px">${mascot('cheer')}</span><div><h1>Games</h1><p>Quick rounds. Never cost hearts. Today: ${G.xd.xp}/${GAME_XP_DAY} game XP.</p></div></div>`));
-  UNITS.forEach(u => {
-    const gs = GAMES.filter(g => g.u === u.id), open = gameUnlocked(gs[0]);
-    const p = el(`<div class="panel"><h3 style="color:${u.color}">Unit ${u.n}: ${u.title}</h3><div class="ggrid"></div>${open ? '' : `<p class="small" style="margin:6px 0 0">Finish lesson ${LABEL[u.lessons[0]]} to unlock these games.</p>`}</div>`);
-    gs.forEach(g => { const b = el(`<button class="gcard ${open ? '' : 'locked'}" data-g="${g.id}" ${open ? '' : 'disabled'} style="--uc:${u.color}"><b>${g.name}</b><span>${g.blurb}</span><em>${open ? (G.best[g.id] ? 'Best: ' + G.best[g.id] : 'Play!') : 'Locked'}</em></button>`); b.onclick = () => { SFX.tap(); playGame(g); }; $('.ggrid', p).appendChild(b); });
-    v.appendChild(p);
+  v.appendChild(el(`<div class="pagehead"><span style="width:60px">${mascot('cheer')}</span><div><h1>Practice</h1><p>Build circuits, beat challenges and play quick games. Practice never costs hearts.</p></div></div>`));
+  const host = el('<div id="labHost"></div>'); v.appendChild(host); renderLab(host);
+  const q = el(`<div class="panel qgames"><h3>Quick games</h3><p class="small" style="margin:0 0 6px">Short timed rounds. Up to +${GAME_XP_ROUND} XP a round, ${GAME_XP_DAY} XP a day (today ${G.xd.xp}/${GAME_XP_DAY}).</p></div>`);
+  SKILLS.forEach(([name, ids]) => {
+    const gs = ids.map(id => GAMES.find(g => g.id === id)).filter(Boolean); if (!gs.length) return;
+    q.appendChild(el(`<div class="skillh">${name}</div>`)); const grid = el('<div class="ggrid mini"></div>');
+    gs.forEach(g => { const u = unitOf(g.u), open = gameUnlocked(g); const b = el(`<button class="gcard mini ${open ? '' : 'locked'}" data-g="${g.id}" ${open ? '' : 'disabled'} style="--uc:${u.color}" title="${esc(g.blurb)}"><b>${g.name}</b><em>${open ? (G.best[g.id] ? 'Best ' + G.best[g.id] : 'Play') : 'After lesson ' + LABEL[u.lessons[0]]}</em></button>`); b.onclick = () => { SFX.tap(); playGame(g); }; grid.appendChild(b); });
+    q.appendChild(grid);
   });
-  v.appendChild(el(`<p class="small center" style="margin:4px 20px 30px">Up to +${GAME_XP_ROUND} XP a round, ${GAME_XP_DAY} XP a day from games.</p>`));
+  v.appendChild(q);
 }
 /* ---------- shared shell: timer, score, results, replay ---------- */
 let GM = null;
@@ -4617,6 +4669,270 @@ function fcTestEnd(v) {
     <p class="body" style="color:var(--ink2)">${FT.xp ? `+${FT.xp} XP` : 'XP for this unit\'s test already earned today'} · best ${r.best}%</p>
     <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px"><button class="btn ghost" id="fcdone">Done</button><button class="btn primary" id="fcagain">Try again</button></div></div>`));
   $('#fcdone').onclick = () => { FT = null; renderReview(); }; $('#fcagain').onclick = () => startFcTest(u.id);
+}
+/* =========================================================
+   PRACTICE › CIRCUIT LAB: free-build breadboard sandbox (reuses the Units 4-6 solver),
+   guided challenges with one-time rewards, and an inline Ask Sprig that sees the circuit.
+   ========================================================= */
+const LAB_O = { lab: true };
+const LAB_ROWS = ['T+', 'T-', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'B+', 'B-'];
+const LAB_RES = [100, 220, 330, 470, 680, 1000, 2200, 4700, 10000], LAB_VOLTS = [3, 4.5, 6, 9], LAB_COLORS = ['red', 'green', 'yellow', 'blue', 'white'];
+const LAB_TOK = 10, LAB_XP = 20;
+const LAB_KIND = { bat: 'battery', wire: 'jumper wire', res: 'resistor', led: 'LED', spst: 'slide switch', btn: 'pushbutton' };
+const LAB_PAL = [['bat', 'Battery', '<rect x="5" y="7" width="18" height="14" rx="3" fill="#4A4580"/><rect x="8" y="4" width="4" height="3" fill="#E0604F"/><rect x="16" y="4" width="4" height="3" fill="#9E99C2"/>'],
+  ['wire', 'Wire', '<path d="M5 21C5 6 23 6 23 21" fill="none" stroke="#2EC4A0" stroke-width="3" stroke-linecap="round"/>'],
+  ['res', 'Resistor', '<path d="M2 14H26" stroke="#9AA3B5" stroke-width="2"/><rect x="8" y="9" width="12" height="10" rx="4" fill="#E9C99A"/><path d="M11 9v10M14 9v10M17 9v10" stroke="#B5462B" stroke-width="1.6"/>'],
+  ['led', 'LED', '<path d="M8 20V12a6 6 0 0 1 12 0V20Z" fill="#FF3355"/><rect x="6" y="19" width="16" height="3" rx="1" fill="#E0506A"/>'],
+  ['spst', 'Switch', '<rect x="4" y="12" width="20" height="9" rx="3" fill="#6B6899"/><rect x="6" y="8" width="8" height="8" rx="2" fill="#FFC94D"/>'],
+  ['btn', 'Button', '<rect x="6" y="7" width="16" height="16" rx="3" fill="#4A4580"/><circle cx="14" cy="15" r="5" fill="#FFB3A8"/>']];
+const fmtOhm = r => r >= 1000 ? r / 1000 + ' kΩ' : r + ' Ω';
+const fmtmA = i => (i * 1000).toFixed(i < .01 ? 1 : 0) + ' mA';
+const capF = s => s.charAt(0).toUpperCase() + s.slice(1);
+const labS = () => { if (!S.lab || typeof S.lab !== 'object') S.lab = {}; const L = S.lab; if (!Array.isArray(L.parts)) L.parts = []; L.done = L.done || {}; L.n = L.n || 1; L.stage = L.stage || 0; return L; };
+const LAB = { tool: null, legs: [], sel: null, hist: [], press: null, opt: { res: 1000, led: 'red', volts: 9 }, chat: null, chatOpen: true, last: null };
+const labPart = id => labS().parts.find(p => p.id === id);
+
+/* ---------- grid helpers ---------- */
+const labIdx = h => { const p = bbParse(h); return [p.c, LAB_ROWS.indexOf(p.rail || p.r)]; };
+const labHole = (c, r) => c >= 1 && c <= BBC && r >= 0 && r < LAB_ROWS.length ? LAB_ROWS[r] + c : null;
+const labShift = (h, dc, dr) => { const [c, r] = labIdx(h); return labHole(c + dc, r + dr); };
+function labNearest(x, y, max = 10) { let best = null, d0 = max; bbHoles().forEach(h => { const [hx, hy] = bbPos(h), d = Math.hypot(hx - x, hy - y); if (d < d0) { d0 = d; best = h; } }); return best; }
+function svgPt(svg, cx, cy) { const m = svg && svg.getScreenCTM(); if (!m) return { x: -99, y: -99 }; const p = new DOMPoint(cx, cy).matrixTransform(m.inverse()); return { x: p.x, y: p.y }; }
+function labHoleAt(cx, cy) { const svg = $('#labBoard svg'); if (!svg) return null; const r = svg.getBoundingClientRect(); if (cx < r.left || cx > r.right || cy < r.top || cy > r.bottom) return null; const p = svgPt(svg, cx, cy); return labNearest(p.x, p.y, 14); }
+const LAB_OFF = { res: [4, 0], led: [1, 0], wire: [3, 0], spst: [2, 0], btn: [2, 0] };
+function labNew(k, h, h2) {
+  const L = labS(), id = 'p' + (L.n++), p = { id, kind: k };
+  if (k === 'bat') { const c = labIdx(h)[0]; Object.assign(p, { a: h2 ? h : 'T+' + c, b: h2 || 'T-' + c, volts: LAB.opt.volts }); }
+  else { const [dc, dr] = LAB_OFF[k]; let a = h, b = h2 || labShift(h, dc, dr); if (!b) { b = h; a = labShift(h, -dc, -dr); } if (!a) return null; Object.assign(p, { a, b }); }
+  if (k === 'res') p.ohms = LAB.opt.res; if (k === 'led') p.color = LAB.opt.led;
+  if (k === 'wire') p.color = ['#2EC4A0', '#FF7F6E', '#5AB8F0', '#FFC94D', '#7C83FD'][L.n % 5];
+  if (k === 'spst' || k === 'btn') p.on = false;
+  return p;
+}
+const legName = (k, i) => (k === 'bat' ? ['+ lead (red)', '− lead (black)'] : k === 'led' ? ['+ leg (anode, the long leg)', '− leg (cathode, the short leg)'] : ['first end', 'other end'])[i];
+
+/* ---------- diagnosis ---------- */
+function labLinked(parts, sol, l) {
+  const bat = parts.find(p => p.kind === 'bat'), E = parts.filter(p => ['res', 'led', 'ldr'].includes(p.kind) && p.id !== l.id).map(p => [sol.net(p.a), sol.net(p.b)]);
+  const reach = (s, t) => { const seen = new Set([s]), q = [s]; while (q.length) { const n = q.shift(); if (n === t) return true; E.forEach(([x, y]) => { const m = n === x ? y : n === y ? x : null; if (m && !seen.has(m)) { seen.add(m); q.push(m); } }); } return false; };
+  return reach(sol.net(l.a), sol.net(bat.a)) && reach(sol.net(l.b), sol.net(bat.b));
+}
+function labDiag(parts) {
+  const sol = bbSolve(parts, LAB_O), chips = [], seen = new Set(), leds = parts.filter(p => p.kind === 'led');
+  const add = (k, t) => { if (!seen.has(t)) { seen.add(t); chips.push({ k, t }); } };
+  if (!parts.length) { add('', 'Empty board: start by dragging the battery onto the rails'); return { sol, chips }; }
+  if (!parts.some(p => p.kind === 'bat')) { add('warn', 'No battery yet: drag the battery onto the board'); return { sol, chips }; }
+  if (sol.short) { add('bad', 'Short circuit! Battery + connects straight to −'); return { sol, chips }; }
+  if (!leds.length) add('', 'Add an LED to see your circuit work');
+  const open = parts.filter(p => (p.kind === 'spst' || p.kind === 'btn') && !p.on);
+  leds.forEach(l => {
+    const st = ledState(sol, l.id), I = sol.I[l.id] || 0, nm = l.color + ' LED';
+    if (st === 'burnt') return add('bad', parts.some(p => p.kind === 'res') ? `Resistor too small, the ${nm} would burn out (${fmtmA(I)})` : 'No resistor, LED would burn out');
+    if (st === 'lit') return add(I > .03 ? 'warn' : 'ok', `${capF(nm)} lit · ${fmtmA(I)}${I > .03 ? ' (too bright: use a bigger resistor)' : ''}`);
+    const flip = parts.map(p => p.id === l.id ? Object.assign({}, p, { a: p.b, b: p.a }) : p);
+    if (ledState(bbSolve(flip, LAB_O), l.id) !== 'dark') return add('bad', 'LED is backwards: turn it so the long + leg faces battery +');
+    if (open.length) { const closed = parts.map(p => open.includes(p) ? Object.assign({}, p, { on: true }) : p); if (ledState(bbSolve(closed, LAB_O), l.id) !== 'dark') return add('warn', open.some(p => p.kind === 'spst') ? 'Switch is open: tap it to close the circuit' : 'Switch is open: press and hold the button'); }
+    if (!labLinked(parts, sol, l)) return add('bad', 'Open circuit, nothing connects back to the battery');
+    add('warn', `Not enough voltage to light the ${nm}`);
+  });
+  return { sol, chips };
+}
+const LAB_FIX = [[/^No resistor/, 'Put a resistor (try 470 Ω to 1 kΩ) in series with the LED: battery + → resistor → LED + leg.'], [/^Resistor too small/, 'Select the resistor and pick a bigger value so less current flows.'],
+  [/^Open circuit/, 'Follow the loop from battery + through every part back to −. Each leg must share a numbered row (same half of the board) with the next part, or a wire must join them.'],
+  [/^LED is backwards/, 'Select the LED and tap Rotate twice to turn it around (+ leg toward battery +).'], [/^Switch is open/, 'Close the switch (tap it) or hold the button so current can flow.'],
+  [/^Short circuit/, 'Remove the wire or closed switch that joins + straight to −. Current must pass through a resistor and an LED.'], [/^Not enough voltage/, 'Use a bigger battery, or fewer LEDs in series.'],
+  [/^No battery|^Empty/, 'Drag the battery onto the board: its leads plug into the top rails.'], [/too bright/, 'Pick a bigger resistor to bring the current under about 20 mA.']];
+const labFix = t => (LAB_FIX.find(([r]) => r.test(t)) || [0, ''])[1];
+function labDescribe(parts, sol) {
+  if (!parts.length) return 'The board is empty.';
+  const loc = h => { const p = bbParse(h); return p.rail ? `the ${p.rail[0] === 'T' ? 'top' : 'bottom'} ${p.rail[1] === '+' ? 'red + rail' : 'blue − rail'}` : `hole ${h} (row ${p.c}, ${'abcde'.includes(p.r) ? 'top' : 'bottom'} half)`; };
+  const ls = p => sol.nobat || sol.short ? 'dark' : { lit: 'lit at ' + fmtmA(sol.I[p.id] || 0), burnt: 'burned out (' + fmtmA(sol.I[p.id] || 0) + ')', dark: 'dark' }[ledState(sol, p.id)];
+  return parts.map(p => p.kind === 'bat' ? `${p.volts} V battery with its + lead in ${loc(p.a)} and its − lead in ${loc(p.b)}`
+    : p.kind === 'res' ? `${fmtOhm(p.ohms)} resistor from ${loc(p.a)} to ${loc(p.b)}`
+    : p.kind === 'led' ? `${p.color} LED with its + leg (anode) in ${loc(p.a)} and its − leg (cathode) in ${loc(p.b)}, ${ls(p)}`
+    : p.kind === 'wire' ? `jumper wire from ${loc(p.a)} to ${loc(p.b)}`
+    : `${LAB_KIND[p.kind]} (${p.on ? (p.kind === 'btn' ? 'pressed' : 'closed') : (p.kind === 'btn' ? 'not pressed' : 'open')}) between ${loc(p.a)} and ${loc(p.b)}`).join('; ') + '.';
+}
+
+/* ---------- challenges ---------- */
+const litLeds = (P, sol) => P.filter(p => p.kind === 'led' && ledState(sol, p.id) === 'lit');
+function labSwitchOk(P, sol) {
+  return P.some(s => (s.kind === 'spst' || s.kind === 'btn') && P.some(l => {
+    if (l.kind !== 'led') return false; const a = ledState(sol, l.id), b = ledState(bbSolve(P.map(p => p.id === s.id ? Object.assign({}, p, { on: !p.on }) : p), LAB_O), l.id);
+    return (a === 'lit' && b === 'dark') || (a === 'dark' && b === 'lit');
+  }));
+}
+function labDoubleOk(P, sol, stage) {
+  const L = litLeds(P, sol); if (L.length < 2) return false;
+  for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
+    const x = L[i], y = L[j], series = (sol.net(x.b) === sol.net(y.a) || sol.net(y.b) === sol.net(x.a)) && Math.abs(sol.I[x.id] - sol.I[y.id]) < 1e-6;
+    if (stage === 0 ? series : !series) return true;
+  }
+  return false;
+}
+const LAB_CH = [
+  { id: 'glow', name: 'First Glow', goal: ['Light an LED.'], how: 'Battery on the rails → resistor → LED long leg (+). LED short leg (−) → back to the − rail.', ok: (P, sol) => litLeds(P, sol).length > 0 },
+  { id: 'flip', name: 'Flip the Switch', goal: ['Light an LED that a switch or pushbutton turns on and off.'], how: 'Put the switch in the loop, in series with the resistor and LED, so it can break the path.', ok: labSwitchOk },
+  { id: 'double', name: 'Double Trouble', goal: ['Step 1 of 2: light two LEDs in series (one after the other).', 'Step 2 of 2: now light two LEDs in parallel (side by side).'], how: 'Series: LED 1’s − leg shares a row with LED 2’s + leg. Parallel: each LED gets its own path from + to −. Two LEDs in series need about 4 V or more.', ok: labDoubleOk },
+  { id: 'size', name: 'Right-Size It', goal: ['Light a red LED at 15 mA (12–18 mA counts).'], how: 'Resistor = (battery V − 2 V) ÷ 0.015 A. With 9 V: 7 ÷ 0.015 ≈ 467 Ω, so pick the nearest value you have.', ok: (P, sol) => P.some(p => p.kind === 'led' && p.color === 'red' && ledState(sol, p.id) === 'lit' && sol.I[p.id] >= .012 && sol.I[p.id] <= .018) && !P.some(p => p.kind === 'led' && ledState(sol, p.id) === 'burnt') },
+  { id: 'pcb', name: 'Board Builder', goal: ['Design your own printed circuit board (PCB).'], soon: true }];
+const labGoal = ch => ch.goal[Math.min(labS().stage, ch.goal.length - 1)] || ch.goal[0];
+function labCheck(P, sol) {
+  const L = labS(), ch = LAB_CH.find(c => c.id === L.ch); if (!ch || ch.soon || L.done[ch.id] || sol.nobat || sol.short) return;
+  if (!ch.ok(P, sol, L.stage)) return;
+  if (L.stage + 1 < ch.goal.length) { L.stage++; save(); SFX.good(); toast(`Step done! ${labGoal(ch)}`, ICON.check()); renderLabCh(); return; }
+  L.done[ch.id] = today(); L.stage = 0; S.tokens = (S.tokens || 0) + LAB_TOK; const lv = addXp(LAB_XP); save();
+  renderTop(); confetti(); SFX.reward(); toast(`+${LAB_TOK} tokens · +${LAB_XP} XP: ${ch.name} complete!`, ICON.token()); renderLabCh();
+  if (lv) setTimeout(levelUp, 1400);
+}
+
+/* ---------- editing ---------- */
+const labPush = () => { LAB.hist.push(JSON.stringify(labS().parts)); if (LAB.hist.length > 60) LAB.hist.shift(); };
+const labCommit = () => { save(); labRefresh(true); };
+function labAdd(p) { if (!p) return; labPush(); const L = labS(); if (p.kind === 'bat') L.parts = L.parts.filter(x => x.kind !== 'bat'); L.parts.push(p); LAB.sel = p.id; LAB.tool = null; LAB.legs = []; SFX.drop(); labCommit(); }
+function labArm(k) { LAB.tool = k; LAB.legs = []; LAB.sel = null; SFX.tap(); labRefresh(false); }
+function labLeg(h) {
+  if (LAB.legs.includes(h)) return; LAB.legs.push(h); SFX.tap();
+  if (LAB.legs.length === 2) labAdd(labNew(LAB.tool, LAB.legs[0], LAB.legs[1])); else labRefresh(false);
+}
+function labMove(orig, dx, dy) {
+  const [ax, ay] = bbPos(orig.a), nh = labNearest(ax + dx, ay + dy, 14); if (!nh) return null;
+  const [c0, r0] = labIdx(orig.a), [c1, r1] = labIdx(nh), a = labShift(orig.a, c1 - c0, r1 - r0), b = labShift(orig.b, c1 - c0, r1 - r0);
+  return a && b ? { a, b } : null;
+}
+function labRotate() {
+  const p = labPart(LAB.sel); if (!p) return; labPush();
+  if (p.kind === 'bat') { [p.a, p.b] = [p.b, p.a]; }
+  else { const [c0, r0] = labIdx(p.a), [c1, r1] = labIdx(p.b); let dc = c1 - c0, dr = r1 - r0;
+    for (let k = 0; k < 3; k++) { [dc, dr] = [-dr, dc]; const nb = labHole(c0 + dc, r0 + dr); if (nb) { p.b = nb; break; } } }
+  SFX.toggle(); labCommit();
+}
+function labDelete() { const L = labS(); if (!LAB.sel) return; labPush(); L.parts = L.parts.filter(p => p.id !== LAB.sel); LAB.sel = null; SFX.drop(); labCommit(); }
+function labUndo() { if (!LAB.hist.length) return; labS().parts = JSON.parse(LAB.hist.pop()); LAB.sel = null; LAB.tool = null; LAB.legs = []; SFX.tap(); labCommit(); }
+function labClear() { const L = labS(); if (!L.parts.length) return; labPush(); L.parts = []; L.stage = 0; LAB.sel = null; LAB.tool = null; LAB.legs = []; SFX.drop(); labCommit(); toast('Board cleared. Tap Undo to bring it back.', ICON.check()); }
+
+/* ---------- rendering ---------- */
+function renderLab(host) {
+  const o = LAB.opt;
+  host.innerHTML = `<div class="panel lab" id="lab"><h3 style="margin-bottom:2px">Circuit Lab</h3><p class="small" style="margin:0 0 8px">Free build: drag parts onto the breadboard, or tap a part, then tap two holes. The free build gives no rewards; challenges pay once.</p>
+    <div class="chrow" id="labCh"></div><div class="labgoal" id="labGoal" hidden></div>
+    <div class="labwrap"><div class="labmain">
+      <div class="labpal" id="labPal">${LAB_PAL.map(([k, n, ic]) => `<button class="palbtn" data-k="${k}" aria-label="Add ${LAB_KIND[k]}"><svg viewBox="0 0 28 28" aria-hidden="true">${ic}</svg><span>${n}</span></button>`).join('')}</div>
+      <div class="labopts"><label>Resistor <select id="labRes">${LAB_RES.map(r => `<option value="${r}" ${r === o.res ? 'selected' : ''}>${fmtOhm(r)}</option>`).join('')}</select></label><label>LED <select id="labLed">${LAB_COLORS.map(c => `<option ${c === o.led ? 'selected' : ''}>${c}</option>`).join('')}</select></label><label>Battery <select id="labV">${LAB_VOLTS.map(v => `<option value="${v}" ${v === o.volts ? 'selected' : ''}>${v} V</option>`).join('')}</select></label></div>
+      <div class="sim labboard" id="labBoard"></div>
+      <div class="labtools"><button class="btn ghost" id="labUndo">Undo</button><button class="btn ghost" id="labRot">Rotate</button><button class="btn ghost" id="labDel">Delete</button><button class="btn ghost" id="labClr">Clear</button></div>
+      <p class="labhint" id="labHint"></p><div class="labchips" id="labChips" aria-live="polite"></div>
+    </div><div class="labchat" id="labChat"></div></div></div>`;
+  $$('.palbtn', host).forEach(b => {
+    b.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); labArm(b.dataset.k); } };
+    b.onpointerdown = e => {
+      e.preventDefault(); const k = b.dataset.k, x0 = e.clientX, y0 = e.clientY; let ghost = null; try { b.setPointerCapture(e.pointerId); } catch (er) { }
+      b.onpointermove = ev => { if (!ghost && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 8) { ghost = el(`<div class="labghost">${b.innerHTML}</div>`); document.body.appendChild(ghost); SFX.drag(); } if (ghost) { ghost.style.left = ev.clientX + 'px'; ghost.style.top = ev.clientY + 'px'; } };
+      b.onpointerup = ev => { b.onpointermove = b.onpointerup = null; if (ghost) { ghost.remove(); const h = labHoleAt(ev.clientX, ev.clientY); if (h) labAdd(labNew(k, h)); else labHint('Drop it on a hole on the breadboard.'); } else labArm(k); };
+      b.onpointercancel = () => { if (ghost) ghost.remove(); b.onpointermove = b.onpointerup = null; };
+    };
+  });
+  const opt = (id, key, prop, kinds, num) => $('#' + id, host).onchange = e => { o[key] = num ? +e.target.value : e.target.value; const p = labPart(LAB.sel); if (p && kinds.includes(p.kind)) { labPush(); p[prop] = o[key]; labCommit(); } };
+  opt('labRes', 'res', 'ohms', ['res'], 1); opt('labLed', 'led', 'color', ['led']); opt('labV', 'volts', 'volts', ['bat'], 1);
+  $('#labUndo', host).onclick = labUndo; $('#labRot', host).onclick = labRotate; $('#labDel', host).onclick = labDelete; $('#labClr', host).onclick = labClear;
+  const bd = $('#labBoard', host);
+  bd.onpointerdown = e => {
+    const svg = $('svg', bd), pt = svgPt(svg, e.clientX, e.clientY), g = !LAB.tool && e.target.closest && e.target.closest('.bbp');
+    LAB.press = { pt0: pt, id: g ? g.dataset.id : null, moved: false }; try { bd.setPointerCapture(e.pointerId); } catch (er) { }
+    const p = LAB.press.id && labPart(LAB.press.id); if (p && p.kind === 'btn') { p.on = true; SFX.toggle(); labRefresh(false); }
+  };
+  bd.onpointermove = e => {
+    const P = LAB.press; if (!P || !P.id) return; const pt = svgPt($('svg', bd), e.clientX, e.clientY);
+    if (!P.moved && Math.hypot(pt.x - P.pt0.x, pt.y - P.pt0.y) < 7) return;
+    if (!P.moved) { P.moved = true; P.orig = JSON.parse(JSON.stringify(labPart(P.id))); SFX.drag(); }
+    const m = labMove(P.orig, pt.x - P.pt0.x, pt.y - P.pt0.y); if (m) { Object.assign(labPart(P.id), m); LAB.sel = P.id; labRefresh(false); }
+  };
+  bd.onpointerup = e => {
+    const P = LAB.press; LAB.press = null; if (!P) return; const pt = svgPt($('svg', bd), e.clientX, e.clientY);
+    if (P.id) {
+      const p = labPart(P.id); if (!p) return; if (p.kind === 'btn') p.on = false;
+      if (P.moved) { LAB.hist.push(JSON.stringify(labS().parts.map(x => x.id === P.id ? Object.assign({}, P.orig, { on: false }) : x))); SFX.drop(); }
+      else { LAB.sel = P.id; if (p.kind === 'spst') { labPush(); p.on = !p.on; SFX.toggle(); } else SFX.tap(); }
+      labCommit(); return;
+    }
+    const h = labNearest(pt.x, pt.y, 10);
+    if (LAB.tool) { if (h) labLeg(h); return; }
+    if (LAB.sel) { LAB.sel = null; labRefresh(false); }
+  };
+  bd.onpointercancel = () => { LAB.press = null; };
+  renderLabCh(); labChat($('#labChat', host)); labRefresh(false);
+}
+function labHint(t) { const h = $('#labHint'); if (h) h.innerHTML = t; }
+function renderLabCh() {
+  const L = labS(), row = $('#labCh'); if (!row) return;
+  row.innerHTML = LAB_CH.map(c => `<button class="chcard ${L.ch === c.id ? 'on' : ''} ${c.soon ? 'soon' : ''} ${L.done[c.id] ? 'done' : ''}" data-c="${c.id}" ${c.soon ? 'aria-disabled="true"' : ''}><b>${c.name}</b><span>${c.soon ? '<em class="soonb">Coming soon</em>' : L.done[c.id] ? '✓ Done' : `+${LAB_TOK} tokens · +${LAB_XP} XP`}</span></button>`).join('');
+  $$('.chcard', row).forEach(b => b.onclick = () => { const c = LAB_CH.find(x => x.id === b.dataset.c); SFX.tap(); if (c.soon) { toast('Board Builder (PCB design) is coming soon!', ICON.star()); return; } L.ch = L.ch === c.id ? null : c.id; L.stage = 0; save(); renderLabCh(); labRefresh(true); });
+  const g = $('#labGoal'), ch = LAB_CH.find(c => c.id === L.ch);
+  g.hidden = !ch; if (ch) g.innerHTML = `<b>${ch.name}${L.done[ch.id] ? ' ✓' : ''}</b> ${esc(labGoal(ch))}<div class="small">${esc(ch.how)}${L.done[ch.id] ? ' (Reward already collected: replay just for fun.)' : ''}</div>`;
+}
+function labRefresh(commit) {
+  const L = labS(), P = L.parts, bd = $('#labBoard'); if (!bd) return;
+  const d = labDiag(P); LAB.last = d;
+  bd.innerHTML = bbSVG(P, Object.assign({}, LAB_O, { sel: LAB.sel, marks: LAB.legs.map(h => ({ h, k: 'sel' })), aria: 'Circuit Lab breadboard: ' + labDescribe(P, d.sol) }), d.sol);
+  $('#labChips').innerHTML = d.chips.map(c => `<span class="status ${c.k}">${esc(c.t)}</span>`).join('');
+  const sp = labPart(LAB.sel);
+  labHint(LAB.tool ? `Placing a ${LAB_KIND[LAB.tool]}: tap a hole for its <b>${legName(LAB.tool, LAB.legs.length)}</b>. <button class="linkbtn" id="labCancel">Cancel</button>`
+    : sp ? `Selected: <b>${sp.kind === 'res' ? fmtOhm(sp.ohms) + ' ' : sp.kind === 'led' ? sp.color + ' ' : sp.kind === 'bat' ? sp.volts + ' V ' : ''}${LAB_KIND[sp.kind]}</b>. Drag it to move${sp.kind === 'spst' ? ', tap to flip it' : sp.kind === 'btn' ? ', press and hold to push it' : ''}, or Rotate / Delete.`
+    : 'Drag a part onto the board, or tap a part, then tap two holes.');
+  if ($('#labCancel')) $('#labCancel').onclick = () => { LAB.tool = null; LAB.legs = []; labRefresh(false); };
+  $$('.palbtn').forEach(b => b.classList.toggle('on', b.dataset.k === LAB.tool));
+  $('#labRot').disabled = $('#labDel').disabled = !sp; $('#labUndo').disabled = !LAB.hist.length; $('#labClr').disabled = !P.length;
+  if (commit) labCheck(P, d.sol);
+}
+
+/* ---------- inline Ask Sprig (reuses the offline helper, Copy for any AI and BYO key) ---------- */
+function labCtx() {
+  const L = labS(), d = LAB.last || labDiag(L.parts), ch = LAB_CH.find(c => c.id === L.ch && !c.soon);
+  return { kind: 'lab', label: 'Circuit Lab', unit: 'U4', lid: 'L22', circuit: labDescribe(L.parts, d.sol), problems: d.chips.filter(c => c.k === 'bad' || c.k === 'warn').map(c => c.t).join('; ') || 'none', challenge: ch ? `${ch.name}: ${labGoal(ch)}` : '' };
+}
+function labAnswer(c, q) {
+  const d = LAB.last || labDiag(labS().parts), out = [], probs = d.chips.filter(x => x.k === 'bad' || x.k === 'warn'), good = d.chips.filter(x => x.k === 'ok');
+  out.push(`<h5>On your board</h5>${probs.length ? probs.map(x => `• <b>${esc(x.t)}</b><br>${esc(labFix(x.t))}`).join('<br>') : good.length ? good.map(x => '• ' + esc(x.t)).join('<br>') + '<br>No problems spotted. Nice build!' : esc(d.chips[0] ? d.chips[0].t + '. ' + labFix(d.chips[0].t) : '')}`);
+  const bat = labS().parts.find(p => p.kind === 'bat'), V = bat ? bat.volts : 9;
+  if (/resist|ohm|current|size|value|bright|right/i.test(q)) out.push(`<h5>Sizing the resistor</h5>R = (battery V − LED V) ÷ current. With your ${V} V battery and a red LED (about 2 V) at 15 mA: (${V} − 2) ÷ 0.015 ≈ ${Math.max(0, Math.round((V - 2) / .015))} Ω. Pick the nearest value you have; bigger is safer (dimmer).`);
+  if (/next|try|idea|build/i.test(q)) out.push(`<h5>Try next</h5>${esc((LAB_CH.find(ch => !ch.soon && !labS().done[ch.id]) || { name: 'a free build' }).name)}: pick it in the challenge row above.`);
+  const more = q ? offlineAnswer(Object.assign({}, c, { kind: 'topic' }), q) : '';
+  if (more && !/couldn't find that/.test(more)) out.push(more);
+  return out.join('');
+}
+function labChat(host) {
+  if (!LAB.chat) LAB.chat = { msgs: [{ who: 'bot', html: esc('Hi! I can see your breadboard. Ask me why something isn\'t working, or what to try next.') }], hist: [] };
+  const th = LAB.chat, ai = aiReady(), cfg = aiLoad();
+  host.innerHTML = `<button class="labchat-h" id="labChatH" aria-expanded="${LAB.chatOpen}"><span class="m">${mascot('happy')}</span><span class="t"><b>Ask Sprig</b><small>${ai ? 'AI mode · ' + esc(cfg.model) + ' (your key)' : 'Offline helper · sees your circuit'}</small></span><span class="chev">${LAB.chatOpen ? '▾' : '▸'}</span></button>
+    <div class="labchat-b" ${LAB.chatOpen ? '' : 'hidden'}><div class="msgs" id="labMsgs" aria-live="polite"></div><div class="sugg">${['Why isn\'t my LED on?', 'Is my resistor right?', 'What should I try next?'].map(s => `<button>${s}</button>`).join('')}</div>
+    <div class="composer"><textarea id="labIn" rows="1" placeholder="Ask about your circuit…" aria-label="Ask Sprig about your circuit"></textarea><button class="btn primary" id="labSend">Send</button></div></div>`;
+  $('#labChatH', host).onclick = () => { LAB.chatOpen = !LAB.chatOpen; SFX.tap(); labChat(host); };
+  const box = $('#labMsgs', host);
+  const paint = () => {
+    box.innerHTML = '';
+    th.msgs.forEach(m => {
+      const d = el(`<div class="msg ${m.who} ${m.err ? 'err' : ''}">${m.html}</div>`);
+      if (m.who === 'bot' && m.copy) { d.insertAdjacentHTML('beforeend', `<div><button class="copybtn">Copy question for any AI</button></div>`); $('.copybtn', d).onclick = async () => { const ok = await copyText(copyPrompt(labCtx(), m.q)); toast(ok ? 'Copied with your circuit! Paste it into any AI chat.' : 'Couldn\'t copy on this browser.', ICON.check()); }; }
+      box.appendChild(d);
+    });
+    box.scrollTop = box.scrollHeight;
+  };
+  const send = async q => {
+    q = (q || '').trim(); if (!q || th.busy) return; const c = labCtx();
+    th.msgs.push({ who: 'me', html: esc(q) }); $('#labIn', host).value = ''; paint();
+    if (aiReady()) {
+      th.busy = true; th.msgs.push({ who: 'bot', html: '<i>Sprig is thinking…</i>', tmp: true }); paint();
+      try { const a = await aiAsk(c, th.hist, q); th.hist.push({ role: 'user', content: q }, { role: 'assistant', content: a }); th.msgs = th.msgs.filter(m => !m.tmp); th.msgs.push({ who: 'bot', html: mdLite(a), q }); }
+      catch (e) { th.msgs = th.msgs.filter(m => !m.tmp); th.msgs.push({ who: 'bot', err: true, html: `<b>AI help didn't work:</b> ${esc(e.message)}<div class="note">Here's the offline helper instead.</div>` }); th.msgs.push({ who: 'bot', html: labAnswer(c, q), q, copy: true }); }
+      th.busy = false;
+    } else th.msgs.push({ who: 'bot', html: labAnswer(c, q), q, copy: true });
+    if (document.body.contains(box)) paint();
+  };
+  if (!LAB.chatOpen) return;
+  $$('.sugg button', host).forEach(b => b.onclick = () => send(b.textContent));
+  $('#labSend', host).onclick = () => send($('#labIn', host).value);
+  $('#labIn', host).onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e.target.value); } };
+  paint();
 }
 /* =========================================================
    INIT
