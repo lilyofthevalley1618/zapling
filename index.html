@@ -5046,7 +5046,7 @@ function avatarSVG(eq = S.avatar.eq, size = '') {
   const arm = (s, cls = '') => a.arm ? `<g class="${cls}"><ellipse cx="${60 + s * a.arm[0]}" cy="${a.arm[1]}" rx="6.5" ry="10" fill="${c}" stroke="${k}" stroke-width="2.5" transform="rotate(${-s * 22} ${60 + s * a.arm[0]} ${a.arm[1]})"/></g>` : '';
   const feet = a.feet ? `<g fill="${c}" stroke="${k}" stroke-width="2.5"><ellipse cx="47" cy="${a.feet}" rx="9.5" ry="5.5"/><ellipse cx="73" cy="${a.feet}" rx="9.5" ry="5.5"/></g>` : '';
   return `<svg viewBox="0 -24 120 164" ${size} role="img" aria-label="Your Zapling avatar">${eq.bg && BGS[eq.bg] ? BGS[eq.bg] : ''}${eq.aura && AURAS[eq.aura] ? AURAS[eq.aura] : ''}<ellipse cx="60" cy="134" rx="30" ry="4" fill="#2E2A5A" opacity=".08"/>
-    <g class="avbody">${back.b}${feet}${B.d(c, k)}${lay('outfit').f}${arm(-1)}${eq.face && typeof ZF !== 'undefined' && ITEMS[eq.face] ? ZF.draw(eq.face.slice(5), a, dark) : faceSVG(a, e, dark)}${lay('cheeks').f}${lay('eyes').f}${lay('neck').f}${lay('chest').f}${back.f}${lay('ears').f}${lay('deco').f}${lay('hat').f}${lay('bling').f}${arm(1, 'avarm')}</g>
+    <g class="avbody">${back.b}${feet}${B.d(c, k)}${lay('outfit').f}${arm(-1)}${eq.face && typeof ZF !== 'undefined' && ITEMS[eq.face] ? ZF.draw(eq.face, a, dark) : faceSVG(a, e, dark)}${lay('cheeks').f}${lay('eyes').f}${lay('neck').f}${lay('chest').f}${back.f}${lay('ears').f}${lay('deco').f}${lay('hat').f}${lay('bling').f}${arm(1, 'avarm')}</g>
     ${eq.pet && PETS[eq.pet] ? `<g class="avpet">${PETS[eq.pet]}</g>` : ''}<g class="avspark" fill="#FFC94D"><polygon points="${starPts(16, 18, 7, 2.6)}"/><polygon points="${starPts(104, 6, 5.5, 2)}"/><circle cx="106" cy="58" r="3"/></g></svg>`;
 }
 const SHOP = [
@@ -5136,50 +5136,184 @@ function avatarIdle() {
   }, 4000 + Math.random() * 3000);
 }
 /* =========================================================
-   FACES (shop slot 'face'): bold-ink, rage-comic-style face overlays (original drawings) that replace the body's face,
-   plus playful item names + one-line jokes shown in the item pop-up. IDs, prices and saves are unchanged.
-   Faces are drawn in a 200-wide space (eyes at x 80/120, eye line y 0) and scaled onto each body's eye line.
+   FACES (shop slot 'face'): Lingo World's 29 rage-comic-style ink faces (Helpful Bot's original SVG drawings, both apps are Lily's),
+   copied as-is from lingo-world/characters.js; only wrapped so the ink color can flip to white on dark bodies, then scaled and
+   positioned onto each Zapling body's eye line. Plus playful item names + one-line jokes for the pop-up. IDs/prices/saves of
+   existing items are unchanged. The earlier redrawn preview faces (face_*) are refunded once if anyone owned them.
    ========================================================= */
+const LW_FACES = (INK => {
+/* ----- begin verbatim Lingo World block ----- */
+// ink(d, w, fill): a bold stroke plus a thin offset echo stroke, for a sketchy hand-drawn look
+const ink = (d, w = 3, fill = 'none') => `<path d="${d}" fill="${fill}" stroke="${INK}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${INK}" stroke-width="${(w * .4).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round" transform="translate(.9 .7)" opacity=".5"/>`;
+const dot = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${INK}"/>`;
+const eyeO = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" stroke="${INK}" stroke-width="2.8"/><path d="M${x - r * .9} ${y - r * .45} A${r} ${r} 0 0 1 ${x + r * .7} ${y - r * .75}" fill="none" stroke="${INK}" stroke-width="1.2" transform="translate(.8 -1.2)" opacity=".6"/>`;
+const tear = (x, y) => `<path d="M${x} ${y} Q${x - 4} ${y + 6} ${x} ${y + 9} Q${x + 4} ${y + 6} ${x} ${y}Z" fill="#7fd0ff" stroke="#3aa6e0" stroke-width="1.5"/>`;
+const blush = y => `<ellipse cx="64" cy="${y + 14}" rx="8" ry="4.5" fill="#ff9fb8" opacity=".55"/><ellipse cx="136" cy="${y + 14}" rx="8" ry="4.5" fill="#ff9fb8" opacity=".55"/>`;
+const FACES = {
+  skeptic: { name: 'Are You Serious', price: 50, draw: y =>
+    `<path d="M66 ${y - 4} L93 ${y - 1} Q88 ${y + 9} 78 ${y + 9} Q67 ${y + 8} 66 ${y - 4}Z" fill="#fff"/>${ink(`M66 ${y - 4} Q67 ${y + 8} 78 ${y + 9} Q88 ${y + 9} 93 ${y - 1}`, 2.8)}<path d="M75 ${y - 2.5} Q81 ${y + 6} 88 ${y - 1}Z" fill="${INK}"/>
+    ${ink(`M62 ${y - 9} L90 ${y - 4} Q96 ${y - 8} 95 ${y - 16}`, 4)}
+    <path d="M108 ${y} L134 ${y + 3} Q130 ${y + 12} 120 ${y + 12} Q109 ${y + 11} 108 ${y}Z" fill="#fff"/>${ink(`M108 ${y} Q109 ${y + 11} 120 ${y + 12} Q130 ${y + 12} 134 ${y + 3}`, 2.8)}<path d="M117 ${y + 1} Q123 ${y + 9} 130 ${y + 2.5}Z" fill="${INK}"/>
+    ${ink(`M105 ${y - 4} L137 ${y + 2} M137 ${y + 2} Q140 ${y - 4} 138 ${y - 9}`, 4)}
+    ${ink(`M84 ${y + 25} Q85 ${y + 21} 90 ${y + 21} L116 ${y + 25} L117 ${y + 30}`, 3.4)}${ink(`M91 ${y + 27} Q103 ${y + 26} 111 ${y + 30}`, 1.8)}
+    ${ink(`M75 ${y + 16} Q70 ${y + 23} 75 ${y + 30} M127 ${y + 27} Q129 ${y + 33} 122 ${y + 37}`, 2.4)}` },
+  derp: { name: 'Derp', price: 40, draw: y =>
+    `${eyeO(78, y + 1, 12)}${dot(70.5, y + 1, 4.5)}${eyeO(121, y - 3, 13)}${dot(124, y - 11, 4.5)}
+    ${ink(`M65 ${y - 9} Q76 ${y - 17} 89 ${y - 9} M108 ${y - 13} Q121 ${y - 22} 134 ${y - 12}`, 1.6)}
+    ${ink(`M95 ${y + 16} Q95 ${y + 26} 103 ${y + 26} Q111 ${y + 26} 111 ${y + 15}`, 3.4)}` },
+  smug: { name: 'Pfft, Sure', price: 50, draw: y =>
+    `<ellipse cx="80" cy="${y}" rx="13" ry="9" fill="#fff" stroke="${INK}" stroke-width="2.8"/><ellipse cx="120" cy="${y}" rx="13" ry="9" fill="#fff" stroke="${INK}" stroke-width="2.8"/>
+    <path d="M83 ${y - 1} Q88 ${y + 7} 93 ${y - 1}Z M123 ${y - 1} Q128 ${y + 7} 133 ${y - 1}Z" fill="${INK}"/>
+    ${ink(`M66 ${y - 1} Q80 ${y - 4} 94 ${y - 1} M106 ${y - 1} Q120 ${y - 4} 134 ${y - 1}`, 3)}
+    ${ink(`M84 ${y + 23} Q101 ${y + 24} 119 ${y + 18}`, 3.2)}` },
+  heh: { name: 'I See What You Did', price: 50, draw: y =>
+    `${ink(`M70 ${y - 12} Q78 ${y - 17} 87 ${y - 13} M113 ${y - 13} Q122 ${y - 17} 130 ${y - 12}`, 3.4)}
+    <path d="M68 ${y} Q80 ${y - 8} 92 ${y - 1} Q80 ${y + 5} 68 ${y}Z M108 ${y - 1} Q120 ${y - 8} 132 ${y} Q120 ${y + 5} 108 ${y - 1}Z" fill="#fff" stroke="${INK}" stroke-width="2.6"/>${dot(86, y - 1, 3.4)}${dot(126, y - 1, 3.4)}
+    <path d="M80 ${y + 14} Q100 ${y + 8} 122 ${y + 13} Q118 ${y + 34} 100 ${y + 34} Q84 ${y + 33} 80 ${y + 14}Z" fill="${INK}"/>
+    <path d="M84 ${y + 15} Q100 ${y + 11} 118 ${y + 14} L117 ${y + 21} Q100 ${y + 18} 85 ${y + 22}Z" fill="#fff"/><path d="M90 ${y + 14} V${y + 21} M96 ${y + 13} V${y + 20} M102 ${y + 13} V${y + 19} M108 ${y + 13} V${y + 19} M113 ${y + 14} V${y + 20}" stroke="${INK}" stroke-width="1.4"/>
+    ${ink(`M80 ${y + 14} Q100 ${y + 8} 122 ${y + 13} Q118 ${y + 34} 100 ${y + 34} Q84 ${y + 33} 80 ${y + 14}Z M75 ${y + 11} l3 4 M125 ${y + 10} l-3 4`, 2.6)}` },
+  dude: { name: 'DUDE', price: 60, draw: y =>
+    `${eyeO(78, y - 2, 14)}${eyeO(121, y - 2, 14)}${dot(82, y - 1, 8)}${dot(125, y - 1, 8)}<circle cx="85" cy="${y - 4}" r="2.5" fill="#fff"/><circle cx="128" cy="${y - 4}" r="2.5" fill="#fff"/>
+    <path d="M96 ${y + 17} Q89 ${y + 21} 95 ${y + 26} Q102 ${y + 30} 105 ${y + 23} Q109 ${y + 17} 100 ${y + 16}Z" fill="#fff"/>${ink(`M96 ${y + 17} Q89 ${y + 21} 95 ${y + 26} Q102 ${y + 30} 105 ${y + 23} Q109 ${y + 17} 100 ${y + 16}Z M96 ${y + 22} Q100 ${y + 20} 103 ${y + 22}`, 2.6)}
+    ${ink(`M64 ${y + 12} Q62 ${y + 20} 69 ${y + 25}`, 2)}` },
+  sob: { name: 'Big Ugly Cry', price: 60, draw: y =>
+    `${ink(`M64 ${y - 15} Q78 ${y - 10} 92 ${y - 17} M108 ${y - 17} Q122 ${y - 10} 136 ${y - 15}`, 3.6)}
+    ${ink(`M66 ${y - 2} Q79 ${y + 5} 92 ${y - 4} M108 ${y - 4} Q121 ${y + 5} 134 ${y - 2} M71 ${y - 9} l5 4 M80 ${y - 11} l2 6 M129 ${y - 9} l-5 4 M120 ${y - 11} l-2 6`, 3)}
+    <path d="M66 ${y + 2} Q59 ${y + 22} 63 ${y + 46} M134 ${y + 2} Q141 ${y + 22} 137 ${y + 46}" stroke="#4fc3f7" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="59" cy="${y - 4}" r="2.5" fill="#4fc3f7"/><circle cx="142" cy="${y - 5}" r="2.5" fill="#4fc3f7"/><circle cx="55" cy="${y + 2}" r="1.8" fill="#4fc3f7"/><circle cx="146" cy="${y + 1}" r="1.8" fill="#4fc3f7"/>
+    <path d="M76 ${y + 10} Q100 ${y + 2} 124 ${y + 10} Q128 ${y + 40} 100 ${y + 42} Q72 ${y + 40} 76 ${y + 10}Z" fill="${INK}"/>
+    <path d="M80 ${y + 11} Q100 ${y + 5} 120 ${y + 11} L118 ${y + 17} Q100 ${y + 12} 82 ${y + 17}Z M87 ${y + 37} Q100 ${y + 33} 113 ${y + 37} L111 ${y + 40} Q100 ${y + 42} 89 ${y + 40}Z" fill="#fff"/>
+    ${ink(`M76 ${y + 10} Q100 ${y + 2} 124 ${y + 10} Q128 ${y + 40} 100 ${y + 42} Q72 ${y + 40} 76 ${y + 10}Z`, 2.6)}` },
+  happytears: { name: 'So Much Win', price: 60, draw: y =>
+    `${ink(`M67 ${y - 17} Q78 ${y - 21} 90 ${y - 14} M110 ${y - 14} Q122 ${y - 21} 133 ${y - 17}`, 3)}
+    ${eyeO(80, y, 12)}${eyeO(120, y, 12)}${dot(80, y + 1, 8.5)}${dot(120, y + 1, 8.5)}<circle cx="83" cy="${y - 3}" r="3.4" fill="#fff"/><circle cx="77" cy="${y + 4}" r="1.6" fill="#fff"/><circle cx="123" cy="${y - 3}" r="3.4" fill="#fff"/><circle cx="117" cy="${y + 4}" r="1.6" fill="#fff"/>
+    ${tear(70, y + 12)}${tear(130, y + 12)}
+    <path d="M78 ${y + 16} Q100 ${y + 18} 124 ${y + 12} Q118 ${y + 37} 98 ${y + 37} Q82 ${y + 35} 78 ${y + 16}Z" fill="#fff"/>
+    ${ink(`M78 ${y + 16} Q100 ${y + 18} 124 ${y + 12} Q118 ${y + 37} 98 ${y + 37} Q82 ${y + 35} 78 ${y + 16}Z`, 2.8)}${ink(`M81 ${y + 25} Q100 ${y + 29} 121 ${y + 22} M87 ${y + 18} V${y + 33} M94 ${y + 18} V${y + 35} M101 ${y + 18} V${y + 36} M108 ${y + 17} V${y + 35} M115 ${y + 15} V${y + 32}`, 1.5)}` },
+  shock: { name: 'Oh Crap', price: 60, draw: y =>
+    `${ink(`M65 ${y - 18} Q78 ${y - 23} 91 ${y - 17} M109 ${y - 17} Q122 ${y - 23} 135 ${y - 18} M97 ${y - 32} l2 8 M103 ${y - 33} l-1 9`, 3)}
+    ${eyeO(79, y, 13)}${eyeO(121, y, 13)}${dot(80, y + 1, 2.6)}${dot(121, y + 1, 2.6)}
+    <path d="M88 ${y + 21} Q100 ${y + 15} 113 ${y + 20} Q109 ${y + 32} 99 ${y + 31} Q90 ${y + 30} 88 ${y + 21}Z" fill="${INK}"/><path d="M91 ${y + 20} l3 5 l3 -6 l3 6 l3 -6 l3 6 l3 -5Z" fill="#fff"/>
+    ${ink(`M88 ${y + 21} Q100 ${y + 15} 113 ${y + 20} Q109 ${y + 32} 99 ${y + 31} Q90 ${y + 30} 88 ${y + 21}Z`, 2.4)}${tear(60, y - 18)}${tear(141, y - 14)}${tear(66, y - 30)}` },
+  thumbs: { name: 'Okay, Nice!', price: 70, draw: y =>
+    `${eyeO(80, y, 10)}${eyeO(120, y, 10)}${dot(80, y, 4)}${dot(120, y, 4)}
+    ${ink(`M78 ${y + 14} Q100 ${y + 34} 123 ${y + 12} M76 ${y + 12} l3 3 M125 ${y + 10} l-3 3`, 3.2)}
+    <g transform="translate(152 ${y + 14})"><path d="M-10 0 h18 a5 5 0 0 1 0 6 a5 5 0 0 1 0 6 a5 5 0 0 1 0 6 h-18Z M-4 0 V-12 Q-4 -18 2 -17 Q5 -16 4 -9 L3 0" fill="#fff"/>${ink('M-10 0 h18 a5 5 0 0 1 0 6 a5 5 0 0 1 0 6 a5 5 0 0 1 0 6 h-18Z M-4 0 V-12 Q-4 -18 2 -17 Q5 -16 4 -9 L3 0', 2.4)}${ink('M-12 -22 l2 5 M-2 -28 v6 M8 -24 l-2 5', 1.8)}</g>` },
+  trolly: { name: 'Mischief Grin', price: 80, draw: y =>
+    `${ink(`M65 ${y - 9} L90 ${y - 4} M110 ${y - 13} Q122 ${y - 23} 135 ${y - 14}`, 4)}
+    ${ink(`M69 ${y + 2} Q80 ${y - 4} 91 ${y + 2}`, 3)}${dot(85, y + 1, 3)}
+    <ellipse cx="121" cy="${y - 2}" rx="11" ry="7" fill="#fff" stroke="${INK}" stroke-width="2.6"/>${dot(126, y - 1, 3.4)}${ink(`M110 ${y - 3} Q121 ${y - 6} 132 ${y - 3}`, 2)}
+    <path d="M84 ${y + 20} Q104 ${y + 25} 126 ${y + 9} Q124 ${y + 25} 109 ${y + 29} Q95 ${y + 29} 84 ${y + 20}Z" fill="#fff"/>
+    ${ink(`M84 ${y + 20} Q104 ${y + 25} 126 ${y + 9} Q124 ${y + 25} 109 ${y + 29} Q95 ${y + 29} 84 ${y + 20}Z M127 ${y + 6} q5 1 3 6`, 2.8)}${ink(`M108 ${y + 22} V${y + 28} M114 ${y + 19} V${y + 27} M119 ${y + 16} V${y + 24}`, 1.5)}` },
+  rage: { name: 'FFFUUU Rage', price: 80, draw: y =>
+    `${ink(`M63 ${y - 18} L92 ${y - 6} M137 ${y - 18} L108 ${y - 6}`, 5)}${ink(`M95 ${y - 36} l4 6 l-3 3 l5 6 M88 ${y - 28} l3 4`, 2)}
+    ${eyeO(80, y + 1, 11)}${eyeO(120, y + 1, 11)}${dot(81, y + 2, 2.4)}${dot(119, y + 2, 2.4)}
+    <path d="M74 ${y + 13} Q100 ${y + 5} 126 ${y + 13} L120 ${y + 45} Q100 ${y + 49} 80 ${y + 45}Z" fill="${INK}"/>
+    <path d="M78 ${y + 14} Q100 ${y + 7} 122 ${y + 14} l-3 6 l-4 -4 l-4 6 l-4 -5 l-4 6 l-3 -6 l-4 6 l-4 -5 l-4 6 l-4 -6 l-3 5Z" fill="#fff"/>
+    <path d="M84 ${y + 44} l3 -6 l4 4 l4 -6 l4 5 l4 -6 l4 5 l4 -6 l4 5 l3 -5 l2 6 Q100 ${y + 47} 84 ${y + 44}Z" fill="#fff"/>
+    ${ink(`M74 ${y + 13} Q100 ${y + 5} 126 ${y + 13} L120 ${y + 45} Q100 ${y + 49} 80 ${y + 45}Z M68 ${y + 14} l4 6 M132 ${y + 14} l-4 6`, 2.6)}` },
+  silly: { name: 'Herp Tongue', price: 40, draw: y =>
+    `${eyeO(79, y, 12)}${eyeO(121, y, 12)}${dot(82, y - 6, 4)}${dot(124, y - 6, 4)}
+    <path d="M94 ${y + 19} Q93 ${y + 33} 99 ${y + 33} Q105 ${y + 33} 104 ${y + 19}" fill="#ff9fb8"/>${ink(`M88 ${y + 18} Q100 ${y + 21} 113 ${y + 16} M94 ${y + 19} Q93 ${y + 33} 99 ${y + 33} Q105 ${y + 33} 104 ${y + 19}`, 2.8)}${ink(`M99 ${y + 22} V${y + 28}`, 1.4)}` },
+  cat: { name: 'Kitty :3', price: 40, draw: y =>
+    `${ink(`M71 ${y + 4} L79 ${y - 7} L87 ${y + 4} M113 ${y + 4} L121 ${y - 7} L129 ${y + 4}`, 3.2)}
+    ${ink(`M87 ${y + 14} Q92 ${y + 25} 100 ${y + 15} Q108 ${y + 25} 113 ${y + 14}`, 3)}${blush(y)}` },
+  hearts: { name: 'Heart Eyes', price: 70, draw: y => [80, 120].map(x => `<g transform="translate(${x} ${y - 1})">${ink('M0 9 C-16 0 -12 -11 -5 -11 C-2 -11 0 -8 0 -6 C0 -8 2 -11 5 -11 C12 -11 16 0 0 9Z', 2.6, '#ff6f9c')}</g>`).join('') +
+    `<path d="M84 ${y + 13} Q100 ${y + 33} 116 ${y + 13}Z" fill="#fff"/>${ink(`M84 ${y + 13} Q100 ${y + 33} 116 ${y + 13}Z M84 ${y + 13} Q100 ${y + 19} 116 ${y + 13}`, 2.6)}${blush(y)}` },
+  okay: { name: 'Okay… (sad)', price: 50, draw: y =>
+    `${ink(`M66 ${y - 10} Q78 ${y - 8} 90 ${y - 14} M110 ${y - 14} Q122 ${y - 8} 134 ${y - 10}`, 3)}
+    <ellipse cx="80" cy="${y + 1}" rx="9" ry="8" fill="#fff" stroke="${INK}" stroke-width="2.6"/><ellipse cx="120" cy="${y + 1}" rx="9" ry="8" fill="#fff" stroke="${INK}" stroke-width="2.6"/>${dot(80, y + 4, 3.4)}${dot(120, y + 4, 3.4)}
+    ${ink(`M71 ${y - 3} Q80 ${y - 7} 89 ${y - 3} M111 ${y - 3} Q120 ${y - 7} 129 ${y - 3}`, 1.6)}${ink(`M93 ${y + 24} Q100 ${y + 20} 107 ${y + 24}`, 3)}` },
+  nervous: { name: 'Uhh… Nervous', price: 50, draw: y =>
+    `${ink(`M66 ${y - 14} Q76 ${y - 18} 89 ${y - 12} M111 ${y - 13} Q124 ${y - 20} 134 ${y - 15}`, 3)}
+    ${eyeO(79, y, 11)}${eyeO(121, y, 12)}${dot(77, y + 1, 3.6)}${dot(119, y + 1, 3.6)}
+    <path d="M84 ${y + 21} Q90 ${y + 16} 96 ${y + 21} Q102 ${y + 26} 108 ${y + 20} Q113 ${y + 16} 117 ${y + 21} L114 ${y + 26} Q100 ${y + 30} 86 ${y + 26}Z" fill="#fff"/>
+    ${ink(`M84 ${y + 21} Q90 ${y + 16} 96 ${y + 21} Q102 ${y + 26} 108 ${y + 20} Q113 ${y + 16} 117 ${y + 21} L114 ${y + 26} Q100 ${y + 30} 86 ${y + 26}Z`, 2.6)}${ink(`M93 ${y + 22} v6 M101 ${y + 23} v6 M109 ${y + 21} v6`, 1.3)}${tear(140, y - 20)}` },
+};
+// ---- more meme-style ink faces (original drawings, no real people) ----
+const star5 = (x, y, r) => { let d = ''; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; d += (i ? 'L' : 'M') + (x + rr * Math.cos(a)).toFixed(1) + ' ' + (y + rr * Math.sin(a)).toFixed(1) + ' '; } return d + 'Z'; };
+Object.assign(FACES, {
+  notbad: { name: 'Not Bad', price: 60, draw: y =>
+    `${ink(`M66 ${y - 14} Q78 ${y - 20} 91 ${y - 13} M109 ${y - 13} Q122 ${y - 20} 134 ${y - 14}`, 3.2)}
+    <ellipse cx="80" cy="${y}" rx="10" ry="6" fill="#fff" stroke="${INK}" stroke-width="2.6"/><ellipse cx="120" cy="${y}" rx="10" ry="6" fill="#fff" stroke="${INK}" stroke-width="2.6"/>${dot(80, y + 1, 3.2)}${dot(120, y + 1, 3.2)}
+    ${ink(`M70 ${y - 4} Q80 ${y - 7} 90 ${y - 4} M110 ${y - 4} Q120 ${y - 7} 130 ${y - 4}`, 1.8)}
+    ${ink(`M84 ${y + 26} Q92 ${y + 17} 100 ${y + 18} Q108 ${y + 17} 116 ${y + 26}`, 3.6)}${ink(`M92 ${y + 33} Q100 ${y + 36} 108 ${y + 33} M80 ${y + 22} l-2 6 M120 ${y + 22} l2 6`, 2)}` },
+  poker: { name: 'Poker Face', price: 50, draw: y =>
+    `${ink(`M66 ${y - 10} L92 ${y - 10} M108 ${y - 10} L134 ${y - 10}`, 3.4)}
+    <ellipse cx="80" cy="${y + 1}" rx="10" ry="6" fill="#fff" stroke="${INK}" stroke-width="2.6"/><ellipse cx="120" cy="${y + 1}" rx="10" ry="6" fill="#fff" stroke="${INK}" stroke-width="2.6"/>${dot(80, y + 1, 3)}${dot(120, y + 1, 3)}
+    ${ink(`M70 ${y - 3} L90 ${y - 3} M110 ${y - 3} L130 ${y - 3}`, 2.4)}${ink(`M82 ${y + 24} L118 ${y + 24}`, 3.4)}${ink(`M72 ${y + 14} Q70 ${y + 22} 74 ${y + 28} M128 ${y + 14} Q130 ${y + 22} 126 ${y + 28}`, 1.8)}` },
+  yuno: { name: 'Y U NO', price: 70, draw: y =>
+    `${ink(`M64 ${y - 18} L92 ${y - 8} M136 ${y - 18} L108 ${y - 8}`, 4.6)}
+    ${eyeO(80, y + 1, 9)}${eyeO(120, y + 1, 9)}${dot(82, y + 2, 2.6)}${dot(118, y + 2, 2.6)}
+    <ellipse cx="100" cy="${y + 30}" rx="17" ry="15" fill="${INK}"/><path d="M88 ${y + 38} Q100 ${y + 30} 112 ${y + 38} Q100 ${y + 46} 88 ${y + 38}Z" fill="#ff8fab"/><path d="M88 ${y + 20} Q100 ${y + 16} 112 ${y + 20} L110 ${y + 24} Q100 ${y + 21} 90 ${y + 24}Z" fill="#fff"/>
+    ${ink(`M83 ${y + 30} Q83 ${y + 15} 100 ${y + 15} Q117 ${y + 15} 117 ${y + 30} Q117 ${y + 45} 100 ${y + 45} Q83 ${y + 45} 83 ${y + 30}Z`, 2.6)}<text x="100" y="${y - 30}" text-anchor="middle" font-size="13" font-weight="900" font-family="Comic Sans MS,Chalkboard SE,cursive" fill="${INK}">Y U NO</text>` },
+  challenge: { name: 'Challenge Accepted', price: 80, draw: y =>
+    `${ink(`M64 ${y - 8} L92 ${y - 4} M108 ${y - 4} L136 ${y - 10}`, 4)}
+    <path d="M68 ${y - 1} L92 ${y + 1} Q86 ${y + 8} 78 ${y + 7} Q70 ${y + 6} 68 ${y - 1}Z M108 ${y + 1} L132 ${y - 1} Q130 ${y + 6} 122 ${y + 7} Q114 ${y + 8} 108 ${y + 1}Z" fill="#fff" stroke="${INK}" stroke-width="2.6"/>${dot(84, y + 3, 2.8)}${dot(116, y + 3, 2.8)}
+    <path d="M74 ${y + 16} Q100 ${y + 22} 128 ${y + 12} Q122 ${y + 36} 100 ${y + 36} Q80 ${y + 34} 74 ${y + 16}Z" fill="#fff"/>
+    ${ink(`M74 ${y + 16} Q100 ${y + 22} 128 ${y + 12} Q122 ${y + 36} 100 ${y + 36} Q80 ${y + 34} 74 ${y + 16}Z M77 ${y + 24} Q100 ${y + 30} 125 ${y + 21}`, 2.6)}${ink(`M86 ${y + 19} V${y + 33} M95 ${y + 20} V${y + 35} M104 ${y + 20} V${y + 35} M113 ${y + 18} V${y + 33} M68 ${y + 12} l4 6 M134 ${y + 8} l-4 6`, 1.5)}` },
+  foreveralone: { name: 'Forever Alone', price: 70, draw: y =>
+    `${ink(`M66 ${y - 10} Q78 ${y - 18} 90 ${y - 14} M110 ${y - 14} Q122 ${y - 18} 134 ${y - 10}`, 3)}
+    <path d="M68 ${y - 2} Q80 ${y - 9} 92 ${y - 2} Q80 ${y + 4} 68 ${y - 2}Z M108 ${y - 2} Q120 ${y - 9} 132 ${y - 2} Q120 ${y + 4} 108 ${y - 2}Z" fill="#fff" stroke="${INK}" stroke-width="2.4"/>${dot(80, y - 2, 2.6)}${dot(120, y - 2, 2.6)}
+    ${ink(`M70 ${y + 6} Q80 ${y + 9} 90 ${y + 6} M110 ${y + 6} Q120 ${y + 9} 130 ${y + 6}`, 1.4)}${tear(72, y + 8)}${tear(128, y + 8)}
+    <path d="M72 ${y + 18} Q100 ${y + 26} 128 ${y + 18} Q124 ${y + 34} 100 ${y + 36} Q76 ${y + 34} 72 ${y + 18}Z" fill="#fff"/>
+    ${ink(`M72 ${y + 18} Q100 ${y + 26} 128 ${y + 18} Q124 ${y + 34} 100 ${y + 36} Q76 ${y + 34} 72 ${y + 18}Z M74 ${y + 25} Q100 ${y + 31} 126 ${y + 25}`, 2.4)}${ink(`M82 ${y + 21} V${y + 32} M91 ${y + 22} V${y + 34} M100 ${y + 23} V${y + 35} M109 ${y + 22} V${y + 34} M118 ${y + 21} V${y + 32}`, 1.3)}` },
+  megusta: { name: 'Mmm, I Like', price: 80, draw: y =>
+    `${ink(`M64 ${y - 18} Q78 ${y - 22} 92 ${y - 16} M108 ${y - 16} Q122 ${y - 22} 136 ${y - 18}`, 3)}
+    ${eyeO(79, y, 12)}${eyeO(121, y, 12)}<path d="M67 ${y - 1} Q79 ${y - 6} 91 ${y - 1} L91 ${y - 12} L67 ${y - 12}Z M109 ${y - 1} Q121 ${y - 6} 133 ${y - 1} L133 ${y - 12} L109 ${y - 12}Z" fill="#fff"/>${ink(`M67 ${y - 1} Q79 ${y - 6} 91 ${y - 1} M109 ${y - 1} Q121 ${y - 6} 133 ${y - 1}`, 2.8)}${dot(79, y + 4, 4)}${dot(121, y + 4, 4)}
+    ${ink(`M68 ${y + 15} Q79 ${y + 19} 90 ${y + 15} M110 ${y + 15} Q121 ${y + 19} 132 ${y + 15} M70 ${y + 19} Q79 ${y + 22} 88 ${y + 19} M112 ${y + 19} Q121 ${y + 22} 130 ${y + 19}`, 1.4)}
+    <path d="M88 ${y + 30} Q94 ${y + 24} 100 ${y + 28} Q106 ${y + 24} 112 ${y + 30} Q100 ${y + 36} 88 ${y + 30}Z" fill="#fff"/>${ink(`M88 ${y + 30} Q94 ${y + 24} 100 ${y + 28} Q106 ${y + 24} 112 ${y + 30} Q100 ${y + 36} 88 ${y + 30}Z M88 ${y + 30} L112 ${y + 30}`, 2.4)}` },
+  cereal: { name: 'Spit-Take Shock', price: 80, draw: y =>
+    `${ink(`M64 ${y - 18} Q78 ${y - 24} 91 ${y - 17} M109 ${y - 17} Q122 ${y - 24} 136 ${y - 18}`, 3)}
+    ${eyeO(79, y, 13)}${eyeO(121, y, 13)}${dot(80, y, 2.4)}${dot(122, y, 2.4)}
+    <ellipse cx="96" cy="${y + 28}" rx="11" ry="9" fill="${INK}"/>${ink(`M85 ${y + 28} Q85 ${y + 19} 96 ${y + 19} Q107 ${y + 19} 107 ${y + 28} Q107 ${y + 37} 96 ${y + 37} Q85 ${y + 37} 85 ${y + 28}Z`, 2.4)}
+    <g fill="#fff" stroke="#9fd3ff" stroke-width="2">${[[118, y + 22, 4], [128, y + 30, 5], [140, y + 22, 3.5], [138, y + 36, 4], [150, y + 30, 3]].map(([a, b, r]) => `<circle cx="${a}" cy="${b}" r="${r}"/>`).join('')}</g>${ink(`M112 ${y + 26} l14 -4 M112 ${y + 30} l18 2 M110 ${y + 34} l12 6`, 1.6)}` },
+  truestory: { name: 'True Story', price: 70, draw: y =>
+    `<path d="M62 ${y - 8} H96 V${y + 1} Q95 ${y + 9} 82 ${y + 9} Q64 ${y + 9} 62 ${y}Z M104 ${y - 8} H138 V${y} Q136 ${y + 9} 118 ${y + 9} Q105 ${y + 9} 104 ${y + 1}Z" fill="${INK}"/>${ink(`M56 ${y - 8} H144`, 3)}<path d="M68 ${y - 4} l8 0 M110 ${y - 4} l8 0" stroke="#fff" stroke-width="2" opacity=".7"/>
+    ${ink(`M84 ${y + 24} Q104 ${y + 28} 120 ${y + 16} M120 ${y + 16} l3 -3`, 3.2)}${ink(`M122 ${y + 22} q4 2 3 6`, 1.8)}` },
+  lol: { name: 'LOL Laugh', price: 70, draw: y =>
+    `${ink(`M68 ${y + 2} Q80 ${y - 10} 92 ${y + 2} M108 ${y + 2} Q120 ${y - 10} 132 ${y + 2} M66 ${y - 14} Q78 ${y - 20} 90 ${y - 16} M110 ${y - 16} Q122 ${y - 20} 134 ${y - 14}`, 3.2)}${tear(64, y + 6)}${tear(136, y + 6)}
+    <path d="M70 ${y + 12} Q100 ${y + 8} 130 ${y + 12} Q128 ${y + 46} 100 ${y + 46} Q72 ${y + 46} 70 ${y + 12}Z" fill="${INK}"/><path d="M74 ${y + 13} Q100 ${y + 9} 126 ${y + 13} L125 ${y + 20} Q100 ${y + 17} 75 ${y + 20}Z" fill="#fff"/><path d="M86 ${y + 40} Q100 ${y + 32} 114 ${y + 40} Q100 ${y + 46} 86 ${y + 40}Z" fill="#ff8fab"/>
+    ${ink(`M70 ${y + 12} Q100 ${y + 8} 130 ${y + 12} Q128 ${y + 46} 100 ${y + 46} Q72 ${y + 46} 70 ${y + 12}Z`, 2.6)}` },
+  sleepy: { name: 'Sleepy Zzz', price: 50, draw: y =>
+    `${ink(`M68 ${y} Q80 ${y + 8} 92 ${y} M108 ${y} Q120 ${y + 8} 132 ${y}`, 3.2)}${ink(`M70 ${y + 4} l-3 4 M80 ${y + 6} v5 M120 ${y + 6} v5 M130 ${y + 4} l3 4`, 1.5)}
+    <ellipse cx="100" cy="${y + 24}" rx="6" ry="7" fill="#fff"/>${ink(`M94 ${y + 24} Q94 ${y + 17} 100 ${y + 17} Q106 ${y + 17} 106 ${y + 24} Q106 ${y + 31} 100 ${y + 31} Q94 ${y + 31} 94 ${y + 24}Z`, 2.6)}
+    <text x="138" y="${y - 18}" font-size="16" font-weight="900" fill="#8f86c8" font-family="Comic Sans MS,cursive">z</text><text x="150" y="${y - 32}" font-size="12" font-weight="900" fill="#b3abe0" font-family="Comic Sans MS,cursive">z</text>${tear(110, y + 30)}` },
+  starstruck: { name: 'Starstruck', price: 80, draw: y =>
+    [80, 120].map(x => `<path d="${star5(x, y, 13)}" fill="#ffe27a" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/>`).join('') +
+    `<path d="M82 ${y + 16} Q100 ${y + 38} 118 ${y + 16}Z" fill="#fff"/>${ink(`M82 ${y + 16} Q100 ${y + 38} 118 ${y + 16}Z`, 2.6)}<path d="M90 ${y + 26} Q100 ${y + 34} 110 ${y + 26} Q100 ${y + 30} 90 ${y + 26}Z" fill="#ff8fab"/>${blush(y)}` },
+  sus: { name: 'Sus Squint', price: 60, draw: y =>
+    `${ink(`M66 ${y - 6} L92 ${y - 2} M108 ${y - 8} Q120 ${y - 14} 134 ${y - 9}`, 3.6)}
+    <path d="M68 ${y + 2} Q80 ${y - 2} 92 ${y + 2} Q80 ${y + 6} 68 ${y + 2}Z M108 ${y + 1} Q120 ${y - 3} 132 ${y + 1} Q120 ${y + 5} 108 ${y + 1}Z" fill="#fff" stroke="${INK}" stroke-width="2.4"/>${dot(72, y + 2, 2.6)}${dot(112, y + 1, 2.6)}
+    ${ink(`M90 ${y + 24} Q100 ${y + 22} 112 ${y + 26}`, 3)}${ink(`M114 ${y + 24} l3 2`, 1.6)}` },
+  wink: { name: 'Cheeky Wink', price: 50, draw: y =>
+    `${ink(`M68 ${y + 2} Q80 ${y - 6} 92 ${y + 2} M66 ${y - 12} Q78 ${y - 16} 90 ${y - 12}`, 3.2)}${eyeO(120, y, 10)}${dot(121, y + 1, 4)}<circle cx="123" cy="${y - 2}" r="1.6" fill="#fff"/>${ink(`M110 ${y - 16} Q122 ${y - 22} 134 ${y - 15}`, 3)}
+    ${ink(`M86 ${y + 18} Q102 ${y + 30} 118 ${y + 16}`, 3.2)}<path d="M104 ${y + 24} Q106 ${y + 34} 112 ${y + 33} Q117 ${y + 31} 114 ${y + 21}" fill="#ff9fb8"/>${ink(`M104 ${y + 24} Q106 ${y + 34} 112 ${y + 33} Q117 ${y + 31} 114 ${y + 21}`, 2.2)}${blush(y)}` },
+});
+/* ----- end verbatim Lingo World block ----- */
+return FACES;
+});
 const ZF = (() => {
-  const mk = K => {
-    const ink = (d, w = 3, fill = 'none') => `<path d="${d}" fill="${fill}" stroke="${K}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${K}" stroke-width="${(w * .4).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round" transform="translate(.9 .7)" opacity=".45"/>`;
-    const dot = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${K}"/>`;
-    const eyeO = (x, y, r, ry = r) => `<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${ry}" fill="#fff" stroke="${K}" stroke-width="2.6"/>`;
-    const tear = (x, y) => `<path d="M${x} ${y}q4 7 0 10q-4-3 0-10z" fill="#8FD0FF" stroke="#4A9BD6" stroke-width="1.2"/>`;
-    const teeth = (d, lines) => `<path d="${d}" fill="#fff"/>${ink(d, 2.6)}${ink(lines, 1.3)}`;
-    const spiral = (x, y) => ink(`M${x} ${y}m-1 0a1.5 1.5 0 1 1 3 0a3.5 3.5 0 1 1 -6 -1a6 6 0 1 1 11 2a8.5 8.5 0 1 1 -15 -4`, 2.2);
-    return {
-      rage: () => `${ink('M62 -20L92 -8M138 -20L108 -8', 4.8)}${eyeO(80, 2, 9)}${eyeO(120, 2, 9)}${dot(82, 3, 2.6)}${dot(118, 3, 2.6)}
-        <ellipse cx="100" cy="30" rx="17" ry="15" fill="${K}"/><path d="M88 39q12-8 24 0q-12 8-24 0z" fill="#FF8FAB"/><path d="M87 21q13-5 26 0l-2 4q-11-3-22 0z" fill="#fff"/>${ink('M64 -2l-6-6M136 -2l6-6M60 6l-8 0M140 6l8 0', 1.8)}`,
-      alone: () => `${ink('M64 -10Q78 -19 91 -13M109 -13Q122 -19 136 -10', 3)}<path d="M67 -1Q80 -9 93 -1Q80 5 67 -1ZM107 -1Q120 -9 133 -1Q120 5 107 -1Z" fill="#fff" stroke="${K}" stroke-width="2.4"/>${dot(80, -3, 2.6)}${dot(120, -3, 2.6)}${tear(70, 7)}${tear(130, 7)}
-        ${teeth('M70 18Q100 27 130 18Q126 36 100 38Q74 36 70 18Z', 'M72 26Q100 33 128 26M81 21V33M90 23V36M100 24V38M110 23V36M119 21V33')}`,
-      notbad: () => `${ink('M64 -16Q78 -23 91 -14M109 -14Q122 -23 136 -16', 3.2)}<ellipse cx="80" cy="0" rx="10" ry="6" fill="#fff" stroke="${K}" stroke-width="2.6"/><ellipse cx="120" cy="0" rx="10" ry="6" fill="#fff" stroke="${K}" stroke-width="2.6"/>${dot(80, 1, 3.2)}${dot(120, 1, 3.2)}
-        ${ink('M70 -4Q80 -7 90 -4M110 -4Q120 -7 130 -4', 1.8)}${ink('M82 28Q91 16 100 17Q109 16 118 28', 3.8)}${ink('M91 35Q100 38 109 35M78 22l-2 7M122 22l2 7', 2)}`,
-      poker: () => `${ink('M64 -11H92M108 -11H136', 3.6)}<ellipse cx="80" cy="1" rx="10" ry="6" fill="#fff" stroke="${K}" stroke-width="2.6"/><ellipse cx="120" cy="1" rx="10" ry="6" fill="#fff" stroke="${K}" stroke-width="2.6"/>${dot(80, 1, 3)}${dot(120, 1, 3)}
-        ${ink('M70 -3H90M110 -3H130', 2.4)}${ink('M82 25H118', 3.6)}${ink('M71 14Q69 22 73 28M129 14Q131 22 127 28', 1.8)}`,
-      challenge: () => `${ink('M62 -8L92 -3M108 -3L138 -11', 4.2)}<path d="M67 0L92 2Q86 9 78 8Q70 7 67 0ZM108 2L133 -1Q131 6 123 8Q114 9 108 2Z" fill="#fff" stroke="${K}" stroke-width="2.6"/>${dot(85, 4, 2.8)}${dot(115, 4, 2.8)}
-        ${teeth('M70 16Q100 23 132 11Q126 38 100 38Q78 36 70 16Z', 'M73 25Q100 32 129 20M84 19V35M94 21V37M104 21V37M114 18V35M123 15V30')}`,
-      derp: () => `${ink('M66 -16Q78 -22 90 -14M112 -12Q122 -15 132 -9', 2.8)}${eyeO(78, 0, 12)}${eyeO(121, 2, 8)}<g class="googly">${dot(86, 3, 4.2)}${dot(115, 2, 3.2)}</g>
-        <path d="M80 22Q92 30 104 22Q116 16 122 24Q114 36 98 36Q84 35 80 22Z" fill="${K}"/><path d="M100 29q8-2 13 4q-2 11-10 9q-6-2-3-13z" fill="#FF8FAB" stroke="${K}" stroke-width="2"/><rect x="88" y="21.5" width="6" height="6" rx="1" fill="#fff" stroke="${K}" stroke-width="1.4"/>`,
-      shook: () => `${ink('M64 -24Q78 -32 92 -24M108 -24Q122 -32 136 -24', 3)}${eyeO(80, 0, 12, 13)}${eyeO(120, 0, 12, 13)}${dot(80, 0, 1.8)}${dot(120, 0, 1.8)}
-        <ellipse cx="100" cy="30" rx="8" ry="11" fill="${K}"/>${ink('M58 -18l-6-4M142 -18l6-4M56 -6h-7M144 -6h7', 2)}<path d="M140 8q5 8 0 12q-5-4 0-12z" fill="#8FD0FF" stroke="#4A9BD6" stroke-width="1.2"/>`,
-      blep: () => `${ink('M70 2Q80 -9 90 2M110 2Q120 -9 130 2', 3.4)}${ink('M88 20Q94 25 100 20Q106 25 112 20', 2.8)}<path d="M95 22q5 2 10 0v7q0 6-5 6t-5-6z" fill="#FF8FAB" stroke="${K}" stroke-width="2.2"/>${ink('M100 25v6', 1.2)}
-        <g fill="#FF9DB5" opacity=".7"><ellipse cx="68" cy="14" rx="7" ry="4"/><ellipse cx="132" cy="14" rx="7" ry="4"/></g>`,
-      fried: () => `<g class="smoke" fill="#B9B4C9" opacity=".85"><circle cx="70" cy="-36" r="7"/><circle cx="80" cy="-44" r="9"/><circle cx="92" cy="-38" r="6"/><circle cx="118" cy="-40" r="7"/><circle cx="128" cy="-47" r="5"/></g>
-        ${eyeO(80, 0, 12)}${eyeO(120, 0, 12)}${spiral(80, 0)}${spiral(120, 0)}${ink('M80 26Q86 20 92 26T104 26T116 26', 3)}<path d="M128 18l-5 7h4l-2 6 7-8h-4l2-5z" fill="#FFD23F" stroke="${K}" stroke-width="1.4" stroke-linejoin="round"/>`,
-      lowbatt: () => `${ink('M68 2Q80 9 92 2M108 2Q120 9 132 2', 3.2)}${ink('M72 5l-2 4M80 7v4M88 5l2 4M112 5l-2 4M120 7v4M128 5l2 4', 1.4)}${ink('M90 24Q100 30 110 24', 3)}
-        <path class="drool" d="M106 26q3 6 1 12q-3 3-5-1q-1-5 4-11z" fill="#9CD8FF" stroke="#4A9BD6" stroke-width="1.2"/><text class="zz" x="136" y="-12" font-size="15" font-weight="900" fill="${K}" style="font-family:inherit">z</text><text class="zz" x="146" y="-24" font-size="11" font-weight="900" fill="${K}" style="font-family:inherit">z</text>`,
-    };
-  };
-  const L = mk('#1E1B2E'), D = mk('#F6F4FF');
-  return { draw: (id, a, dark) => { const f = (dark ? D : L)[id]; if (!f) return ''; const s = Math.min(.66, a.hw / 44); return `<g class="avface f-${id}" transform="translate(60 ${a.eye}) scale(${s.toFixed(3)}) translate(-100 0)">${f()}</g>`; }, ids: Object.keys(L) };
+  const L = LW_FACES('#1d1b26'), D = LW_FACES('#F6F4FF');
+  return { draw: (id, a, dark) => { const k = id.slice(4), f = (dark ? D : L)[k]; if (!f) return ''; const s = Math.min(.66, a.hw / 44);
+    return `<g class="avface f-${k}" transform="translate(60 ${a.eye}) scale(${s.toFixed(3)}) translate(-100 0)">${f.draw(0)}</g>`; }, ids: Object.keys(L) };
 })();
-const FACE_LIST = [['poker', 'Poker Face', 25], ['derp', 'Derp Current', 20], ['blep', 'Blep', 20], ['notbad', 'Not Bad, Ohm', 30], ['lowbatt', 'Low Battery', 30], ['alone', 'Forever Grounded', 35], ['rage', 'Y U NO Charge?!', 40], ['challenge', 'Challenge Accepted', 45], ['shook', 'Shook at 10,000 V', 50], ['fried', 'Fried Circuit', 60]];
-(() => { // insert the Faces category after Glasses (face ids are prefixed so they never collide with other items)
+const FACE_LIST = [["skeptic", "Are You Serious", 60], ["derp", "Derp", 30], ["smug", "Pfft, Sure", 20], ["heh", "I See What You Did", 30], ["dude", "DUDE", 35], ["sob", "Big Ugly Cry", 40], ["happytears", "So Much Win", 50], ["shock", "Oh Crap", 45], ["thumbs", "Okay, Nice!", 45], ["trolly", "Mischief Grin", 45], ["rage", "FFFUUU Rage", 45], ["silly", "Herp Tongue", 30], ["cat", "Kitty :3", 20], ["hearts", "Heart Eyes", 35], ["okay", "Okay… (sad)", 30], ["nervous", "Uhh… Nervous", 45], ["notbad", "Not Bad", 40], ["poker", "Poker Face", 35], ["yuno", "Y U NO", 40], ["challenge", "Challenge Accepted", 35], ["foreveralone", "Forever Alone", 45], ["megusta", "Mmm, I Like", 55], ["cereal", "Spit-Take Shock", 45], ["truestory", "True Story", 25], ["lol", "LOL Laugh", 30], ["sleepy", "Sleepy Zzz", 35], ["starstruck", "Starstruck", 25], ["sus", "Sus Squint", 30], ["wink", "Cheeky Wink", 45]];
+(() => { // Faces category after Glasses; ids are 'lwf_<lingo id>'
   const gi = SHOP.findIndex(s => s[0] === 'Glasses');
-  SHOP.splice(gi + 1, 0, ['Faces', 'face', FACE_LIST.map(([id, n, p]) => ['face_' + id, n, p])]);
-  FACE_LIST.forEach(([id, name, price]) => { ITEMS['face_' + id] = { id: 'face_' + id, name, price, slot: 'face', cat: 'Faces' }; });
+  SHOP.splice(gi + 1, 0, ['Faces', 'face', FACE_LIST.map(([id, n, p]) => ['lwf_' + id, n, p])]);
+  FACE_LIST.forEach(([id, name, price]) => { ITEMS['lwf_' + id] = { id: 'lwf_' + id, name, price, slot: 'face', cat: 'Faces' }; });
 })();
+/* one-time refund for the earlier redrawn preview faces (never live, so normally a no-op that leaves the save untouched) */
+const OLD_FACES = { face_poker: 25, face_derp: 20, face_blep: 20, face_notbad: 30, face_lowbatt: 30, face_alone: 35, face_rage: 40, face_challenge: 45, face_shook: 50, face_fried: 60 };
+const _ensureShopBase = ensureShop;
+ensureShop = function () {
+  _ensureShopBase.apply(this, arguments);
+  const av = S.avatar; if (!av || !Array.isArray(av.owned)) return;
+  const old = av.owned.filter(i => Object.prototype.hasOwnProperty.call(OLD_FACES, i)); if (!old.length && !(av.eq && OLD_FACES[av.eq.face])) return;
+  const back = old.reduce((t, i) => t + OLD_FACES[i], 0);
+  av.owned = av.owned.filter(i => !OLD_FACES[i]); if (av.eq && av.eq.face && !ITEMS[av.eq.face]) delete av.eq.face;
+  if (back) { S.tokens = (S.tokens || 0) + back; pendingToasts.push([`Faces got an upgrade: ${back} tokens refunded`, ICON.token()]); }
+};
 /* playful names (display only) + one-line jokes for the pop-up */
 const FUN_NAMES = { roundg: 'Brainy specs', bucket: "Bucket o' chill", necklace: 'Blinky necklace', scarf: 'Snuggle scarf', phones: 'Beat buds', backpack: 'Snack pack', spark: 'Sparky', electron: 'Lil electron', cloudpet: 'Drizzle', dinopet: 'Dino-mite', capkitty: 'Capaci-kitty', rocketpet: 'Rocket buddy', froghat: 'Ribbit hat', rainbow: 'Rainbow blast' };
 const FUN_DESC = {
@@ -5190,7 +5324,7 @@ const FUN_DESC = {
   stickstar: 'Gold stars just for showing up.', stickheart: 'Wears its heart on its cheeks.', starclip: 'Holds hair and dreams.', daisy: 'Fresh-picked, never wilts.', bow: 'Gift-wrapped and ready.', bowtie: 'Dressed for the science fair.', necklace: 'Blinks when you are winning.', pearls: 'Fancy beads, zero drama.', scarf: 'Cozy insulation.', phones: 'Lo-fi beats to solder to.', backpack: 'Carries spare batteries and snacks.', bunnybag: 'A bunny that rides along.', hoodie: 'Hood up, focus on.', varsity: 'Captain of the Circuit Club.',
   spark: 'Small, bright, a bit zappy.', electron: 'Negatively charged, positively cute.', sprout: 'Grows with every lesson.', cloudpet: 'Only rains on bad circuits.', skatepet: 'Kickflips over wires.', rocketpet: 'To the moon, then back for snacks.', dinopet: 'Rawr means "I love you" in dinosaur.', capkitty: 'Stores nine lives of charge.',
   bgsky: 'Stargazing, electrified.', cloudsky: 'Sweet skies ahead.', bgsunset: 'Golden hour, every hour.', dreamy: 'Floaty, sparkly, nap-ready.', skatepark: 'Ramps, rails and resistors.', rainbow: 'Every wavelength at once.', sparkaura: 'Glittering with potential.', galaxy: 'Big universe, tiny battery.', goldaura: 'Main-character energy.',
-  face_poker: 'Reveals nothing. Not even voltage.', face_derp: 'Brain.exe has stopped working.', face_blep: 'Blep. That is all.', face_notbad: 'Not bad. Not bad at all.', face_lowbatt: 'Battery at 1%. Please send naps.', face_alone: 'Just me and my single wire.', face_rage: 'Y U NO hold a charge?!', face_challenge: 'Hard quiz? Challenge accepted.', face_shook: 'When you touch the wrong terminal.', face_fried: 'Short circuit, long story.' };
+  lwf_skeptic: "You call that a closed circuit?", lwf_derp: "Thinking at 0.0001 hertz.", lwf_smug: "Sure, the LED was \"already broken\".", lwf_heh: "I see what you did there. Ohm-y.", lwf_dude: "DUDE. It lit up.", lwf_sob: "When the magic smoke escapes.", lwf_happytears: "Passed the unit test. Crying in volts.", lwf_shock: "Touched both terminals. Oops.", lwf_thumbs: "Polarity correct. Nice!", lwf_trolly: "Swapped your resistors. Heh.", lwf_rage: "When the breadboard rail is split.", lwf_silly: "Herp derp, short circuit.", lwf_cat: "Purrs at 60 hertz :3", lwf_hearts: "In love with a fresh battery.", lwf_okay: "Okay… the fuse blew.", lwf_nervous: "Uhh… is it supposed to be warm?", lwf_notbad: "First-try circuit. Not bad.", lwf_poker: "Reveals nothing. Not even voltage.", lwf_yuno: "Y U NO hold a charge?!", lwf_challenge: "Hard quiz? Challenge accepted.", lwf_foreveralone: "Just me and my single wire.", lwf_megusta: "Mmm, fresh solder smell.", lwf_cereal: "You learned WHAT in one lesson?!", lwf_truestory: "Lightning is just giant static. True story.", lwf_lol: "LOL, resistance is futile.", lwf_sleepy: "Battery at 1%. Please send naps.", lwf_starstruck: "Just saw a real oscilloscope.", lwf_sus: "That wire looks sus.", lwf_wink: "Psst: red is positive." };
 Object.entries(FUN_NAMES).forEach(([id, n]) => { if (ITEMS[id]) ITEMS[id].name = n; });
 /* =========================================================
    FLASHCARD DECK REWARD + PER-UNIT FLASHCARD TEST
