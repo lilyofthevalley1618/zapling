@@ -427,6 +427,9 @@ body:has(#v-games.on) #askFab{display:none}
 .sitem.sel{box-shadow:0 0 0 3px #B9A6FF,0 4px 12px rgba(124,131,253,.2)}
 .sitem.eq{background:linear-gradient(180deg,#fff,#EFFBF6)}.sitem.eq span{color:#2EB58F}
 .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:2px solid var(--line);background:#fff;border-radius:14px;padding:11px 14px;font:inherit;font-weight:900;font-size:15px;color:#3C4043;cursor:pointer;box-shadow:0 3px 0 var(--line)}.gbtn:disabled{opacity:.7;cursor:default}
+.frow{display:flex;gap:10px;align-items:stretch}.frow .btn{flex:1;width:auto}.frow .backbtn{flex:0 0 auto;padding-left:14px;padding-right:14px}
+.revnote{display:flex;align-items:center;gap:7px;font-weight:800;font-size:13px;color:#7A5A00;background:#FFF4CF;border-radius:12px;padding:7px 11px;margin:0 0 10px}.revnote svg{width:16px;height:16px;flex:none}
+.pastsnap{pointer-events:none}
 </style>
 </head>
 <body>
@@ -3095,17 +3098,18 @@ function setHead() {
 }
 function footer(html) { const f = $('#lfoot'); f.className = 'lfoot'; f.firstElementChild.innerHTML = html; return f; }
 function renderStep() {
-  Anim.clear(); BUSY = false;
+  Anim.clear(); BUSY = false; R.view = null;
   const step = R.steps[R.idx]; const st = $('#stage'); st.innerHTML = ''; st.scrollTop = 0; setHead();
   const ready = (b) => { const btn = $('#btnCheck'); if (btn) btn.disabled = !b; };
   CTRL = RENDER[step.type === 'sim' ? 'sim_' + step.kind : step.type](step, st, ready);
   if (step.type === 'concept') {
-    footer(`<button class="btn primary" id="btnNext">Continue</button>`);
+    footer(frow(`<button class="btn primary" id="btnNext">Continue</button>`));
     $('#btnNext').onclick = () => { SFX.tap(); next(); };
   } else {
-    footer(`<button class="btn primary" id="btnCheck" ${CTRL.ready ? '' : 'disabled'}>${step.graded === false ? 'Continue' : 'Check'}</button>`);
+    footer(frow(`<button class="btn primary" id="btnCheck" ${CTRL.ready ? '' : 'disabled'}>${step.graded === false ? 'Continue' : 'Check'}</button>`));
     $('#btnCheck').onclick = doCheck;
   }
+  bindBack();
 }
 async function doCheck() {
   if (BUSY) return; BUSY = true;
@@ -3123,10 +3127,11 @@ async function doCheck() {
   const praise = ['Nice!', 'Great job!', 'You got it!', 'Brilliant!', 'Spot on!'];
   const head = step.graded === false ? 'Experiment complete!' : ok ? praise[Math.floor(Math.random() * praise.length)] : 'Not quite';
   const ans = !ok && CTRL.answer ? `<div style="font-weight:800;margin:-4px 0 10px;color:var(--corald)">Correct answer: <span style="color:var(--ink)">${CTRL.answer}</span></div>` : '';
-  const f = footer(`<div class="fbhead"><span class="ic">${ok ? ICON.check() : ICON.cross()}</span><b>${head}</b>${gain ? `<span class="xp">+${gain} XP</span>` : ''}</div>${ans}
-    <div class="whylbl">${ICON.why()} Why</div><div class="why on" id="whyBox">${step.why}</div>${!ok && step.graded !== false ? `<button class="askbtn askwrong" id="askWhy">${askIcon()}Ask why I got this wrong</button>` : ''}
-    <button class="btn ${ok ? 'primary' : 'coral'}" id="btnNext">Continue</button>`);
-  f.classList.add('fb', ok ? 'good' : 'bad');
+  const whyH = `${ans}<div class="whylbl">${ICON.why()} Why</div><div class="why on" id="whyBox">${step.why}</div>`;
+  if (R.kind === 'lesson' && R.phase === 'main') { R.hist = R.hist || {}; R.hist[R.idx] = { stage: $('#stage').innerHTML, ok, fb: `<div class="fbhead"><span class="ic">${ok ? ICON.check() : ICON.cross()}</span><b>${step.graded === false ? 'Experiment complete!' : ok ? 'You got this right' : 'You missed this one'}</b></div>${whyH}` }; }
+  const f = footer(`<div class="fbhead"><span class="ic">${ok ? ICON.check() : ICON.cross()}</span><b>${head}</b>${gain ? `<span class="xp">+${gain} XP</span>` : ''}</div>${whyH}${!ok && step.graded !== false ? `<button class="askbtn askwrong" id="askWhy">${askIcon()}Ask why I got this wrong</button>` : ''}
+    ${frow(`<button class="btn ${ok ? 'primary' : 'coral'}" id="btnNext">Continue</button>`)}`);
+  f.classList.add('fb', ok ? 'good' : 'bad'); bindBack();
   if ($('#askWhy')) $('#askWhy').onclick = () => { SFX.tap(); openSprig(curStepCtx(true)); };
   $('#btnNext').onclick = () => {
     if (R.kind === 'lesson' && R.phase === 'main' && S.hearts <= 0 && R.idx < R.steps.length - 1) return outOfHearts();
@@ -3134,6 +3139,42 @@ async function doCheck() {
   };
   $('#btnNext').focus({ preventScroll: true });
   BUSY = false;
+}
+/* ---------- Back: revisit earlier steps of this lesson (review/practice only: never touches score, hearts, XP or tokens) ---------- */
+const canBack = () => R && R.kind === 'lesson' && R.phase === 'main';
+const backBtn = i => i > 0 ? `<button class="btn ghost backbtn" id="btnBack" aria-label="Back to the previous step">‹ Back</button>` : '';
+const frow = html => `<div class="frow">${canBack() ? backBtn(R.view != null ? R.view : R.idx) : ''}${html}</div>`;
+function bindBack() { const b = $('#btnBack'); if (b) b.onclick = goBack; }
+function goBack() { if (BUSY || !canBack()) return; const cur = R.view != null ? R.view : R.idx; if (cur > 0) { SFX.tap(); showPast(cur - 1); } }
+function goFwd() {
+  const i = R.view; SFX.tap();
+  if (i === R.idx) { R.view = null; if (S.hearts <= 0 && R.idx < R.steps.length - 1) return outOfHearts(); return next(); } // her live step was already checked
+  if (i + 1 === R.idx && !(R.hist || {})[R.idx]) return renderStep();                                                     // back to where she was
+  showPast(i + 1);
+}
+function pastFoot(i, hasQ) { return frow(`${hasQ ? '<button class="btn peri" id="btnRetry">Try again</button>' : ''}<button class="btn primary" id="btnFwd">${i === R.idx ? 'Continue' : 'Next ›'}</button>`); }
+function bindPast(i) { bindBack(); $('#btnFwd').onclick = goFwd; const r = $('#btnRetry'); if (r) r.onclick = () => { SFX.tap(); retryPast(i); }; }
+const revNote = t => `<div class="revnote">${ICON.why()}<span>${t}</span></div>`;
+function showPast(i) {
+  Anim.clear(); BUSY = false; R.view = i; setHead();
+  const step = R.steps[i], h = (R.hist || {})[i], st = $('#stage'); st.innerHTML = ''; st.scrollTop = 0;
+  if (h) { st.innerHTML = revNote('Your earlier answer · review only, your score stays the same') + `<div class="pastsnap" inert>${h.stage}</div>`; footer(h.fb + pastFoot(i, true)).classList.add('fb', h.ok ? 'good' : 'bad'); }
+  else { CTRL = RENDER[step.type === 'sim' ? 'sim_' + step.kind : step.type](step, st, () => { }); footer(pastFoot(i, false)); }
+  bindPast(i);
+}
+function retryPast(i) {
+  Anim.clear(); BUSY = false; R.view = i;
+  const step = R.steps[i], st = $('#stage'); st.innerHTML = ''; st.scrollTop = 0;
+  CTRL = RENDER[step.type === 'sim' ? 'sim_' + step.kind : step.type](step, st, b => { const x = $('#btnCheck'); if (x) x.disabled = !b; });
+  st.prepend(el(revNote('Practice try · no hearts, XP or tokens at stake')));
+  footer(frow(`<button class="btn primary" id="btnCheck" ${CTRL.ready ? '' : 'disabled'}>Check</button>`)); bindBack();
+  $('#btnCheck').onclick = async () => {
+    if (BUSY) return; BUSY = true; $('#btnCheck').disabled = true;
+    const ok = await CTRL.check(); if (CTRL.lock) CTRL.lock(ok); ok ? SFX.good() : SFX.bad();
+    const ans = !ok && CTRL.answer ? `<div style="font-weight:800;margin:-4px 0 10px;color:var(--corald)">Correct answer: <span style="color:var(--ink)">${CTRL.answer}</span></div>` : '';
+    footer(`<div class="fbhead"><span class="ic">${ok ? ICON.check() : ICON.cross()}</span><b>${ok ? 'Got it! (practice)' : 'Not quite (practice)'}</b></div>${ans}<div class="whylbl">${ICON.why()} Why</div><div class="why on">${step.why}</div>${pastFoot(i, true)}`).classList.add('fb', ok ? 'good' : 'bad');
+    bindPast(i); BUSY = false;
+  };
 }
 function outOfHearts() {
   SFX.bad(); Anim.clear(); R.phase = 'ooh'; setHead();
@@ -3608,7 +3649,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.3 (2026-10-02)';
+const APP_VERSION = '7.4 (2026-10-02)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -4106,7 +4147,7 @@ function lessonInfo(lid) {
 }
 function curStepCtx(mistake) {
   if (!R) return { kind: 'general' };
-  const step = R.steps[R.idx] || {}; const isTest = R.kind === 'test';
+  const step = R.steps[R.view != null ? R.view : R.idx] || {}; const isTest = R.kind === 'test';
   const lid = isTest ? step.tag : R.id, info = lessonInfo(lid) || {}, T = isTest ? TESTS[R.id] : null;
   const answered = !!$('#lfoot.fb, #lfoot .fb') || !!($('#lfoot') && $('#lfoot').classList.contains('fb'));
   const c = Object.assign({ kind: mistake ? 'mistake' : 'lesson', test: isTest, answered, testTitle: T && T.title }, info);
