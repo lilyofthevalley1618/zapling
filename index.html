@@ -5567,7 +5567,19 @@ async function cloudSignOut() {
 async function onCloudUser(user) {
   CLOUD.user = user || null;
   if (!user) { if (syncInfo().uid) setSyncInfo({}); return renderCloud(); }
-  setSyncInfo({ uid: user.uid }); await cloudPull();
+  setSyncInfo({ uid: user.uid }); await cloudPull(); await testGrant(user);
+}
+// one-time 5,000 test tokens for the owner's account (matched by SHA-256 of the email; flag syncs + survives merges)
+const GRANT_H = 'cf4d5fd9fac58baf8900cca94f8117e70d05e726597323055204951cc777a02b';
+async function testGrant(user) {
+  try {
+    if (!user || !user.email || S.testGrant5000 || !(crypto && crypto.subtle)) return false;
+    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(user.email.trim().toLowerCase()));
+    if ([...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('') !== GRANT_H) return false;
+    S.tokens = (S.tokens || 0) + 5000; S.testGrant5000 = 1; saveLocal(); renderTop();
+    toast('+5,000 test tokens', ICON.coin ? ICON.coin() : ICON.check()); if (CLOUD.user) cloudPush().catch(cloudErr);
+    return true;
+  } catch (e) { return false; }
 }
 // pull the cloud save, merge it with this device's save, then upload the result
 async function cloudPull() {
@@ -5598,7 +5610,7 @@ function mergeSaves(a, b) {
   const m = cl(base), uni = (x, y) => [...new Set([...(Array.isArray(x) ? x : []), ...(Array.isArray(y) ? y : [])])];
   const maxMap = (x, y) => { const r = Object.assign({}, ob(y), ob(x)); Object.keys(ob(y)).forEach(k => { if (typeof ob(x)[k] === 'number' && typeof y[k] === 'number') r[k] = Math.max(x[k], y[k]); }); return r; };
   Object.keys(ob(o)).forEach(k => { if (m[k] == null) m[k] = cl(o[k]); });                                  // anything only the other save has
-  Object.keys(ob(o)).forEach(k => { if (/mig|fix/i.test(k) && typeof o[k] === 'number') m[k] = Math.max(+m[k] || 0, o[k]); }); // migration guards never go backwards
+  Object.keys(ob(o)).forEach(k => { if (/mig|fix|grant/i.test(k) && typeof o[k] === 'number') m[k] = Math.max(+m[k] || 0, o[k]); }); // migration guards never go backwards
   m.done = Object.assign({}, ob(o.done), ob(base.done));
   m.tests = {}; uni(Object.keys(ob(base.tests)), Object.keys(ob(o.tests))).forEach(id => { const x = ob(base.tests)[id], y = ob(o.tests)[id];
     m.tests[id] = !x || !y ? cl(x || y) : Object.assign({}, y, x, { passed: !!(x.passed || y.passed), best: Math.max(x.best || 0, y.best || 0), attempts: Math.max(x.attempts || 0, y.attempts || 0), placed: x.passed ? x.placed : y.placed }); });
