@@ -430,6 +430,14 @@ body:has(#v-games.on) #askFab{display:none}
 .frow{display:flex;gap:10px;align-items:stretch}.frow .btn{flex:1;width:auto}.frow .backbtn{flex:0 0 auto;padding-left:14px;padding-right:14px}
 .revnote{display:flex;align-items:center;gap:7px;font-weight:800;font-size:13px;color:#7A5A00;background:#FFF4CF;border-radius:12px;padding:7px 11px;margin:0 0 10px}.revnote svg{width:16px;height:16px;flex:none}
 .pastsnap{pointer-events:none}
+.shoppop{position:fixed;inset:0;z-index:100;background:rgba(46,42,90,.38);display:flex;align-items:flex-end;justify-content:center;animation:fade .2s}
+.shoppop .spbox{background:#fff;width:100%;max-width:440px;border-radius:26px 26px 0 0;padding:16px 18px calc(18px + env(safe-area-inset-bottom));text-align:center;box-shadow:0 -10px 40px rgba(46,42,90,.25);animation:sheetup .28s cubic-bezier(.3,.7,.3,1.15)}
+@keyframes sheetup{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+.shoppop .avprev{width:150px;height:150px;margin:0 auto}.shoppop .avprev svg{width:108px}
+.shoppop h3{margin:8px 0 4px;font-size:21px}.sppr{font-weight:900;color:var(--ink2);margin-bottom:4px}
+.shoppop .pr{display:inline-flex;align-items:center;gap:4px;background:#FFF1BF;color:#7A5A00;border-radius:999px;padding:3px 12px}.shoppop .pr svg{width:18px;height:18px}
+.spneed{margin:6px 0 0;color:var(--corald);font-weight:800;font-size:14px}.shoppop .frow{margin-top:12px}
+@media (min-width:600px){.shoppop{align-items:center}.shoppop .spbox{border-radius:26px}}
 </style>
 </head>
 <body>
@@ -3649,7 +3657,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.4 (2026-10-02)';
+const APP_VERSION = '7.4.1 (2026-10-02)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -5063,7 +5071,7 @@ function renderShop() {
   v.appendChild(el(`<div class="pagehead"><div><h1>Shop</h1><p>Earn tokens by finishing lessons and passing unit tests.</p></div><span class="chip" style="margin-left:auto">${ICON.token()}<span id="shopBal">${S.tokens}</span></span></div>`));
   const p = el(`<div class="panel shopwrap"><div class="avprev avanim">${avatarSVG(prev)}</div><div class="shopact" id="shopAct"></div>
     <div class="shopcats" role="tablist">${SHOP.map(([c]) => `<button class="${c === SHOPCAT ? 'on' : ''}" data-c="${c}">${c}</button>`).join('')}</div>
-    <div class="shopgrid">${SHOP.find(s => s[0] === SHOPCAT)[2].map(([id]) => { const it = ITEMS[id], th = it.slot === 'body' ? { body: id, color: eq.color } : Object.assign({}, eq, { [it.slot]: id }); return `<button class="sitem ${SHOPSEL === id ? 'sel' : ''} ${on(id) ? 'eq' : ''}" data-i="${id}" aria-label="${it.name}">${avatarSVG(th)}<b>${it.name}</b><span>${on(id) ? 'Equipped' : owned(id) ? 'Owned' : `${ICON.token()} ${it.price}`}</span></button>`; }).join('')}</div></div>`);
+    <div class="shopgrid">${SHOP.find(s => s[0] === SHOPCAT)[2].map(([id]) => { const it = ITEMS[id], th = it.slot === 'body' ? { body: id, color: eq.color } : Object.assign({}, eq, { [it.slot]: id }); return `<button class="sitem ${SHOPSEL === id ? 'sel' : ''} ${on(id) ? 'eq' : ''}" data-i="${id}" aria-label="${it.name}">${avatarSVG(th)}<b>${it.name}</b><span class="${on(id) || owned(id) ? 'st' : 'pr'}">${on(id) ? 'Equipped' : owned(id) ? 'Owned' : `${ICON.token()} ${it.price}`}</span></button>`; }).join('')}</div></div>`);
   v.appendChild(p);
   const act = $('#shopAct', p);
   if (!sel) act.innerHTML = `<span class="small">Tap an item to try it on.</span>`;
@@ -5072,7 +5080,7 @@ function renderShop() {
   else act.innerHTML = `<b>${sel.name}</b><button class="btn peri small" id="shopOn">Wear it</button>`;
   $('.avprev', p).onclick = () => playAvatarAnim($('.avprev', p));
   $$('.shopcats button', p).forEach(b => b.onclick = () => { SHOPCAT = b.dataset.c; SHOPSEL = null; SFX.tap(); renderShop(); });
-  $$('.sitem', p).forEach(b => b.onclick = () => { SHOPSEL = b.dataset.i; SFX.tap(); renderShop(); });
+  $$('.sitem', p).forEach(b => b.onclick = () => { SFX.tap(); openShopPop(b.dataset.i, b); });
   if ($('#shopBuy')) $('#shopBuy').onclick = async () => {
     const ok = await modal({ art: avatarSVG(prev), title: `Buy ${sel.name}?`, text: `This costs <b>${sel.price} tokens</b>. You have ${S.tokens}.`, buttons: [['Buy it', 'primary', true], ['Not now', 'ghost', false]] });
     if (!ok || S.tokens < sel.price || owned(sel.id)) return;
@@ -5082,6 +5090,36 @@ function renderShop() {
   if ($('#shopOff')) $('#shopOff').onclick = () => { delete S.avatar.eq[sel.slot]; save(); SFX.tap(); SHOPSEL = null; renderShop(); };
   if (keep) window.scrollTo(0, keep);
 }
+/* ---------- item pop-up: live preview + Buy/Cancel or Wear/Take off/Close, shown where she is (fixed sheet) ---------- */
+function openShopPop(id, tile) {
+  const it = ITEMS[id]; if (!it) return; closeShopPop();
+  const eq = S.avatar.eq, owned = S.avatar.owned.includes(id), on = eq[it.slot] === id, need = it.price - S.tokens, fixedSlot = ['body', 'color'].includes(it.slot);
+  const prev = Object.assign({}, eq, { [it.slot]: id });
+  const btns = !owned ? `<button class="btn ghost" data-a="close">Cancel</button><button class="btn primary" data-a="buy" ${need > 0 ? 'disabled' : ''}>Buy for ${it.price}</button>`
+    : on ? (fixedSlot ? '' : `<button class="btn ghost" data-a="off">Take off</button>`) + `<button class="btn primary" data-a="close">Close</button>`
+    : `<button class="btn ghost" data-a="close">Close</button><button class="btn peri" data-a="on">Wear it</button>`;
+  const m = el(`<div class="shoppop" role="dialog" aria-modal="true" aria-label="${esc(it.name)}"><div class="spbox">
+    <div class="avprev sppv">${avatarSVG(prev)}</div><h3>${it.name}</h3>
+    <div class="sppr">${owned ? (on ? 'Wearing now' : 'Owned') : `<span class="pr">${ICON.token()} ${it.price}</span>`}</div>
+    ${!owned && need > 0 ? `<p class="spneed">You need <b>${need}</b> more token${need === 1 ? '' : 's'}.</p>` : ''}
+    <div class="frow spbtns">${btns}</div></div></div>`);
+  if (tile) tile.classList.add('sel');
+  m.onclick = e => { if (e.target === m) closeShopPop(); };
+  $$('[data-a]', m).forEach(b => b.onclick = () => {
+    const a = b.dataset.a;
+    if (a === 'close') return closeShopPop();
+    if (a === 'buy') {
+      if (S.tokens < it.price || S.avatar.owned.includes(id)) return;
+      S.tokens -= it.price; S.avatar.owned.push(id); S.avatar.eq[it.slot] = id; save(); SFX.coin(); closeShopPop(); confetti(); renderTop(); renderShop(); toast(`${it.name} is yours!`, ICON.star()); return;
+    }
+    if (a === 'on') S.avatar.eq[it.slot] = id; else if (a === 'off') delete S.avatar.eq[it.slot];
+    save(); SFX.tap(); closeShopPop(); renderShop();
+  });
+  document.body.appendChild(m); m._key = e => { if (e.key === 'Escape') closeShopPop(); }; document.addEventListener('keydown', m._key);
+  const f = $('.btn:not([disabled])', m); if (f) f.focus({ preventScroll: true });
+  playAvatarAnim($('.sppv', m), 'bounce');
+}
+function closeShopPop() { const m = $('.shoppop'); if (!m) return; document.removeEventListener('keydown', m._key); m.remove(); $$('.sitem.sel').forEach(x => x.classList.remove('sel')); }
 /* ---------- idle animations (one timer) with expressions ---------- */
 const AV_ANIMS = ['bounce', 'wiggle', 'blink', 'wave', 'hop', 'sparkle', 'wink', 'doze'];
 let avLast = null, avTimer = null;
