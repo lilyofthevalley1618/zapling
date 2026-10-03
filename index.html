@@ -440,6 +440,16 @@ body:has(#v-games.on) #askFab{display:none}
 .shoppop .pr{display:inline-flex;align-items:center;gap:4px;background:#FFF1BF;color:#7A5A00;border-radius:999px;padding:3px 12px}.shoppop .pr svg{width:18px;height:18px}
 .spneed{margin:6px 0 0;color:var(--corald);font-weight:800;font-size:14px}.shoppop .frow{margin-top:12px}
 @media (min-width:600px){.shoppop{align-items:center}.shoppop .spbox{border-radius:26px}}
+/* ---- Faces + playful shop ---- */
+.spdesc{margin:0 0 4px;color:var(--ink2);font-weight:700;font-style:italic;font-size:14px}
+.sppv{cursor:pointer}.sppv.boing svg{animation:boing .7s cubic-bezier(.3,.7,.3,1.4)}
+@keyframes boing{0%{transform:scale(1,1)}25%{transform:scale(1.14,.86)}50%{transform:scale(.92,1.1)}75%{transform:scale(1.04,.97)}100%{transform:none}}
+.avface .googly{animation:googly 1.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes googly{0%,100%{transform:translate(0,0)}25%{transform:translate(-2px,1px)}50%{transform:translate(1px,-2px)}75%{transform:translate(2px,2px)}}
+.avface .smoke{animation:smoke 2.6s ease-in-out infinite}@keyframes smoke{0%,100%{transform:translateY(0);opacity:.85}50%{transform:translateY(-5px);opacity:.5}}
+.avface .drool{animation:drool 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:top}@keyframes drool{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.35)}}
+.avface .zz{animation:fade 1.6s ease-in-out infinite alternate}
+@media (prefers-reduced-motion:reduce){.avface *,.sppv.boing svg{animation:none!important}}
 </style>
 </head>
 <body>
@@ -5036,7 +5046,7 @@ function avatarSVG(eq = S.avatar.eq, size = '') {
   const arm = (s, cls = '') => a.arm ? `<g class="${cls}"><ellipse cx="${60 + s * a.arm[0]}" cy="${a.arm[1]}" rx="6.5" ry="10" fill="${c}" stroke="${k}" stroke-width="2.5" transform="rotate(${-s * 22} ${60 + s * a.arm[0]} ${a.arm[1]})"/></g>` : '';
   const feet = a.feet ? `<g fill="${c}" stroke="${k}" stroke-width="2.5"><ellipse cx="47" cy="${a.feet}" rx="9.5" ry="5.5"/><ellipse cx="73" cy="${a.feet}" rx="9.5" ry="5.5"/></g>` : '';
   return `<svg viewBox="0 -24 120 164" ${size} role="img" aria-label="Your Zapling avatar">${eq.bg && BGS[eq.bg] ? BGS[eq.bg] : ''}${eq.aura && AURAS[eq.aura] ? AURAS[eq.aura] : ''}<ellipse cx="60" cy="134" rx="30" ry="4" fill="#2E2A5A" opacity=".08"/>
-    <g class="avbody">${back.b}${feet}${B.d(c, k)}${lay('outfit').f}${arm(-1)}${faceSVG(a, e, dark)}${lay('cheeks').f}${lay('eyes').f}${lay('neck').f}${lay('chest').f}${back.f}${lay('ears').f}${lay('deco').f}${lay('hat').f}${lay('bling').f}${arm(1, 'avarm')}</g>
+    <g class="avbody">${back.b}${feet}${B.d(c, k)}${lay('outfit').f}${arm(-1)}${eq.face && typeof ZF !== 'undefined' && ITEMS[eq.face] ? ZF.draw(eq.face.slice(5), a, dark) : faceSVG(a, e, dark)}${lay('cheeks').f}${lay('eyes').f}${lay('neck').f}${lay('chest').f}${back.f}${lay('ears').f}${lay('deco').f}${lay('hat').f}${lay('bling').f}${arm(1, 'avarm')}</g>
     ${eq.pet && PETS[eq.pet] ? `<g class="avpet">${PETS[eq.pet]}</g>` : ''}<g class="avspark" fill="#FFC94D"><polygon points="${starPts(16, 18, 7, 2.6)}"/><polygon points="${starPts(104, 6, 5.5, 2)}"/><circle cx="106" cy="58" r="3"/></g></svg>`;
 }
 const SHOP = [
@@ -5085,7 +5095,7 @@ function openShopPop(id, tile) {
     : on ? (fixedSlot ? '' : `<button class="btn ghost" data-a="off">Take off</button>`) + `<button class="btn primary" data-a="close">Close</button>`
     : `<button class="btn ghost" data-a="close">Close</button><button class="btn peri" data-a="on">Wear it</button>`;
   const m = el(`<div class="shoppop" role="dialog" aria-modal="true" aria-label="${esc(it.name)}"><div class="spbox">
-    <div class="avprev sppv">${avatarSVG(prev)}</div><h3>${it.name}</h3>
+    <div class="avprev sppv" title="Poke me">${avatarSVG(prev)}</div><h3>${it.name}</h3>${typeof FUN_DESC !== 'undefined' && FUN_DESC[id] ? `<p class="spdesc">${FUN_DESC[id]}</p>` : ''}
     <div class="sppr">${owned ? (on ? 'Wearing now' : 'Owned') : `<span class="pr">${ICON.token()} ${it.price}</span>`}</div>
     ${!owned && need > 0 ? `<p class="spneed">You need <b>${need}</b> more token${need === 1 ? '' : 's'}.</p>` : ''}
     <div class="frow spbtns">${btns}</div></div></div>`);
@@ -5103,7 +5113,7 @@ function openShopPop(id, tile) {
   });
   document.body.appendChild(m); m._key = e => { if (e.key === 'Escape') closeShopPop(); }; document.addEventListener('keydown', m._key);
   const f = $('.btn:not([disabled])', m); if (f) f.focus({ preventScroll: true });
-  playAvatarAnim($('.sppv', m), 'bounce');
+  const pv = $('.sppv', m); pv.onclick = () => { SFX.tap(); playAvatarAnim(pv, pick(['wiggle', 'hop', 'bounce'])); }; pv.classList.add('boing'); setTimeout(() => pv.classList.remove('boing'), 700);
 }
 function closeShopPop() { const m = $('.shoppop'); if (!m) return; document.removeEventListener('keydown', m._key); m.remove(); $$('.sitem.sel').forEach(x => x.classList.remove('sel')); }
 /* ---------- idle animations (one timer) with expressions ---------- */
@@ -5125,6 +5135,63 @@ function avatarIdle() {
     avatarIdle();
   }, 4000 + Math.random() * 3000);
 }
+/* =========================================================
+   FACES (shop slot 'face'): bold-ink, rage-comic-style face overlays (original drawings) that replace the body's face,
+   plus playful item names + one-line jokes shown in the item pop-up. IDs, prices and saves are unchanged.
+   Faces are drawn in a 200-wide space (eyes at x 80/120, eye line y 0) and scaled onto each body's eye line.
+   ========================================================= */
+const ZF = (() => {
+  const mk = K => {
+    const ink = (d, w = 3, fill = 'none') => `<path d="${d}" fill="${fill}" stroke="${K}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${K}" stroke-width="${(w * .4).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round" transform="translate(.9 .7)" opacity=".45"/>`;
+    const dot = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${K}"/>`;
+    const eyeO = (x, y, r, ry = r) => `<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${ry}" fill="#fff" stroke="${K}" stroke-width="2.6"/>`;
+    const tear = (x, y) => `<path d="M${x} ${y}q4 7 0 10q-4-3 0-10z" fill="#8FD0FF" stroke="#4A9BD6" stroke-width="1.2"/>`;
+    const teeth = (d, lines) => `<path d="${d}" fill="#fff"/>${ink(d, 2.6)}${ink(lines, 1.3)}`;
+    const spiral = (x, y) => ink(`M${x} ${y}m-1 0a1.5 1.5 0 1 1 3 0a3.5 3.5 0 1 1 -6 -1a6 6 0 1 1 11 2a8.5 8.5 0 1 1 -15 -4`, 2.2);
+    return {
+      rage: () => `${ink('M62 -20L92 -8M138 -20L108 -8', 4.8)}${eyeO(80, 2, 9)}${eyeO(120, 2, 9)}${dot(82, 3, 2.6)}${dot(118, 3, 2.6)}
+        <ellipse cx="100" cy="30" rx="17" ry="15" fill="${K}"/><path d="M88 39q12-8 24 0q-12 8-24 0z" fill="#FF8FAB"/><path d="M87 21q13-5 26 0l-2 4q-11-3-22 0z" fill="#fff"/>${ink('M64 -2l-6-6M136 -2l6-6M60 6l-8 0M140 6l8 0', 1.8)}`,
+      alone: () => `${ink('M64 -10Q78 -19 91 -13M109 -13Q122 -19 136 -10', 3)}<path d="M67 -1Q80 -9 93 -1Q80 5 67 -1ZM107 -1Q120 -9 133 -1Q120 5 107 -1Z" fill="#fff" stroke="${K}" stroke-width="2.4"/>${dot(80, -3, 2.6)}${dot(120, -3, 2.6)}${tear(70, 7)}${tear(130, 7)}
+        ${teeth('M70 18Q100 27 130 18Q126 36 100 38Q74 36 70 18Z', 'M72 26Q100 33 128 26M81 21V33M90 23V36M100 24V38M110 23V36M119 21V33')}`,
+      notbad: () => `${ink('M64 -16Q78 -23 91 -14M109 -14Q122 -23 136 -16', 3.2)}<ellipse cx="80" cy="0" rx="10" ry="6" fill="#fff" stroke="${K}" stroke-width="2.6"/><ellipse cx="120" cy="0" rx="10" ry="6" fill="#fff" stroke="${K}" stroke-width="2.6"/>${dot(80, 1, 3.2)}${dot(120, 1, 3.2)}
+        ${ink('M70 -4Q80 -7 90 -4M110 -4Q120 -7 130 -4', 1.8)}${ink('M82 28Q91 16 100 17Q109 16 118 28', 3.8)}${ink('M91 35Q100 38 109 35M78 22l-2 7M122 22l2 7', 2)}`,
+      poker: () => `${ink('M64 -11H92M108 -11H136', 3.6)}<ellipse cx="80" cy="1" rx="10" ry="6" fill="#fff" stroke="${K}" stroke-width="2.6"/><ellipse cx="120" cy="1" rx="10" ry="6" fill="#fff" stroke="${K}" stroke-width="2.6"/>${dot(80, 1, 3)}${dot(120, 1, 3)}
+        ${ink('M70 -3H90M110 -3H130', 2.4)}${ink('M82 25H118', 3.6)}${ink('M71 14Q69 22 73 28M129 14Q131 22 127 28', 1.8)}`,
+      challenge: () => `${ink('M62 -8L92 -3M108 -3L138 -11', 4.2)}<path d="M67 0L92 2Q86 9 78 8Q70 7 67 0ZM108 2L133 -1Q131 6 123 8Q114 9 108 2Z" fill="#fff" stroke="${K}" stroke-width="2.6"/>${dot(85, 4, 2.8)}${dot(115, 4, 2.8)}
+        ${teeth('M70 16Q100 23 132 11Q126 38 100 38Q78 36 70 16Z', 'M73 25Q100 32 129 20M84 19V35M94 21V37M104 21V37M114 18V35M123 15V30')}`,
+      derp: () => `${ink('M66 -16Q78 -22 90 -14M112 -12Q122 -15 132 -9', 2.8)}${eyeO(78, 0, 12)}${eyeO(121, 2, 8)}<g class="googly">${dot(86, 3, 4.2)}${dot(115, 2, 3.2)}</g>
+        <path d="M80 22Q92 30 104 22Q116 16 122 24Q114 36 98 36Q84 35 80 22Z" fill="${K}"/><path d="M100 29q8-2 13 4q-2 11-10 9q-6-2-3-13z" fill="#FF8FAB" stroke="${K}" stroke-width="2"/><rect x="88" y="21.5" width="6" height="6" rx="1" fill="#fff" stroke="${K}" stroke-width="1.4"/>`,
+      shook: () => `${ink('M64 -24Q78 -32 92 -24M108 -24Q122 -32 136 -24', 3)}${eyeO(80, 0, 12, 13)}${eyeO(120, 0, 12, 13)}${dot(80, 0, 1.8)}${dot(120, 0, 1.8)}
+        <ellipse cx="100" cy="30" rx="8" ry="11" fill="${K}"/>${ink('M58 -18l-6-4M142 -18l6-4M56 -6h-7M144 -6h7', 2)}<path d="M140 8q5 8 0 12q-5-4 0-12z" fill="#8FD0FF" stroke="#4A9BD6" stroke-width="1.2"/>`,
+      blep: () => `${ink('M70 2Q80 -9 90 2M110 2Q120 -9 130 2', 3.4)}${ink('M88 20Q94 25 100 20Q106 25 112 20', 2.8)}<path d="M95 22q5 2 10 0v7q0 6-5 6t-5-6z" fill="#FF8FAB" stroke="${K}" stroke-width="2.2"/>${ink('M100 25v6', 1.2)}
+        <g fill="#FF9DB5" opacity=".7"><ellipse cx="68" cy="14" rx="7" ry="4"/><ellipse cx="132" cy="14" rx="7" ry="4"/></g>`,
+      fried: () => `<g class="smoke" fill="#B9B4C9" opacity=".85"><circle cx="70" cy="-36" r="7"/><circle cx="80" cy="-44" r="9"/><circle cx="92" cy="-38" r="6"/><circle cx="118" cy="-40" r="7"/><circle cx="128" cy="-47" r="5"/></g>
+        ${eyeO(80, 0, 12)}${eyeO(120, 0, 12)}${spiral(80, 0)}${spiral(120, 0)}${ink('M80 26Q86 20 92 26T104 26T116 26', 3)}<path d="M128 18l-5 7h4l-2 6 7-8h-4l2-5z" fill="#FFD23F" stroke="${K}" stroke-width="1.4" stroke-linejoin="round"/>`,
+      lowbatt: () => `${ink('M68 2Q80 9 92 2M108 2Q120 9 132 2', 3.2)}${ink('M72 5l-2 4M80 7v4M88 5l2 4M112 5l-2 4M120 7v4M128 5l2 4', 1.4)}${ink('M90 24Q100 30 110 24', 3)}
+        <path class="drool" d="M106 26q3 6 1 12q-3 3-5-1q-1-5 4-11z" fill="#9CD8FF" stroke="#4A9BD6" stroke-width="1.2"/><text class="zz" x="136" y="-12" font-size="15" font-weight="900" fill="${K}" style="font-family:inherit">z</text><text class="zz" x="146" y="-24" font-size="11" font-weight="900" fill="${K}" style="font-family:inherit">z</text>`,
+    };
+  };
+  const L = mk('#1E1B2E'), D = mk('#F6F4FF');
+  return { draw: (id, a, dark) => { const f = (dark ? D : L)[id]; if (!f) return ''; const s = Math.min(.66, a.hw / 44); return `<g class="avface f-${id}" transform="translate(60 ${a.eye}) scale(${s.toFixed(3)}) translate(-100 0)">${f()}</g>`; }, ids: Object.keys(L) };
+})();
+const FACE_LIST = [['poker', 'Poker Face', 25], ['derp', 'Derp Current', 20], ['blep', 'Blep', 20], ['notbad', 'Not Bad, Ohm', 30], ['lowbatt', 'Low Battery', 30], ['alone', 'Forever Grounded', 35], ['rage', 'Y U NO Charge?!', 40], ['challenge', 'Challenge Accepted', 45], ['shook', 'Shook at 10,000 V', 50], ['fried', 'Fried Circuit', 60]];
+(() => { // insert the Faces category after Glasses (face ids are prefixed so they never collide with other items)
+  const gi = SHOP.findIndex(s => s[0] === 'Glasses');
+  SHOP.splice(gi + 1, 0, ['Faces', 'face', FACE_LIST.map(([id, n, p]) => ['face_' + id, n, p])]);
+  FACE_LIST.forEach(([id, name, price]) => { ITEMS['face_' + id] = { id: 'face_' + id, name, price, slot: 'face', cat: 'Faces' }; });
+})();
+/* playful names (display only) + one-line jokes for the pop-up */
+const FUN_NAMES = { roundg: 'Brainy specs', bucket: "Bucket o' chill", necklace: 'Blinky necklace', scarf: 'Snuggle scarf', phones: 'Beat buds', backpack: 'Snack pack', spark: 'Sparky', electron: 'Lil electron', cloudpet: 'Drizzle', dinopet: 'Dino-mite', capkitty: 'Capaci-kitty', rocketpet: 'Rocket buddy', froghat: 'Ribbit hat', rainbow: 'Rainbow blast' };
+const FUN_DESC = {
+  cappy: 'Stores charge, releases hugs.', chiplet: 'Eight legs, zero bugs (allegedly).', glowbie: 'Lights up any room. Literally.', flippy: 'Switches moods at the flick of a lever.', lumi: 'A bright idea with a heart-shaped filament.', beep: 'Speaks fluent beep-boop.', knobby: 'Turn it up to eleven.', boing: 'Springs into action. And everywhere else.', volty: 'Fully charged and slightly dramatic.', stripes: 'Resists everything except snacks.',
+  mint: 'Fresh like a brand-new battery.', coral: 'Warm, cozy, slightly spicy.', sun: 'Solar-powered vibes.', peri: 'Periwinkle, twinkle, little star.', sky: 'Blue skies, zero resistance.', pink: 'Pop! Chews on electrons.', lilac: 'Fancy. Smells faintly of flowers.', midnight: 'For late-night soldering sessions.', pmint: 'Mint, but whispered.', babyblue: 'Soft as a plush capacitor.', lavender: 'Calm current only.', peach: 'Just peachy, thanks for asking.', butter: 'Smooth operator.', blush: 'Embarrassed by how cute it is.', seafoam: 'Ocean breeze, hold the salt water.', red: 'Hot-wire energy.', orange: 'Zesty. Do not peel.', navy: 'Captain of the circuit.', forest: 'Photosynthesis-adjacent.', royal: 'Bow before the blue.', charcoal: 'Moody. Mysterious. Grounded.',
+  party: 'Every finished lesson is a party.', beanie: 'Keeps your thoughts warm.', beret: 'Très artistique.', bucket: 'Catches stray electrons.', bunnyears: 'Hop-to-it energy.', catears: 'Purr-fectly conductive.', boldbeanie: 'Same beanie, louder.', backcap: 'For maximum chill current.', headset: 'GG, no re-zap.', berryhat: 'Berry stylish, very juicy.', froghat: 'Ribbit means hello.', flowercrown: 'Bloom where you are wired.', crown: 'Ruler of all resistors.', boltcrown: 'Royalty, but shocking.',
+  roundg: 'Instant +10 smart.', shades: 'Too bright? Too cool.', heartg: 'Sees the world in love-ly mode.', starg: 'Superstar status: ON.', cloudg: 'Head in the clouds, eyes on the prize.', pastelshades: 'Sun protection, but make it soft.', coolshades: 'Cooler than liquid nitrogen.',
+  stickstar: 'Gold stars just for showing up.', stickheart: 'Wears its heart on its cheeks.', starclip: 'Holds hair and dreams.', daisy: 'Fresh-picked, never wilts.', bow: 'Gift-wrapped and ready.', bowtie: 'Dressed for the science fair.', necklace: 'Blinks when you are winning.', pearls: 'Fancy beads, zero drama.', scarf: 'Cozy insulation.', phones: 'Lo-fi beats to solder to.', backpack: 'Carries spare batteries and snacks.', bunnybag: 'A bunny that rides along.', hoodie: 'Hood up, focus on.', varsity: 'Captain of the Circuit Club.',
+  spark: 'Small, bright, a bit zappy.', electron: 'Negatively charged, positively cute.', sprout: 'Grows with every lesson.', cloudpet: 'Only rains on bad circuits.', skatepet: 'Kickflips over wires.', rocketpet: 'To the moon, then back for snacks.', dinopet: 'Rawr means "I love you" in dinosaur.', capkitty: 'Stores nine lives of charge.',
+  bgsky: 'Stargazing, electrified.', cloudsky: 'Sweet skies ahead.', bgsunset: 'Golden hour, every hour.', dreamy: 'Floaty, sparkly, nap-ready.', skatepark: 'Ramps, rails and resistors.', rainbow: 'Every wavelength at once.', sparkaura: 'Glittering with potential.', galaxy: 'Big universe, tiny battery.', goldaura: 'Main-character energy.',
+  face_poker: 'Reveals nothing. Not even voltage.', face_derp: 'Brain.exe has stopped working.', face_blep: 'Blep. That is all.', face_notbad: 'Not bad. Not bad at all.', face_lowbatt: 'Battery at 1%. Please send naps.', face_alone: 'Just me and my single wire.', face_rage: 'Y U NO hold a charge?!', face_challenge: 'Hard quiz? Challenge accepted.', face_shook: 'When you touch the wrong terminal.', face_fried: 'Short circuit, long story.' };
+Object.entries(FUN_NAMES).forEach(([id, n]) => { if (ITEMS[id]) ITEMS[id].name = n; });
 /* =========================================================
    FLASHCARD DECK REWARD + PER-UNIT FLASHCARD TEST
    S.deckRw[unit] = { d, seen[], days[], paid }   S.fcTest[unit] = { d, best }
