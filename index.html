@@ -3653,7 +3653,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.5 (2026-10-02)';
+const APP_VERSION = '7.6 (2026-10-03)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -5290,14 +5290,24 @@ Object.assign(FACES, {
     ${ink(`M86 ${y + 18} Q102 ${y + 30} 118 ${y + 16}`, 3.2)}<path d="M104 ${y + 24} Q106 ${y + 34} 112 ${y + 33} Q117 ${y + 31} 114 ${y + 21}" fill="#ff9fb8"/>${ink(`M104 ${y + 24} Q106 ${y + 34} 112 ${y + 33} Q117 ${y + 31} 114 ${y + 21}`, 2.2)}${blush(y)}` },
 });
 /* ----- end verbatim Lingo World block ----- */
-return FACES;
+/* Lingo World's default 'Kawaii face' (verbatim face() from characters.js, happy mood) */
+function face(fy, mood) {
+  const eye = x => mood === 'cheer' ? `<path d="M${x - 8} ${fy + 3} Q${x} ${fy - 8} ${x + 8} ${fy + 3}" stroke="#2b2350" stroke-width="4" fill="none" stroke-linecap="round"/>`
+    : `<ellipse cx="${x}" cy="${fy}" rx="7" ry="9" fill="#2b2350"/><circle cx="${x + 3}" cy="${fy - 4}" r="2.6" fill="#fff"/>`;
+  const mouth = mood === 'cheer' ? `<path d="M91 ${fy + 11} Q100 ${fy + 25} 109 ${fy + 11}Z" fill="#e8476b"/>`
+    : mood === 'sad' ? `<ellipse cx="100" cy="${fy + 16}" rx="4" ry="5" fill="#e8476b"/>`
+    : `<path d="M93 ${fy + 12} Q96.5 ${fy + 17} 100 ${fy + 12} Q103.5 ${fy + 17} 107 ${fy + 12}" stroke="#2b2350" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  return eye(80) + eye(120) + `<ellipse cx="64" cy="${fy + 14}" rx="9" ry="5" fill="#ff8fab" opacity=".65"/><ellipse cx="136" cy="${fy + 14}" rx="9" ry="5" fill="#ff8fab" opacity=".65"/>` + mouth;
+}
+const FACES_K = Object.assign({ kawaii: { name: 'Kawaii face', price: 20, draw: y => face(y, 'happy') } }, FACES);
+return FACES_K;
 });
 const ZF = (() => {
   const L = LW_FACES('#1d1b26'), D = LW_FACES('#F6F4FF');
   return { draw: (id, a, dark) => { const k = id.slice(4), f = (dark ? D : L)[k]; if (!f) return ''; const s = Math.min(.66, a.hw / 44);
     return `<g class="avface f-${k}" transform="translate(60 ${a.eye}) scale(${s.toFixed(3)}) translate(-100 0)">${f.draw(0)}</g>`; }, ids: Object.keys(L) };
 })();
-const FACE_LIST = [["skeptic", "Are You Serious", 60], ["derp", "Derp", 30], ["smug", "Pfft, Sure", 20], ["heh", "I See What You Did", 30], ["dude", "DUDE", 35], ["sob", "Big Ugly Cry", 40], ["happytears", "So Much Win", 50], ["shock", "Oh Crap", 45], ["thumbs", "Okay, Nice!", 45], ["trolly", "Mischief Grin", 45], ["rage", "FFFUUU Rage", 45], ["silly", "Herp Tongue", 30], ["cat", "Kitty :3", 20], ["hearts", "Heart Eyes", 35], ["okay", "Okay… (sad)", 30], ["nervous", "Uhh… Nervous", 45], ["notbad", "Not Bad", 40], ["poker", "Poker Face", 35], ["yuno", "Y U NO", 40], ["challenge", "Challenge Accepted", 35], ["foreveralone", "Forever Alone", 45], ["megusta", "Mmm, I Like", 55], ["cereal", "Spit-Take Shock", 45], ["truestory", "True Story", 25], ["lol", "LOL Laugh", 30], ["sleepy", "Sleepy Zzz", 35], ["starstruck", "Starstruck", 25], ["sus", "Sus Squint", 30], ["wink", "Cheeky Wink", 45]];
+const FACE_LIST = [["kawaii", "Kawaii face", 20], ["skeptic", "Are You Serious", 60], ["derp", "Derp", 30], ["smug", "Pfft, Sure", 20], ["heh", "I See What You Did", 30], ["dude", "DUDE", 35], ["sob", "Big Ugly Cry", 40], ["happytears", "So Much Win", 50], ["shock", "Oh Crap", 45], ["thumbs", "Okay, Nice!", 45], ["trolly", "Mischief Grin", 45], ["rage", "FFFUUU Rage", 45], ["silly", "Herp Tongue", 30], ["cat", "Kitty :3", 20], ["hearts", "Heart Eyes", 35], ["okay", "Okay… (sad)", 30], ["nervous", "Uhh… Nervous", 45], ["notbad", "Not Bad", 40], ["poker", "Poker Face", 35], ["yuno", "Y U NO", 40], ["challenge", "Challenge Accepted", 35], ["foreveralone", "Forever Alone", 45], ["megusta", "Mmm, I Like", 55], ["cereal", "Spit-Take Shock", 45], ["truestory", "True Story", 25], ["lol", "LOL Laugh", 30], ["sleepy", "Sleepy Zzz", 35], ["starstruck", "Starstruck", 25], ["sus", "Sus Squint", 30], ["wink", "Cheeky Wink", 45]];
 (() => { // Faces category after Glasses; ids are 'lwf_<lingo id>'
   const gi = SHOP.findIndex(s => s[0] === 'Glasses');
   SHOP.splice(gi + 1, 0, ['Faces', 'face', FACE_LIST.map(([id, n, p]) => ['lwf_' + id, n, p])]);
@@ -5324,7 +5334,7 @@ const FUN_DESC = {
   stickstar: 'Gold stars just for showing up.', stickheart: 'Wears its heart on its cheeks.', starclip: 'Holds hair and dreams.', daisy: 'Fresh-picked, never wilts.', bow: 'Gift-wrapped and ready.', bowtie: 'Dressed for the science fair.', necklace: 'Blinks when you are winning.', pearls: 'Fancy beads, zero drama.', scarf: 'Cozy insulation.', phones: 'Lo-fi beats to solder to.', backpack: 'Carries spare batteries and snacks.', bunnybag: 'A bunny that rides along.', hoodie: 'Hood up, focus on.', varsity: 'Captain of the Circuit Club.',
   spark: 'Small, bright, a bit zappy.', electron: 'Negatively charged, positively cute.', sprout: 'Grows with every lesson.', cloudpet: 'Only rains on bad circuits.', skatepet: 'Kickflips over wires.', rocketpet: 'To the moon, then back for snacks.', dinopet: 'Rawr means "I love you" in dinosaur.', capkitty: 'Stores nine lives of charge.',
   bgsky: 'Stargazing, electrified.', cloudsky: 'Sweet skies ahead.', bgsunset: 'Golden hour, every hour.', dreamy: 'Floaty, sparkly, nap-ready.', skatepark: 'Ramps, rails and resistors.', rainbow: 'Every wavelength at once.', sparkaura: 'Glittering with potential.', galaxy: 'Big universe, tiny battery.', goldaura: 'Main-character energy.',
-  lwf_skeptic: "You call that a closed circuit?", lwf_derp: "Thinking at 0.0001 hertz.", lwf_smug: "Sure, the LED was \"already broken\".", lwf_heh: "I see what you did there. Ohm-y.", lwf_dude: "DUDE. It lit up.", lwf_sob: "When the magic smoke escapes.", lwf_happytears: "Passed the unit test. Crying in volts.", lwf_shock: "Touched both terminals. Oops.", lwf_thumbs: "Polarity correct. Nice!", lwf_trolly: "Swapped your resistors. Heh.", lwf_rage: "When the breadboard rail is split.", lwf_silly: "Herp derp, short circuit.", lwf_cat: "Purrs at 60 hertz :3", lwf_hearts: "In love with a fresh battery.", lwf_okay: "Okay… the fuse blew.", lwf_nervous: "Uhh… is it supposed to be warm?", lwf_notbad: "First-try circuit. Not bad.", lwf_poker: "Reveals nothing. Not even voltage.", lwf_yuno: "Y U NO hold a charge?!", lwf_challenge: "Hard quiz? Challenge accepted.", lwf_foreveralone: "Just me and my single wire.", lwf_megusta: "Mmm, fresh solder smell.", lwf_cereal: "You learned WHAT in one lesson?!", lwf_truestory: "Lightning is just giant static. True story.", lwf_lol: "LOL, resistance is futile.", lwf_sleepy: "Battery at 1%. Please send naps.", lwf_starstruck: "Just saw a real oscilloscope.", lwf_sus: "That wire looks sus.", lwf_wink: "Psst: red is positive." };
+  lwf_kawaii: "Factory-default cuteness. Now 20% cuter.", lwf_skeptic: "You call that a closed circuit?", lwf_derp: "Thinking at 0.0001 hertz.", lwf_smug: "Sure, the LED was \"already broken\".", lwf_heh: "I see what you did there. Ohm-y.", lwf_dude: "DUDE. It lit up.", lwf_sob: "When the magic smoke escapes.", lwf_happytears: "Passed the unit test. Crying in volts.", lwf_shock: "Touched both terminals. Oops.", lwf_thumbs: "Polarity correct. Nice!", lwf_trolly: "Swapped your resistors. Heh.", lwf_rage: "When the breadboard rail is split.", lwf_silly: "Herp derp, short circuit.", lwf_cat: "Purrs at 60 hertz :3", lwf_hearts: "In love with a fresh battery.", lwf_okay: "Okay… the fuse blew.", lwf_nervous: "Uhh… is it supposed to be warm?", lwf_notbad: "First-try circuit. Not bad.", lwf_poker: "Reveals nothing. Not even voltage.", lwf_yuno: "Y U NO hold a charge?!", lwf_challenge: "Hard quiz? Challenge accepted.", lwf_foreveralone: "Just me and my single wire.", lwf_megusta: "Mmm, fresh solder smell.", lwf_cereal: "You learned WHAT in one lesson?!", lwf_truestory: "Lightning is just giant static. True story.", lwf_lol: "LOL, resistance is futile.", lwf_sleepy: "Battery at 1%. Please send naps.", lwf_starstruck: "Just saw a real oscilloscope.", lwf_sus: "That wire looks sus.", lwf_wink: "Psst: red is positive." };
 Object.entries(FUN_NAMES).forEach(([id, n]) => { if (ITEMS[id]) ITEMS[id].name = n; });
 /* =========================================================
    FLASHCARD DECK REWARD + PER-UNIT FLASHCARD TEST
