@@ -4735,8 +4735,8 @@ function ensureShop() {
   if (!S.tokGranted || typeof S.tokGranted !== 'object') S.tokGranted = {};
   if (!S.avatar || typeof S.avatar !== 'object') S.avatar = {};
   S.avatar.owned = Array.isArray(S.avatar.owned) ? S.avatar.owned : [];
-  ['battery', 'mint'].forEach(i => { if (!S.avatar.owned.includes(i)) S.avatar.owned.push(i); });
-  S.avatar.eq = Object.assign({ body: 'battery', color: 'mint' }, S.avatar.eq || {});
+  ['cappy', 'mint'].forEach(i => { if (!S.avatar.owned.includes(i)) S.avatar.owned.push(i); });
+  S.avatar.eq = Object.assign({ body: 'cappy', color: 'mint' }, S.avatar.eq || {});
   // one-time migration: two retired bodies are refunded and unequipped
   if (!S.avatar.migRetired1) {
     S.avatar.migRetired1 = 1;
@@ -4744,7 +4744,14 @@ function ensureShop() {
       const i = S.avatar.owned.indexOf(id); if (i >= 0) { S.avatar.owned.splice(i, 1); S.tokens += p; }
     });
   }
-  if (!BODIES[S.avatar.eq.body]) S.avatar.eq.body = 'battery';
+  // one-time migration (v3 bodies): every old body is refunded at its shop price and removed; wearers switch to Cappy
+  if (!S.avatar.migBodies2) {
+    S.avatar.migBodies2 = 1;
+    const OLD = { battery: 0, mochi: 25, round: 40, cloud: 50, capsule: 60, led: 80, cap: 100, star: 120, robot: 300 };
+    let n = 0; S.avatar.owned = S.avatar.owned.filter(id => { if (Object.prototype.hasOwnProperty.call(OLD, id)) { n += OLD[id]; return false; } return true; });
+    if (n > 0) { S.tokens += n; pendingToasts.push([`+${n} tokens refunded: new avatar bodies!`, ICON.token()]); }
+  }
+  if (!BODIES[S.avatar.eq.body]) S.avatar.eq.body = 'cappy';
   if (!S.tokPaid || typeof S.tokPaid !== 'object') S.tokPaid = {};
   // mastered = a 100% run; mastered lessons/tests pay no more tokens. One-time: tests whose stored best is 100%
   if (!S.mastered || typeof S.mastered !== 'object') S.mastered = {};
@@ -4823,22 +4830,34 @@ function applyPlacement(n, level) {
 
 /* =========================================================
    AVATAR v2: cuter bodies, expressions, layered accessories, shop, idle animation
-   Old body ids (battery, round, capsule, star) keep their ids → purchases carry over.
+   Bodies (v3): Cappy, Chiplet, Lumi, Boing, Stripes. Old bodies were refunded once (S.avatar.migBodies2, see ensureShop).
    ========================================================= */
-const COLORS = { mint: ['#4FD8B4', '#1C9E80'], coral: ['#FF9A8A', '#E0604F'], sun: ['#FFD566', '#E3A31A'], peri: ['#9CA2FF', '#5A61D8'], sky: ['#7FD6F7', '#2F9CCB'], pink: ['#FFB3CC', '#E0708F'], lilac: ['#CDA8EC', '#9163C4'], midnight: ['#454080', '#211D45'] };
+const COLORS = { mint: ['#4FD8B4', '#1C9E80'], coral: ['#FF9A8A', '#E0604F'], sun: ['#FFD566', '#E3A31A'], peri: ['#9CA2FF', '#5A61D8'], sky: ['#7FD6F7', '#2F9CCB'], pink: ['#FFB3CC', '#E0708F'], lilac: ['#CDA8EC', '#9163C4'], midnight: ['#454080', '#211D45'],
+  // pastels: soft fill + a clear, same-hue outline (body details are tinted from the fill, so nothing goes muddy)
+  pmint: ['#B8F0DC', '#36A985'], lavender: ['#D6CCFF', '#7566DB'], peach: ['#FFD5BC', '#E0804F'], babyblue: ['#BFE0FF', '#4A86DE'], butter: ['#FFF0A6', '#D9A21F'], blush: ['#FFCFDB', '#DB6688'], seafoam: ['#B4EDE3', '#279C88'] };
+const tint = (hex, t) => { const n = parseInt(hex.slice(1), 16), m = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v + (255 - v) * t)); return '#' + m.map(v => v.toString(16).padStart(2, '0')).join(''); };
 const shine = (x, y, rx = 5, ry = 10) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#fff" opacity=".38" transform="rotate(-18 ${x} ${y})"/><circle cx="${x + 3}" cy="${y + ry + 5}" r="2" fill="#fff" opacity=".38"/>`;
 const starPts = (cx, cy, R, r, n = 5) => [...Array(n * 2)].map((_, i) => { const rr = i % 2 ? r : R, t = -Math.PI / 2 + i * Math.PI / n; return (cx + rr * Math.cos(t)).toFixed(1) + ',' + (cy + rr * Math.sin(t)).toFixed(1); }).join(' ');
 /* anchors: top (hat base), eye (eye line), hw (half width at eyes), neck/nw (neck line + half width), chest, arm [dx, y] or null, feet y or null */
 const BODIES = {
-  battery: { a: { top: 40, eye: 76, hw: 26, neck: 100, nw: 25, chest: 110, arm: [27, 96], feet: 127 }, d: (c, k) => `<rect x="50" y="29" width="20" height="14" rx="6" fill="${k}"/><rect x="54" y="31" width="6" height="4" rx="2" fill="#fff" opacity=".4"/><rect x="34" y="40" width="52" height="88" rx="26" fill="${c}" stroke="${k}" stroke-width="3"/>${shine(44, 60)}<path d="M63 108l-7 9h5l-2 7 8-10h-5l2-6z" fill="#fff" opacity=".55"/>` },
-  round: { a: { top: 50, eye: 84, hw: 37, neck: 106, nw: 31, chest: 114, arm: [40, 98], feet: 127 }, d: (c, k) => `<circle cx="60" cy="88" r="40" fill="${c}" stroke="${k}" stroke-width="3"/>${shine(40, 68, 6, 11)}` },
-  capsule: { a: { top: 26, eye: 58, hw: 20, neck: 82, nw: 20, chest: 98, arm: [21, 86], feet: 128 }, d: (c, k) => `<rect x="40" y="24" width="40" height="104" rx="20" fill="${c}" stroke="${k}" stroke-width="3"/>${shine(48, 40, 4, 10)}` },
-  star: { a: { top: 42, eye: 90, hw: 24, neck: 106, nw: 18, chest: 113, arm: null, feet: null }, d: (c, k) => { const p = starPts(60, 90, 46, 29); return `<polygon points="${p}" fill="${k}" stroke="${k}" stroke-width="17" stroke-linejoin="round"/><polygon points="${p}" fill="${c}" stroke="${c}" stroke-width="11" stroke-linejoin="round"/>${shine(46, 76, 4, 8)}`; } },
-  mochi: { a: { top: 54, eye: 92, hw: 34, neck: 110, nw: 33, chest: 117, arm: [37, 106], feet: null }, d: (c, k) => `<path d="M22 112C22 74 38 52 60 52C82 52 98 74 98 112C98 125 84 129 60 129C36 129 22 125 22 112Z" fill="${c}" stroke="${k}" stroke-width="3"/>${shine(38, 74, 6, 9)}` },
-  cloud: { a: { top: 56, eye: 94, hw: 32, neck: 112, nw: 28, chest: 118, arm: null, feet: 128 }, d: (c, k) => { const C = [[38, 96, 20], [58, 80, 26], [82, 94, 22], [48, 110, 18], [72, 110, 18], [60, 102, 24]]; return `${C.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${k}" stroke="${k}" stroke-width="6"/>`).join('')}${C.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`).join('')}${shine(48, 70, 5, 7)}`; } },
-  led: { a: { top: 58, eye: 86, hw: 26, neck: 104, nw: 26, chest: 106, arm: [27, 98], feet: null }, d: (c, k) => `<circle cx="60" cy="84" r="44" fill="${c}" opacity=".2"/><path d="M48 122V137M72 122V133" stroke="#9AA3B5" stroke-width="3.5" stroke-linecap="round"/><path d="M34 116V82A26 26 0 0 1 86 82V116Z" fill="${c}" stroke="${k}" stroke-width="3" stroke-linejoin="round"/><rect x="29" y="112" width="62" height="11" rx="5.5" fill="${k}"/>${shine(44, 72, 4, 9)}` },
-  cap: { a: { top: 40, eye: 70, hw: 24, neck: 94, nw: 24, chest: 106, arm: [25, 92], feet: null }, d: (c, k) => `<path d="M50 122V137M70 122V137" stroke="#9AA3B5" stroke-width="3.5" stroke-linecap="round"/><rect x="36" y="38" width="48" height="86" rx="21" fill="${c}" stroke="${k}" stroke-width="3"/><path d="M78 50V112" stroke="#fff" stroke-width="7" opacity=".35" stroke-linecap="round"/><path d="M76 66h5M76 84h5M76 102h5" stroke="${k}" stroke-width="2.4" stroke-linecap="round"/>${shine(45, 56, 4, 9)}` },
-  robot: { a: { top: 46, eye: 76, hw: 28, neck: 102, nw: 28, chest: 112, arm: [30, 100], feet: 127 }, d: (c, k) => `<path d="M60 45V31" stroke="${k}" stroke-width="3"/><circle cx="60" cy="28" r="5.5" fill="#FF7F8E" stroke="${k}" stroke-width="2.5"/><rect x="32" y="44" width="56" height="82" rx="22" fill="${c}" stroke="${k}" stroke-width="3"/><rect x="39" y="56" width="42" height="40" rx="15" fill="#fff" opacity=".45"/><circle cx="32" cy="80" r="4.5" fill="${k}"/><circle cx="88" cy="80" r="4.5" fill="${k}"/><g fill="#fff" opacity=".6"><circle cx="52" cy="114" r="2.6"/><circle cx="60" cy="114" r="2.6"/><circle cx="68" cy="114" r="2.6"/></g>` },
+  cappy: { a: { top: 50, eye: 86, hw: 30, neck: 108, nw: 30, chest: 114, arm: [36, 102], feet: null }, d: (c, k) => `<path d="M50 124V135M70 124V135" stroke="#A8B0C2" stroke-width="3.6" stroke-linecap="round"/><circle cx="50" cy="136" r="3.4" fill="#A8B0C2"/><circle cx="70" cy="136" r="3.4" fill="#A8B0C2"/>
+    <path d="M24 70C24 58 38 50 60 50C82 50 96 58 96 70V108C96 122 82 128 60 128C38 128 24 122 24 108Z" fill="${c}" stroke="${k}" stroke-width="3"/>
+    <path d="M80 54.5C88 57 92 62 93 68V110C92 116 88 120 80 123Z" fill="${tint(c, .62)}"/>${[72, 88, 104].map(y => `<path d="M83.5 ${y}h6" stroke="${k}" stroke-width="2.6" stroke-linecap="round"/>`).join('')}
+    <ellipse cx="60" cy="61" rx="30" ry="8" fill="${tint(c, .45)}" stroke="${k}" stroke-width="2"/><path d="M60 55.5v11M52 61h16" stroke="${k}" stroke-width="2" stroke-linecap="round" opacity=".7"/>${shine(36, 76, 4.5, 10)}` },
+  chiplet: { a: { top: 52, eye: 84, hw: 28, neck: 106, nw: 30, chest: 110, arm: null, feet: 128 }, d: (c, k) => `${[66, 82, 98, 114].map(y => `<rect x="17" y="${y - 3.5}" width="13" height="7" rx="3.5" fill="#C9D0DE" stroke="#8A93A8" stroke-width="1.6"/><rect x="90" y="${y - 3.5}" width="13" height="7" rx="3.5" fill="#C9D0DE" stroke="#8A93A8" stroke-width="1.6"/>`).join('')}
+    <rect x="28" y="52" width="64" height="74" rx="16" fill="${c}" stroke="${k}" stroke-width="3"/><path d="M52 52.5A8 8 0 0 0 68 52.5" fill="${tint(c, .6)}" stroke="${k}" stroke-width="2.4"/><circle cx="39" cy="64" r="3.2" fill="${tint(c, .6)}" stroke="${k}" stroke-width="1.6"/>
+    <text x="60" y="122" text-anchor="middle" font-size="6.5" font-weight="900" fill="${k}" opacity=".55" letter-spacing="1" style="font-family:inherit">ZAP-01</text>${shine(38, 82, 4, 9)}` },
+  lumi: { a: { top: 38, eye: 70, hw: 28, neck: 104, nw: 18, chest: 113, arm: [35, 90], feet: null }, d: (c, k) => `<circle cx="60" cy="74" r="50" fill="${tint(c, .3)}" opacity=".2"/><circle cx="60" cy="74" r="42" fill="${tint(c, .3)}" opacity=".22"/>
+    <path d="M60 38C40 38 26 52 26 72C26 86 34 94 42 102V108H78V102C86 94 94 86 94 72C94 52 80 38 60 38Z" fill="${c}" stroke="${k}" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M53 108V97M67 108V97" stroke="${k}" stroke-width="1.8" opacity=".8"/><path d="M60 101C50 94 48 88 53 85.5C56 84 59 86 60 88C61 86 64 84 67 85.5C72 88 70 94 60 101Z" fill="#FF8F70" fill-opacity=".4" stroke="#FF6F4E" stroke-width="2.2" stroke-linejoin="round"/>
+    <rect x="41" y="107" width="38" height="7" rx="3.5" fill="#D5DAE6" stroke="#8A93A8" stroke-width="2"/><rect x="43" y="113.5" width="34" height="6.5" rx="3.2" fill="#C4CAD8" stroke="#8A93A8" stroke-width="2"/><rect x="45" y="119.5" width="30" height="6" rx="3" fill="#D5DAE6" stroke="#8A93A8" stroke-width="2"/><path d="M52 125.5H68L64 131H56Z" fill="#6F7891"/>${shine(40, 54, 5, 11)}` },
+  boing: { a: { top: 44, eye: 78, hw: 30, neck: 98, nw: 26, chest: 102, arm: [38, 86], feet: null }, d: (c, k) => { const C = [[36, 80, 18], [50, 62, 20], [72, 60, 20], [86, 78, 18], [60, 86, 26], [44, 94, 15], [76, 94, 15]], f = tint(c, .4);
+    return `${[104, 111, 118, 125].map(y => `<ellipse cx="60" cy="${y}" rx="17" ry="5.5" fill="none" stroke="#D9734A" stroke-width="5.5"/><ellipse cx="60" cy="${y}" rx="17" ry="5.5" fill="none" stroke="#F7B48C" stroke-width="3"/>`).join('')}<ellipse cx="60" cy="131" rx="20" ry="5" fill="#F7B48C" stroke="#D9734A" stroke-width="2.5"/>${C.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${k}" stroke="${k}" stroke-width="6"/>`).join('')}${C.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${f}"/>`).join('')}${shine(44, 58, 5, 8)}<circle cx="96" cy="56" r="3" fill="#FFC94D"/><circle cx="24" cy="64" r="2.2" fill="#9CC9FF"/>`; } },
+  // Stripes (tidied): upright resistor caterpillar, head sits on top of a banded body segment, tail curls out to the left
+  stripes: { a: { top: 44, eye: 72, hw: 26, neck: 98, nw: 20, chest: 113, arm: [25, 110], feet: null }, d: (c, k) => `<path d="M48 48C44 36 38 30 32 28M72 48C76 36 82 30 88 28" stroke="#A8B0C2" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="31" cy="27" r="4.5" fill="#FFC94D" stroke="#E3A31A" stroke-width="2"/><circle cx="89" cy="27" r="4.5" fill="#FFC94D" stroke="#E3A31A" stroke-width="2"/>
+    <circle cx="27" cy="121" r="9" fill="${c}" stroke="${k}" stroke-width="2.6"/><circle cx="16" cy="116" r="5.5" fill="${c}" stroke="${k}" stroke-width="2.4"/>${[44, 54, 66, 76].map(x => `<ellipse cx="${x}" cy="128.5" rx="3.2" ry="2.4" fill="${k}"/>`).join('')}
+    <clipPath id="stripesB"><ellipse cx="60" cy="113" rx="24" ry="16"/></clipPath><ellipse cx="60" cy="113" rx="24" ry="16" fill="${c}"/><g clip-path="url(#stripesB)">${[['#8B5A2B', 44], ['#2E2A5A', 54], ['#E0604F', 64], ['#E3A31A', 76]].map(([b, x]) => `<rect x="${x - 3.2}" y="96" width="6.4" height="34" fill="${b}" opacity=".9"/>`).join('')}</g><ellipse cx="60" cy="113" rx="24" ry="16" fill="none" stroke="${k}" stroke-width="2.6"/>
+    <circle cx="60" cy="72" r="28" fill="${c}" stroke="${k}" stroke-width="3"/>${shine(44, 60, 4.5, 9)}` },
 };
 function faceSVG(a, e, dark) {
   const ink = dark ? '#fff' : '#2E2A5A', hi = dark ? '#2E2A5A' : '#fff', y = a.eye;
@@ -4908,7 +4927,7 @@ const PETS = {
   capkitty: `<g transform="translate(102,118)"><path d="M-9 -9l2-8 6 5zM9 -9l-2-8-6 5z" fill="#FFB3CC" stroke="#E0708F" stroke-width="1.5" stroke-linejoin="round"/><rect x="-10" y="-12" width="20" height="22" rx="8" fill="#FFB3CC" stroke="#E0708F" stroke-width="1.8"/><path d="M5 -8v14" stroke="#fff" stroke-width="3" opacity=".5"/><circle cx="-4" cy="-3" r="1.8" fill="#2E2A5A"/><circle cx="3" cy="-3" r="1.8" fill="#2E2A5A"/><path d="M-2 1q1 1.5 2 0" stroke="#2E2A5A" stroke-width="1.2" fill="none"/><path d="M-4 10v4M4 10v4" stroke="#9AA3B5" stroke-width="1.8"/></g>`,
 };
 function avatarSVG(eq = S.avatar.eq, size = '') {
-  const B = BODIES[eq.body] || BODIES.battery, a = B.a, [c, k] = COLORS[eq.color] || COLORS.mint, e = Math.min(13, a.hw * .5), dark = eq.color === 'midnight';
+  const B = BODIES[eq.body] || BODIES.cappy, a = B.a, [c, k] = COLORS[eq.color] || COLORS.mint, e = Math.min(13, a.hw * .5), dark = eq.color === 'midnight';
   const lay = s => { const f = eq[s] && ACC[eq[s]] ? ACC[eq[s]](a, e) : ''; return typeof f === 'object' ? f : { b: '', f }; };
   const back = lay('back');
   const arm = (s, cls = '') => a.arm ? `<g class="${cls}"><ellipse cx="${60 + s * a.arm[0]}" cy="${a.arm[1]}" rx="6.5" ry="10" fill="${c}" stroke="${k}" stroke-width="2.5" transform="rotate(${-s * 22} ${60 + s * a.arm[0]} ${a.arm[1]})"/></g>` : '';
@@ -4918,8 +4937,8 @@ function avatarSVG(eq = S.avatar.eq, size = '') {
     ${eq.pet && PETS[eq.pet] ? `<g class="avpet">${PETS[eq.pet]}</g>` : ''}<g class="avspark" fill="#FFC94D"><polygon points="${starPts(16, 18, 7, 2.6)}"/><polygon points="${starPts(104, 6, 5.5, 2)}"/><circle cx="106" cy="58" r="3"/></g></svg>`;
 }
 const SHOP = [
-  ['Bodies', 'body', [['battery', 'Classic battery', 0], ['mochi', 'Mochi bean', 25], ['round', 'Round spark', 40], ['cloud', 'Cloud puff', 50], ['capsule', 'Tall capsule', 60], ['led', 'LED drop', 80], ['cap', 'Capacitor buddy', 100], ['star', 'Superstar', 120], ['robot', 'Little robot', 300]]],
-  ['Colors', 'color', [['mint', 'Mint', 0], ['coral', 'Coral', 10], ['sun', 'Sunny', 10], ['peri', 'Periwinkle', 15], ['sky', 'Sky', 15], ['pink', 'Bubblegum', 20], ['lilac', 'Lilac', 20], ['midnight', 'Midnight', 35]]],
+  ['Bodies', 'body', [['cappy', 'Cappy', 0], ['chiplet', 'Chiplet', 60], ['lumi', 'Lumi', 100], ['boing', 'Boing', 150], ['stripes', 'Stripes', 200]]],
+  ['Colors', 'color', [['mint', 'Mint', 0], ['coral', 'Coral', 10], ['sun', 'Sunny', 10], ['peri', 'Periwinkle', 15], ['sky', 'Sky', 15], ['pink', 'Bubblegum', 20], ['lilac', 'Lilac', 20], ['midnight', 'Midnight', 35], ['pmint', 'Pastel mint', 20], ['babyblue', 'Baby blue', 25], ['lavender', 'Lavender', 25], ['peach', 'Peach', 25], ['butter', 'Butter yellow', 30], ['blush', 'Blush pink', 30], ['seafoam', 'Seafoam', 35]]],
   ['Hats', 'hat', [['party', 'Party hat', 25], ['beanie', 'Beanie', 30], ['beret', 'Beret', 35], ['bucket', 'Bucket hat', 40], ['hardhat', 'Hard hat', 60], ['bunnyears', 'Bunny ears', 75], ['tophat', 'Top hat', 80], ['flowercrown', 'Flower crown', 95], ['gradcap', 'Graduation cap', 120], ['crown', 'Crown', 150], ['wizard', 'Wizard hat', 200], ['boltcrown', 'Lightning crown', 350]]],
   ['Glasses', 'eyes', [['roundg', 'Round glasses', 20], ['square', 'Nerdy squares', 25], ['shades', 'Sunglasses', 45], ['heartg', 'Heart glasses', 50], ['goggles', 'Safety goggles', 55], ['starg', 'Star glasses', 65], ['monocle', 'Monocle', 90]]],
   ['Bling', null, [['stickstar', 'Star stickers', 15, 'cheeks'], ['stickheart', 'Heart stickers', 15, 'cheeks'], ['starclip', 'Star clip', 20, 'deco'], ['bow', 'Bow', 25, 'deco'], ['bowtie', 'Bowtie', 30, 'neck'], ['earring', 'Resistor earring', 35, 'bling'], ['necklace', 'LED necklace', 40, 'neck'], ['antenna', 'LED antenna', 40, 'bling'], ['scarf', 'Cozy scarf', 55, 'neck'], ['badge', 'Multimeter badge', 65, 'chest'], ['phones', 'Headphones', 70, 'ears'], ['backpack', 'Tiny backpack', 85, 'back']]],
