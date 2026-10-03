@@ -426,6 +426,7 @@ body:has(#v-games.on) #askFab{display:none}
 .sitem b{font-size:12.5px;color:#4A4580}.sitem span{color:#9A93C4}
 .sitem.sel{box-shadow:0 0 0 3px #B9A6FF,0 4px 12px rgba(124,131,253,.2)}
 .sitem.eq{background:linear-gradient(180deg,#fff,#EFFBF6)}.sitem.eq span{color:#2EB58F}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:2px solid var(--line);background:#fff;border-radius:14px;padding:11px 14px;font:inherit;font-weight:900;font-size:15px;color:#3C4043;cursor:pointer;box-shadow:0 3px 0 var(--line)}.gbtn:disabled{opacity:.7;cursor:default}
 </style>
 </head>
 <body>
@@ -2747,7 +2748,8 @@ const testState = tid => (S.tests[tid] = S.tests[tid] || { passed: false, best: 
 const unitUnlocked = u => u.n === 1 || !!(S.tests[UNITS[u.n - 2].test] || {}).passed;
 const LABEL = {}; UNITS.forEach(u => u.lessons.forEach((id, i) => { LABEL[id] = u.n + '.' + (i + 1); LESSONS[id].unit = u.id; }));
 const unitOf = id => UNITS.find(u => u.id === id);
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+function saveLocal() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+function save() { saveLocal(); if (window.__cloudSoon) window.__cloudSoon(); } // + debounced cloud push when signed in
 
 const QS = new URLSearchParams(location.search);
 const fmt = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -3606,7 +3608,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.2 (2026-10-02)';
+const APP_VERSION = '7.3 (2026-10-02)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -3625,6 +3627,7 @@ function renderProfile() {
     <div class="setrow"><div class="l">Reset progress<small>Erase XP, streak, lessons and cards on this device</small></div><button class="btn coral" id="btnReset" style="width:auto;padding:10px 16px">Reset</button></div></div>`);
   v.appendChild(sp);
   $('#profAv').onclick = () => showTab('shop');
+  v.appendChild(cloudPanel());
   v.appendChild(goalPanel());
   v.appendChild(aiPanel());
   v.appendChild(el(`<p class="small center" style="margin:4px 20px 30px">Zapling prototype · Units 1–${UNITS.length} · progress is saved in this browser only.<br><span id="appVer" style="opacity:.75">Version ${APP_VERSION}</span></p>`));
@@ -5519,6 +5522,116 @@ function labChat(host) {
   $('#labIn', host).onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e.target.value); } };
   paint();
 }
+/* =========================================================
+   CLOUD SYNC (optional): Google sign-in + Firestore users/{uid} = { save: JSON, updatedAt, app }
+   Guest play stays the default. The Firebase SDK is lazy-loaded from gstatic only when the Profile tab opens
+   or the player was signed in before, so offline/guest play never depends on it.
+   ========================================================= */
+const FB_CFG = { apiKey: 'AIzaSyDMzEHbnOU3TLbQflpSvGLrCPfw_MkNKGY', authDomain: 'zapling-1492d.firebaseapp.com', projectId: 'zapling-1492d', storageBucket: 'zapling-1492d.firebasestorage.app', messagingSenderId: '589701782863', appId: '1:589701782863:web:f9d79f46d5183bdcb5f93a' };
+const FB_V = '12.3.0', SYNC_KEY = 'zapling.sync';
+const CLOUD = { fb: null, user: null, status: '', err: '', t: null, pulled: 0 };
+const syncInfo = () => { try { return JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; } catch (e) { return {}; } };
+const setSyncInfo = o => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(o)); } catch (e) { } };
+function fbLoad() {
+  if (CLOUD.fb) return CLOUD.fb;
+  const u = m => `https://www.gstatic.com/firebasejs/${FB_V}/firebase-${m}.js`;
+  CLOUD.fb = Promise.all([import(u('app')), import(u('auth')), import(u('firestore'))]).then(([A, Au, F]) => {
+    const app = A.initializeApp(FB_CFG), auth = Au.getAuth(app), db = F.getFirestore(app), fb = { A, Au, F, app, auth, db };
+    if (syncInfo().redirect) { setSyncInfo(Object.assign(syncInfo(), { redirect: 0 })); Au.getRedirectResult(auth).catch(e => cloudErr(e)); }
+    Au.onAuthStateChanged(auth, user => onCloudUser(user));
+    return fb;
+  }).catch(e => { CLOUD.fb = null; throw e; });
+  return CLOUD.fb;
+}
+function cloudErr(e) {
+  const c = (e && e.code) || '';
+  CLOUD.status = ''; CLOUD.err = c === 'auth/unauthorized-domain' ? 'This web address isn\'t allowed for sign-in yet.' : c === 'auth/network-request-failed' || !navigator.onLine ? 'You seem to be offline. Your progress is still saved on this device.' : c === 'permission-denied' ? 'The cloud refused access to your save.' : 'Sign-in or sync didn\'t work. Your progress is still saved on this device.';
+  renderCloud();
+}
+async function cloudSignIn() {
+  CLOUD.err = ''; CLOUD.status = 'Opening Google…'; renderCloud();
+  let fb; try { fb = await fbLoad(); } catch (e) { return cloudErr({ code: 'auth/network-request-failed' }); }
+  const prov = new fb.Au.GoogleAuthProvider(); prov.setCustomParameters({ prompt: 'select_account' });
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone; // home-screen app: popups don't work well
+  try { if (standalone) throw { code: 'auth/popup-blocked' }; await fb.Au.signInWithPopup(fb.auth, prov); }
+  catch (e) {
+    if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment', 'auth/web-storage-unsupported'].includes(e.code)) { setSyncInfo(Object.assign(syncInfo(), { redirect: 1 })); return fb.Au.signInWithRedirect(fb.auth, prov).catch(cloudErr); }
+    if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') { CLOUD.status = ''; return renderCloud(); }
+    cloudErr(e);
+  }
+}
+async function cloudSignOut() {
+  clearTimeout(CLOUD.t); try { const fb = await fbLoad(); await fb.Au.signOut(fb.auth); } catch (e) { }
+  CLOUD.user = null; CLOUD.status = ''; setSyncInfo({}); renderCloud(); toast('Signed out. Your progress stays on this device.', ICON.check());
+}
+async function onCloudUser(user) {
+  CLOUD.user = user || null;
+  if (!user) { if (syncInfo().uid) setSyncInfo({}); return renderCloud(); }
+  setSyncInfo({ uid: user.uid }); await cloudPull();
+}
+// pull the cloud save, merge it with this device's save, then upload the result
+async function cloudPull() {
+  if (!CLOUD.user) return; CLOUD.err = ''; CLOUD.status = 'Syncing…'; renderCloud(); CLOUD.pulled = Date.now();
+  try {
+    const fb = await fbLoad(), ref = fb.F.doc(fb.db, 'users', CLOUD.user.uid), snap = await fb.F.getDoc(ref);
+    let cloud = null; if (snap.exists()) { try { cloud = JSON.parse(snap.data().save); } catch (e) { } }
+    if (cloud && typeof cloud === 'object') {
+      const before = JSON.stringify(S); S = mergeSaves(S, cloud);
+      migrate(); ensurePrefs(); ensureShop(); regenHearts(); saveLocal();
+      if (JSON.stringify(S) !== before && !$('.lesson')) { renderTop(); const t = $('.tab.on'); showTab(t ? t.dataset.tab : 'learn'); flushToasts(); }
+    }
+    await cloudPush();
+  } catch (e) { cloudErr(e); }
+}
+async function cloudPush() {
+  if (!CLOUD.user) return; const fb = await fbLoad();
+  await fb.F.setDoc(fb.F.doc(fb.db, 'users', CLOUD.user.uid), { save: JSON.stringify(S), updatedAt: fb.F.serverTimestamp(), app: APP_VERSION });
+  CLOUD.status = 'Synced ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); CLOUD.err = ''; renderCloud();
+}
+window.__cloudSoon = () => { if (!CLOUD.user) return; clearTimeout(CLOUD.t); CLOUD.t = setTimeout(() => cloudPush().catch(cloudErr), 4000); };
+document.addEventListener('visibilitychange', () => { if (!document.hidden && CLOUD.user && Date.now() - CLOUD.pulled > 60000) cloudPull(); });
+
+/* ---------- merge: the save with more progress is the base; completions, items and cards are unioned ---------- */
+const progScore = s => Object.keys((s && s.done) || {}).length * 10 + Object.values((s && s.tests) || {}).filter(t => t && t.passed).length * 25 + ((s && s.xp) || 0) / 50;
+function mergeSaves(a, b) {
+  const [base, o] = progScore(a) >= progScore(b) ? [a, b] : [b, a], cl = x => x == null ? x : JSON.parse(JSON.stringify(x)), ob = x => x && typeof x === 'object' && !Array.isArray(x) ? x : {};
+  const m = cl(base), uni = (x, y) => [...new Set([...(Array.isArray(x) ? x : []), ...(Array.isArray(y) ? y : [])])];
+  const maxMap = (x, y) => { const r = Object.assign({}, ob(y), ob(x)); Object.keys(ob(y)).forEach(k => { if (typeof ob(x)[k] === 'number' && typeof y[k] === 'number') r[k] = Math.max(x[k], y[k]); }); return r; };
+  Object.keys(ob(o)).forEach(k => { if (m[k] == null) m[k] = cl(o[k]); });                                  // anything only the other save has
+  Object.keys(ob(o)).forEach(k => { if (/mig|fix/i.test(k) && typeof o[k] === 'number') m[k] = Math.max(+m[k] || 0, o[k]); }); // migration guards never go backwards
+  m.done = Object.assign({}, ob(o.done), ob(base.done));
+  m.tests = {}; uni(Object.keys(ob(base.tests)), Object.keys(ob(o.tests))).forEach(id => { const x = ob(base.tests)[id], y = ob(o.tests)[id];
+    m.tests[id] = !x || !y ? cl(x || y) : Object.assign({}, y, x, { passed: !!(x.passed || y.passed), best: Math.max(x.best || 0, y.best || 0), attempts: Math.max(x.attempts || 0, y.attempts || 0), placed: x.passed ? x.placed : y.placed }); });
+  m.mastered = Object.assign({}, ob(o.mastered), ob(base.mastered));
+  m.cards = Object.assign({}, ob(o.cards), ob(base.cards)); Object.keys(ob(o.cards)).forEach(id => { const x = ob(base.cards)[id], y = o.cards[id]; if (x && y && ((y.box || 0) > (x.box || 0) || ((y.box || 0) === (x.box || 0) && (y.due || '') > (x.due || '')))) m.cards[id] = cl(y); });
+  m.days = Object.assign({}, ob(o.days), ob(base.days)); Object.keys(ob(o.days)).forEach(d => { if (o.days[d] === 'active') m.days[d] = 'active'; });
+  ['xp', 'best', 'tokens', 'v'].forEach(k => { m[k] = Math.max(+base[k] || 0, +o[k] || 0); });               // counters: max (never adds, so no double-pay)
+  if ((o.last || '') > (base.last || '')) { m.streak = o.streak; m.last = o.last; m.freezes = o.freezes; }
+  m.tokPaid = maxMap(base.tokPaid, o.tokPaid); m.testPaidNew = maxMap(base.testPaidNew, o.testPaidNew); m.tokGranted = Object.assign({}, ob(o.tokGranted), ob(base.tokGranted));
+  const av = ob(base.avatar), ov = ob(o.avatar); m.avatar = Object.assign({}, cl(ov), cl(av), { owned: uni(av.owned, ov.owned), eq: cl(av.eq || ov.eq) });
+  Object.keys(ov).forEach(k => { if (/^mig/.test(k)) m.avatar[k] = Math.max(+av[k] || 0, +ov[k] || 0); });
+  m.deckRw = {}; uni(Object.keys(ob(base.deckRw)), Object.keys(ob(o.deckRw))).forEach(u => { const x = ob(base.deckRw)[u], y = ob(o.deckRw)[u];
+    m.deckRw[u] = !x || !y ? cl(x || y) : { d: (x.d || '') > (y.d || '') ? x.d : y.d, seen: uni(x.seen, y.seen), days: uni(x.days, y.days), paid: Math.max(x.paid || 0, y.paid || 0) }; });
+  m.fcTest = {}; uni(Object.keys(ob(base.fcTest)), Object.keys(ob(o.fcTest))).forEach(u => { const x = ob(base.fcTest)[u], y = ob(o.fcTest)[u]; m.fcTest[u] = !x || !y ? cl(x || y) : Object.assign({}, y, x, { best: Math.max(x.best || 0, y.best || 0) }); });
+  m.games = Object.assign({}, ob(o.games), ob(base.games), { best: maxMap(ob(base.games).best, ob(o.games).best) });
+  m.prefs = Object.assign({}, ob(o.prefs), ob(base.prefs)); if (!m.prefs.onboarded && ob(o.prefs).onboarded) m.prefs.onboarded = o.prefs.onboarded;
+  return m;
+}
+
+/* ---------- Profile panel ---------- */
+const GLOGO = '<svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+function cloudPanel() { const p = el('<div class="panel" id="cloudPanel"></div>'); setTimeout(() => { renderCloud(); if (navigator.onLine !== false) fbLoad().catch(() => { }); }, 0); return p; }
+function renderCloud() {
+  const p = $('#cloudPanel'); if (!p) return; const u = CLOUD.user;
+  p.innerHTML = `<h3>Cloud save</h3>${u ? `<div class="setrow" style="border:0;padding-top:0"><div class="l">${esc(u.displayName || 'Signed in')}<small>${esc(u.email || '')}</small></div><button class="btn ghost small" id="cloudOut" style="width:auto;padding:9px 14px">Sign out</button></div>
+      <p class="small" style="margin:0">${esc(CLOUD.status || 'Your progress syncs to your Google account.')}</p>`
+    : `<p class="small" style="margin:0 0 10px">You're playing as a guest. Sign in to back up your progress and pick up on any device.</p>
+      <button class="gbtn" id="cloudIn" ${CLOUD.status ? 'disabled' : ''}>${GLOGO}<span>${esc(CLOUD.status || 'Sign in with Google')}</span></button>`}${CLOUD.err ? `<p class="small" style="margin:8px 0 0;color:var(--corald)">${esc(CLOUD.err)}</p>` : ''}`;
+  if ($('#cloudIn', p)) $('#cloudIn', p).onclick = () => { SFX.tap(); cloudSignIn(); };
+  if ($('#cloudOut', p)) $('#cloudOut', p).onclick = () => { SFX.tap(); cloudSignOut(); };
+}
+// returning player who signed in before (or is coming back from a redirect): restore the session quietly
+if (syncInfo().uid || syncInfo().redirect) setTimeout(() => fbLoad().catch(() => { }), 800);
 /* =========================================================
    INIT
    ========================================================= */
