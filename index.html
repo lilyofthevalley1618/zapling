@@ -450,6 +450,8 @@ body:has(#v-games.on) #askFab{display:none}
 .avface .drool{animation:drool 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:top}@keyframes drool{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.35)}}
 .avface .zz{animation:fade 1.6s ease-in-out infinite alternate}
 @media (prefers-reduced-motion:reduce){.avface *,.sppv.boing svg{animation:none!important}}
+.whymore{margin-top:8px;font-size:14.5px}.whymore summary{cursor:pointer;font-weight:900;color:var(--peri);list-style:none;display:inline-flex;align-items:center;gap:4px}.whymore summary::-webkit-details-marker{display:none}
+.whymore summary::before{content:'▸';transition:transform .15s}.whymore[open] summary::before{transform:rotate(90deg)}.whymore ol,.whymore ul{margin:6px 0 0;padding-left:20px;line-height:1.45}.whymore li{margin:3px 0}
 </style>
 </head>
 <body>
@@ -2728,6 +2730,1346 @@ TESTS.T7 = { id: 'T7', unit: 'U7', title: 'Unit 7 test: Capacitors, Transistors 
 
 UNITS.push({ id: 'U7', n: 7, title: 'Capacitors, Transistors & Timing', color: '#4F8FE8', dark: '#2F6BC0', lessons: ['L33', 'L34', 'L35', 'L36', 'L37'], test: 'T7' });
 /* =========================================================
+   KID-FRIENDLY "WHY" EXPLANATIONS (v7.7)
+   Every Why that uses math or symbols gets a plain-words default (1-3 short sentences, symbols defined) plus numbered
+   step-by-step reasoning behind a collapsed "More detail" toggle (formulas show where they come from).
+   Other Whys that use jargon get a collapsed "Words to know" list. Questions, answers and scoring are untouched.
+   ========================================================= */
+const KIDWHY = {
+"b20q2": [
+"Breadboard holes are 0.1 inch apart, which is 2.54 millimeters. Pins on headers and chips use the same spacing, so they all fit.",
+[
+"1 inch = 25.4 mm.",
+"A tenth of that: 25.4 ÷ 10 = 2.54 mm.",
+"Breadboards, header pins and DIP chips are all made on this same grid."
+]
+],
+"b21q1": [
+"The long leg is the anode, the + side. The short leg, next to the flat edge, is the cathode, the − side.",
+[
+"Anode = where current goes IN (+).",
+"Cathode = where current comes OUT (−).",
+"Current only flows through an LED from anode to cathode, so the legs matter."
+]
+],
+"b23q1": [
+"The LED uses about 2 V, so 3 V is left for the resistor. To let 15 mA flow, the resistor must be about 200 Ω (ohms).",
+[
+"V = voltage, the push from the battery. I = current, how much electricity flows. R = resistance, how much a part slows the flow.",
+"The LED takes about 2 V of the 5 V push. What's left is for the resistor: 5 − 2 = 3 V.",
+"15 mA (milliamps) is 15 thousandths of an amp: 0.015 A.",
+"Ohm's law says resistance = voltage ÷ current (R = V ÷ I). So R = 3 ÷ 0.015 = 200 Ω (ohms)."
+]
+],
+"b23q2": [
+"The LED uses about 3 V, so 6 V is left for the resistor. To let 10 mA flow, the resistor must be about 600 Ω (ohms).",
+[
+"V = voltage, the push from the battery. I = current, how much electricity flows. R = resistance, how much a part slows the flow.",
+"The LED takes about 3 V of the 9 V push. What's left is for the resistor: 9 − 3 = 6 V.",
+"10 mA (milliamps) is 10 thousandths of an amp: 0.01 A.",
+"Ohm's law says resistance = voltage ÷ current (R = V ÷ I). So R = 6 ÷ 0.01 = 600 Ω (ohms).",
+"600 Ω isn't a standard size, so pick the next one UP, 680 Ω. A bit more resistance keeps the current safely under 10 mA."
+]
+],
+"b23q3": [
+"9 V minus the LED's 2 V leaves 7 V for the resistor. With 470 Ω that lets about 14 mA flow, just right. 220 Ω lets too much through, and 1 kΩ too little.",
+[
+"V = voltage (the push), I = current (how much flows), R = resistance (how much a part slows the flow). Ω = ohms, the unit of resistance. mA = milliamps, thousandths of an amp.",
+"Voltage left for the resistor: 9 − 2 = 7 V.",
+"Ohm's law: current = voltage ÷ resistance (I = V ÷ R).",
+"470 Ω: 7 ÷ 470 ≈ 0.014 A = 14 mA (good).",
+"220 Ω: 7 ÷ 220 ≈ 29 mA (too much, the LED could burn out). 1 kΩ = 1,000 Ω: 7 ÷ 1,000 = 7 mA (dim)."
+]
+],
+"b23q4": [
+"About 17.5 mA flows, and the resistor turns about 0.17 W into heat. That's less than ¼ W, so a normal ¼ W resistor is fine.",
+[
+"I = current (how much flows), V = voltage (the push), R = resistance, P = power (how much energy is used each second, in watts, W).",
+"Current: I = V ÷ R = 9.8 ÷ 560 ≈ 0.0175 A = 17.5 mA.",
+"Power: P = V × I. Think of it as push × flow.",
+"P ≈ 9.8 × 0.0175 ≈ 0.17 W.",
+"0.17 W is under the resistor's ¼ W (0.25 W) limit, so it won't overheat."
+]
+],
+"b23q6": [
+"Two LEDs in a row each use about 2 V, so 6 − 2 − 2 = 2 V is left for the resistor. To let 10 mA flow, that needs 200 Ω.",
+[
+"In series (one after another), each LED takes its own share of the voltage, so the shares add up.",
+"Left for the resistor: 6 − 2 − 2 = 2 V.",
+"10 mA = 0.01 A.",
+"Ohm's law says resistance = voltage ÷ current (R = V ÷ I). R = 2 ÷ 0.01 = 200 Ω."
+]
+],
+"b24q1": [
+"The button connects row 2 (power) to row 5 (the resistor). Pressing it closes the loop, so current can flow and the light turns on.",
+[
+"A circuit needs a complete loop for current to flow.",
+"Not pressed: there's a gap, so nothing flows.",
+"Pressed: the button bridges the gap, the loop is closed, and the LED lights."
+]
+],
+"b25q1": [
+"The LED uses about 4 V, so 5 V is left for the resistor. To let 10 mA flow, the resistor must be about 500 Ω (ohms).",
+[
+"V = voltage, the push from the battery. I = current, how much electricity flows. R = resistance, how much a part slows the flow.",
+"The LED takes about 4 V of the 9 V push. What's left is for the resistor: 9 − 4 = 5 V.",
+"10 mA (milliamps) is 10 thousandths of an amp: 0.01 A.",
+"Ohm's law says resistance = voltage ÷ current (R = V ÷ I). So R = 5 ÷ 0.01 = 500 Ω (ohms)."
+]
+],
+"b25q2": [
+"Three 3 V LEDs need 9 V, which is the whole battery. Nothing is left over to push current through a resistor, so almost no current flows.",
+[
+"Each LED in series needs about 3 V: 3 × 3 = 9 V.",
+"The battery is 9 V, so there's 9 − 9 = 0 V left.",
+"With no leftover voltage, there's no room for a resistor and barely any push for current."
+]
+],
+"b25q5": [
+"Each branch gets its own current, and the battery supplies all of them together. 3 branches × 15 mA = 45 mA.",
+[
+"In parallel, each LED has its own path (branch).",
+"The battery's total current is all the branches added: 15 + 15 + 15 = 45 mA."
+]
+],
+"b25q6": [
+"The LED uses about 8 V, so 4 V is left for the resistor. To let 20 mA flow, the resistor must be about 200 Ω (ohms).",
+[
+"V = voltage, the push from the battery. I = current, how much electricity flows. R = resistance, how much a part slows the flow.",
+"The LED takes about 8 V of the 12 V push. What's left is for the resistor: 12 − 8 = 4 V.",
+"20 mA (milliamps) is 20 thousandths of an amp: 0.02 A.",
+"Ohm's law says resistance = voltage ÷ current (R = V ÷ I). So R = 4 ÷ 0.02 = 200 Ω (ohms)."
+]
+],
+"b26q1": [
+"Batteries stacked in a row add their pushes: 4 × 1.5 V = 6 V.",
+[
+"V = volts, the size of the push.",
+"Cells in series (+ to −) add up.",
+"1.5 + 1.5 + 1.5 + 1.5 = 6 V."
+]
+],
+"b26q2": [
+"A 2000 mAh battery can give 25 mA for about 80 hours, because 2000 ÷ 25 = 80. Real batteries last a bit less.",
+[
+"mAh (milliamp-hours) tells how much current a battery can give for how long.",
+"Hours = capacity ÷ current.",
+"2000 ÷ 25 = 80 hours."
+]
+],
+"b26q5": [
+"500 mAh ÷ 50 mA = 10 hours.",
+[
+"mAh (milliamp-hours) is a battery's 'fuel tank'.",
+"Hours = capacity ÷ current: 500 ÷ 50 = 10."
+]
+],
+"b26q6": [
+"Three 1.5 V cells make 4.5 V. Take away the LED's 2 V, and 2.5 V is left. To let 10 mA flow, the resistor must be 250 Ω.",
+[
+"Cells add: 3 × 1.5 = 4.5 V.",
+"Left for the resistor: 4.5 − 2 = 2.5 V.",
+"10 mA = 0.01 A.",
+"Ohm's law says resistance = voltage ÷ current (R = V ÷ I). R = 2.5 ÷ 0.01 = 250 Ω."
+]
+],
+"b27q3": [
+"6.6 V across 470 Ω lets about 14 mA flow.",
+[
+"I = current (how much flows), V = voltage (the push), R = resistance (Ω, ohms).",
+"Ohm's law: I = V ÷ R.",
+"6.6 ÷ 470 ≈ 0.014 A.",
+"0.014 A = 14 mA (milliamps, thousandths of an amp)."
+]
+],
+"b27q5": [
+"To measure voltage, touch the meter across a part. To measure current, the electricity has to flow THROUGH the meter, so it goes in the loop, in series.",
+[
+"Voltage is a difference between two points, so you touch both sides of the part.",
+"Current is the flow itself, so you must break the loop and let it pass through the meter."
+]
+],
+"b29q1": [
+"7 V has to push through 220 Ω plus part of the knob (the pot). For 8 to 12 mA, the total should be about 580 to 875 Ω, so the pot part is about 350 to 650 Ω.",
+[
+"A pot (potentiometer) is a resistor with a knob that changes how much of it you use.",
+"Ohm's law rearranged: total R = V ÷ I.",
+"For 12 mA: 7 ÷ 0.012 ≈ 580 Ω. For 8 mA: 7 ÷ 0.008 ≈ 875 Ω.",
+"Take away the fixed 220 Ω: roughly 350 to 650 Ω for the pot."
+]
+],
+"b29q3": [
+"The knob's wiper splits the 10 kΩ track in two pieces: 30% of it is 3 kΩ, and the other 70% is 7 kΩ.",
+[
+"kΩ = kilo-ohms, 1,000 ohms.",
+"30% of 10 kΩ = 0.3 × 10 = 3 kΩ.",
+"The rest: 10 − 3 = 7 kΩ. The two pieces always add back to 10 kΩ."
+]
+],
+"b29q4": [
+"The wiper gets a slice of the 9 V that matches how far along the track it is. To get 3 V (a third of 9 V), the slice to the bottom must be a third of the track, so the knob sits about two-thirds of the way toward the + end.",
+[
+"The wiper's voltage = 9 V × (bottom part ÷ whole track).",
+"Want 3 V: 3 ÷ 9 = one third.",
+"So one third of the track is below the wiper and two thirds are above it. That's two-thirds of the way toward +."
+]
+],
+"b29q6": [
+"With the knob at 0, only 330 Ω limits current: about 21 mA. With the knob at max, 330 + 1000 = 1330 Ω: about 5.3 mA.",
+[
+"Ohm's law: current = voltage ÷ resistance (I = V ÷ R).",
+"Max current: 7 ÷ 330 ≈ 0.021 A = 21 mA.",
+"Min current: 7 ÷ 1330 ≈ 0.0053 A = 5.3 mA."
+]
+],
+"b30q1": [
+"The light sensor (LDR) and the 10 kΩ resistor share the 9 V. The LDR's share depends on its resistance: at 50 kΩ it gets 7.5 V, at 20 kΩ only 6 V.",
+[
+"LDR = light-dependent resistor: its resistance changes with light.",
+"A divider gives each part a share of voltage that matches its share of the total resistance.",
+"V_out (the output voltage) = 9 × R_LDR ÷ (10k + R_LDR).",
+"50 kΩ: 9 × 50 ÷ 60 = 7.5 V. 20 kΩ: 9 × 20 ÷ 30 = 6 V."
+]
+],
+"b30q3": [
+"1 kΩ is only 1 part out of 11 in total, so it gets about 1/11 of the 5 V: about 0.45 V.",
+[
+"A voltage divider shares the voltage by resistance.",
+"Share = 5 × 1 ÷ (10 + 1).",
+"5 ÷ 11 ≈ 0.45 V."
+]
+],
+"b30q6": [
+"For 3 V from 9 V, the bottom resistor (4.7 kΩ) must be a third of the total. So the total is about 14.1 kΩ, and the top resistor is about 9.4 kΩ.",
+[
+"Divider rule: V_out = 9 × 4.7 ÷ (4.7 + R).",
+"We want 3 V, which is 3 ÷ 9 = one third.",
+"So 4.7 must be a third of the total: total = 3 × 4.7 = 14.1 kΩ.",
+"R = 14.1 − 4.7 ≈ 9.4 kΩ."
+]
+],
+"b31q3": [
+"Three LEDs at 12 mA plus 4 mA more is 40 mA total. A 500 mAh battery lasts about 500 ÷ 40 ≈ 12.5 hours.",
+[
+"Add the currents: 3 × 12 + 4 = 40 mA.",
+"mAh (milliamp-hours) is the battery's 'fuel tank'.",
+"Hours = 500 ÷ 40 = 12.5."
+]
+],
+"b31q4": [
+"6.8 V across 680 Ω lets 10 mA flow. And 6.8 V plus the LED's 2.2 V adds up to the full 9 V, so it all checks out.",
+[
+"Ohm's law: current = voltage ÷ resistance.",
+"6.8 ÷ 680 = 0.01 A = 10 mA.",
+"Voltage check: 6.8 + 2.2 = 9 V, the battery."
+]
+],
+"b32q3": [
+"With 47,000 Ω, only about 0.15 mA can flow. That's about 100 times too little to light the LED well.",
+[
+"Ohm's law: current = voltage ÷ resistance.",
+"7 ÷ 47,000 ≈ 0.00015 A = 0.15 mA.",
+"An LED likes about 15 mA, roughly 100 times more."
+]
+],
+"b32q5": [
+"The red LED's branch takes about 15 mA and the blue one's 20 mA, so together about 35 mA.",
+[
+"Each branch has its own current: current = voltage ÷ resistance.",
+"Red: 7 ÷ 470 ≈ 15 mA. Blue: 6 ÷ 300 = 20 mA.",
+"The battery gives both: 15 + 20 = 35 mA."
+]
+],
+"n1q1": [
+"Every electron carries a tiny bit of charge, so 5 million million extra electrons add up to 0.8 µC (microcoulombs). Extra electrons make the object negative.",
+[
+"C = coulomb, a unit for an amount of electric charge. µC = a millionth of a coulomb.",
+"One electron carries 1.6 × 10⁻¹⁹ C (a super tiny number).",
+"Total = number of electrons × charge each: 5 × 10¹² × 1.6 × 10⁻¹⁹ = 8 × 10⁻⁷ C = 0.8 µC.",
+"Electrons are negative, so extra electrons = negative charge."
+]
+],
+"l6q1": [
+"Batteries stacked + to − add their pushes: 1.5 + 1.5 + 1.5 = 4.5 V. That's exactly what the bulb needs. Four would be 6 V, too much.",
+[
+"V = volts, how hard the battery pushes.",
+"In series the pushes add up.",
+"Three cells: 4.5 V (just right). Four cells: 6 V (would overdrive the bulb)."
+]
+],
+"l6q4": [
+"Volts tell how much energy each bit of charge gets. 9 V means 9 joules of energy for every coulomb that passes through.",
+[
+"Joule (J) = a unit of energy. Coulomb (C) = a bunch of electric charge.",
+"1 volt = 1 joule per coulomb.",
+"So 9 V = 9 joules per coulomb."
+]
+],
+"n3q1": [
+"A battery put in backwards pushes the wrong way, so it takes away instead of adding: 1.5 + 1.5 + 1.5 − 1.5 = 3 V.",
+[
+"Each cell normally adds 1.5 V.",
+"A reversed cell pushes against the others, so subtract it.",
+"1.5 + 1.5 + 1.5 − 1.5 = 3 V."
+]
+],
+"l7q3": [
+"Charge = current × time. 0.5 amps for 10 seconds moves 5 coulombs of charge.",
+[
+"Q = charge (in coulombs, C), I = current (in amps, A), t = time (in seconds).",
+"Current means how much charge passes each second, so charge = current × time (Q = I × t).",
+"0.5 × 10 = 5 C."
+]
+],
+"l8q1": [
+"With the same 6 V push, the smallest resistance (10 Ω) lets the most current through, so the bulb is brightest. 1 kΩ (1,000 Ω) lets so little through that it barely glows.",
+[
+"Resistance (R, in ohms, Ω) slows the flow.",
+"Less resistance means more current for the same push.",
+"More current = a brighter bulb."
+]
+],
+"n4q1": [
+"Charge = current × time. 0.25 A for 240 seconds moves 60 coulombs.",
+[
+"Q = charge (coulombs), I = current (amps), t = time (seconds).",
+"Q = I × t because current is charge per second.",
+"0.25 × 240 = 60 C."
+]
+],
+"l9q1": [
+"'Kilo' means 1,000, so 4.7 kΩ = 4,700 Ω. The color bands agree: yellow (4), violet (7), red (× 100).",
+[
+"Ω = ohms, the unit of resistance. kΩ = kilo-ohms.",
+"4.7 × 1,000 = 4,700 Ω.",
+"Bands: 4 and 7 make 47, then × 100 = 4,700."
+]
+],
+"l9q2": [
+"'Milli' means a thousandth, so 250 mA = 250 ÷ 1,000 = 0.25 A.",
+[
+"A = amps, the unit of current. mA = milliamps.",
+"1,000 mA = 1 A.",
+"250 ÷ 1,000 = 0.25 A."
+]
+],
+"l9q3": [
+"To compare, change them to the same unit. 1 A = 1,000 mA, so 5 mA = 0.005 A, 0.02 A = 20 mA, and 150 mA = 0.15 A.",
+[
+"A = amps, mA = milliamps (thousandths of an amp).",
+"To go from mA to A, divide by 1,000. To go from A to mA, multiply by 1,000."
+]
+],
+"l9q4": [
+"'Kilo' means 1,000, so 2.2 kΩ = 2.2 × 1,000 = 2,200 Ω.",
+[
+"Ω = ohms, the unit of resistance.",
+"kΩ = 1,000 Ω.",
+"2.2 × 1,000 = 2,200 Ω."
+]
+],
+"n5q1": [
+"0.0047 MΩ is 4,700 Ω. Add 330 Ω and you get 5,030 Ω, which is 5.03 kΩ.",
+[
+"MΩ = mega-ohms (a million ohms). kΩ = a thousand ohms.",
+"0.0047 × 1,000,000 = 4,700 Ω.",
+"4,700 + 330 = 5,030 Ω = 5.03 kΩ."
+]
+],
+"l11q1": [
+"Current = voltage ÷ resistance. Any pair where the voltage is half the resistance gives 0.5 A, like 3 V with 6 Ω, or 5 V with 10 Ω.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"Ohm's law: I = V ÷ R.",
+"We want 0.5 A, so V ÷ R must be 0.5, which means V is half of R.",
+"3 ÷ 6 = 0.5, 5 ÷ 10 = 0.5, 6 ÷ 12 = 0.5."
+]
+],
+"l11q2": [
+"If the resistance stays the same, twice the push gives twice the flow.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"I = V ÷ R. Keep R the same and double V: the answer doubles too."
+]
+],
+"l11q3": [
+"Current = voltage ÷ resistance. Dividing by twice as much resistance gives half the current.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"I = V ÷ R.",
+"Make R twice as big: you're dividing by a bigger number, so I is half."
+]
+],
+"l11q4": [
+"Current = voltage ÷ resistance: 6 V ÷ 3 Ω = 2 amps.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"Ohm's law: I = V ÷ R.",
+"6 ÷ 3 = 2 A (amps)."
+]
+],
+"l12q1": [
+"Resistance = voltage ÷ current: 9 V ÷ 0.3 A = 30 Ω.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"Ohm's law is V = I × R. Divide both sides by I to get R = V ÷ I.",
+"9 ÷ 0.3 = 30 Ω (ohms)."
+]
+],
+"l12q2": [
+"Resistance = voltage ÷ current: 12 ÷ 0.5 = 24 Ω.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"From V = I × R, divide by I: R = V ÷ I.",
+"12 ÷ 0.5 = 24 Ω."
+]
+],
+"l12q3": [
+"Voltage = current × resistance: 0.02 A × 220 Ω = 4.4 V.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"Ohm's law: V = I × R.",
+"0.02 × 220 = 4.4 V."
+]
+],
+"l12q4": [
+"1 kΩ is 1,000 Ω. Current = 5 V ÷ 1,000 Ω = 0.005 A, which is 5 mA.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"1 kΩ = 1,000 Ω.",
+"I = V ÷ R = 5 ÷ 1,000 = 0.005 A.",
+"0.005 A × 1,000 = 5 mA (milliamps)."
+]
+],
+"n6q1": [
+"First find the resistance: 24 V ÷ 0.4 A = 60 Ω. Doubling it to 120 Ω halves the current to 0.2 A.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"R = V ÷ I = 24 ÷ 0.4 = 60 Ω.",
+"Doubled: 120 Ω.",
+"I = V ÷ R = 24 ÷ 120 = 0.2 A."
+]
+],
+"n6q2": [
+"The resistance is 6 V ÷ 0.015 A = 400 Ω. With 10 V on the same resistor, 25 mA flows.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"R = V ÷ I = 6 ÷ 0.015 = 400 Ω.",
+"Same resistor, new push: I = 10 ÷ 400 = 0.025 A = 25 mA."
+]
+],
+"l13q1": [
+"Pick any point on the line: at 10 V the current is 2 A, so the resistance is 10 ÷ 2 = 5 Ω. Every point gives the same answer.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"R = V ÷ I.",
+"10 ÷ 2 = 5 Ω. Try another point, like 5 V and 1 A: 5 ÷ 1 = 5 Ω again."
+]
+],
+"l13q3": [
+"Line A is steeper: it gets more current for each volt. More current per volt means LESS resistance (A is 2 Ω, B is 8 Ω).",
+[
+"Resistance (R) slows the flow. Less resistance = more current for the same push.",
+"A steeper line = more current at each voltage = smaller R."
+]
+],
+"l14q1": [
+"With 12 Ω, 0.5 A flows, so the power is 6 × 0.5 = 3 W. Smaller resistances let more current through, so they use more power and get hotter.",
+[
+"P = power, how much energy is used each second, in watts (W). V = voltage, I = current, R = resistance.",
+"I = V ÷ R = 6 ÷ 12 = 0.5 A.",
+"Power = push × flow: P = V × I = 6 × 0.5 = 3 W."
+]
+],
+"l14q2": [
+"Power = voltage × current: 12 V × 2 A = 24 W.",
+[
+"P = power (watts, W): how much energy is used each second. V = voltage (the push). I = current (the flow).",
+"Power = push × flow: P = V × I.",
+"12 × 2 = 24 W."
+]
+],
+"n7q1": [
+"Power is 12 × 2.5 = 30 W. Running 180 seconds uses 30 × 180 = 5,400 joules of energy.",
+[
+"P = power (watts, W), E = energy (joules, J), t = time (seconds).",
+"Power = voltage × current: P = 12 × 2.5 = 30 W.",
+"A watt is a joule every second, so energy = power × time: E = 30 × 180 = 5,400 J."
+]
+],
+"n7q2": [
+"A steeper current-vs-voltage line means more current per volt, which means LESS resistance. So the flatter line, B, resists more.",
+[
+"Resistance slows the flow.",
+"More current for the same voltage = less resistance.",
+"The flatter line gets less current, so it has more resistance."
+]
+],
+"l15q1": [
+"The resistor turns 5 × 0.08 = 0.4 W into heat. A ¼ W part would burn out, and a ½ W part would be near its limit. A 1 W part is safe.",
+[
+"P = power, how much energy each second (watts, W). V = voltage, I = current.",
+"P = V × I = 5 × 0.08 = 0.4 W.",
+"¼ W = 0.25 W: too small. ½ W = 0.5 W: too close. 1 W: more than twice what's needed, a good safety margin."
+]
+],
+"l15q2": [
+"The part uses 5 × 0.1 = 0.5 W. Doubling for safety gives 1 W. A ½ W part would be right at its limit.",
+[
+"P = power (watts). V = voltage, I = current.",
+"P = V × I = 5 × 0.1 = 0.5 W.",
+"Rule of thumb: pick a part rated about 2× the power: 1 W."
+]
+],
+"l16q2": [
+"Two identical parts in a row share the push equally: 6 V ÷ 2 = 3 V each. Check: 3 V + 3 V = 6 V.",
+[
+"In series, the voltages across the parts add up to the battery.",
+"Same parts = same share.",
+"6 ÷ 2 = 3 V each."
+]
+],
+"l16q4": [
+"In a row (series), the voltages across the parts add up to the battery: 4 V + 5 V = 9 V.",
+[
+"The battery's push gets shared among the parts in the loop.",
+"4 + 5 = 9 V."
+]
+],
+"n8q1": [
+"The current is 10 ÷ 500 = 0.02 A. The 400 Ω resistor then uses P = I²R = 0.02 × 0.02 × 400 = 0.16 W.",
+[
+"P = power (watts), I = current (amps), R = resistance (ohms), V = voltage. I² means I × I.",
+"Where P = I²R comes from: power = voltage × current (P = V × I).",
+"Ohm's law says V = I × R. Put that in place of V: P = (I × R) × I = I × I × R = I²R.",
+"Current: I = 10 ÷ 500 = 0.02 A.",
+"P = 0.02 × 0.02 × 400 = 0.0004 × 400 = 0.16 W."
+]
+],
+"n8q2": [
+"A 220 Ω resistor reaches 0.25 W at about 7.4 V. Any more push and it overheats.",
+[
+"P = power (watts), V = voltage, R = resistance. V² means V × V. √ means square root.",
+"Where P = V² ÷ R comes from: P = V × I, and Ohm's law says I = V ÷ R. So P = V × (V ÷ R) = V² ÷ R.",
+"Flip it around: V² = P × R = 0.25 × 220 = 55.",
+"V = √55 ≈ 7.4 V."
+]
+],
+"l17q2": [
+"Each branch carries its own current, and they join back together: 0.2 A + 0.3 A = 0.5 A.",
+[
+"In parallel, the current splits into branches, then joins up again.",
+"Total = the branches added: 0.2 + 0.3 = 0.5 A."
+]
+],
+"l18q1": [
+"Two equal resistors side by side give half the resistance: two 10 Ω make 5 Ω. Two paths let current through more easily than one.",
+[
+"∥ means 'in parallel' (side by side).",
+"Rule for two in parallel: (R1 × R2) ÷ (R1 + R2), called 'product over sum'.",
+"(10 × 10) ÷ (10 + 10) = 100 ÷ 20 = 5 Ω."
+]
+],
+"l18q2": [
+"Resistors in a row (series) just add up: 100 + 220 = 320 Ω.",
+[
+"In series, current has to go through both, one after the other.",
+"So the slowing-down adds: 100 + 220 = 320 Ω."
+]
+],
+"l18q3": [
+"6 Ω and 3 Ω side by side make 2 Ω. That's smaller than either one, because two paths are easier than one.",
+[
+"∥ = in parallel (side by side).",
+"Product over sum: (6 × 3) ÷ (6 + 3) = 18 ÷ 9 = 2 Ω.",
+"The total in parallel is always smaller than the smallest resistor (3 Ω)."
+]
+],
+"n9q1": [
+"The side-by-side pair (6 Ω and 3 Ω) acts like 2 Ω. Add the 4 Ω in series: 2 + 4 = 6 Ω total.",
+[
+"∥ = in parallel. Product over sum: (6 × 3) ÷ (6 + 3) = 2 Ω.",
+"Series parts add: 2 + 4 = 6 Ω."
+]
+],
+"n9q2": [
+"The whole circuit is 6 Ω, so 2 A flows. The side-by-side pair gets 4 V, and the 3 Ω resistor carries 4 ÷ 3 ≈ 1.33 A.",
+[
+"V = voltage, I = current, R = resistance. I₃ = the current in the 3 Ω resistor.",
+"Total current: I = V ÷ R = 12 ÷ 6 = 2 A.",
+"The pair acts like 2 Ω, so its voltage is V = I × R = 2 × 2 = 4 V.",
+"I₃ = 4 ÷ 3 ≈ 1.33 A."
+]
+],
+"l19q1": [
+"R2 (5 kΩ) is a third of the total resistance (15 kΩ), so it gets a third of the 9 V: 3 V.",
+[
+"A voltage divider: two resistors in a row share the voltage by how big they are.",
+"Share = 9 × 5 ÷ (10 + 5).",
+"9 × 5 ÷ 15 = 3 V."
+]
+],
+"l19q2": [
+"Two equal resistors share the 12 V equally, so each gets 6 V.",
+[
+"Divider rule: V_out = 12 × R ÷ (R + R).",
+"R ÷ 2R = one half, so 12 ÷ 2 = 6 V."
+]
+],
+"l20q1": [
+"R1 always takes 6 ÷ 6 = 1 A. For 1.5 A in total, R2 must take 0.5 A, so R2 = 6 V ÷ 0.5 A = 12 Ω.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"In parallel, each branch gets the full 6 V.",
+"R1: I = 6 ÷ 6 = 1 A.",
+"The rest for R2: 1.5 − 1 = 0.5 A.",
+"R2 = V ÷ I = 6 ÷ 0.5 = 12 Ω."
+]
+],
+"l20q2": [
+"Both get 12 V. The 4 Ω branch carries 12 ÷ 4 = 3 A, and the 12 Ω branch only 1 A. The smaller resistance carries more.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"Current = voltage ÷ resistance.",
+"4 Ω: 12 ÷ 4 = 3 A. 12 Ω: 12 ÷ 12 = 1 A."
+]
+],
+"l20q3": [
+"It's the other way around: with the same voltage, a bigger resistance means LESS current.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"I = V ÷ R. Dividing by a bigger number gives a smaller answer."
+]
+],
+"n10q1": [
+"Adding a 10 kΩ load beside the bottom resistor makes that part 5 kΩ, so the output drops to 3 V. Loads pull dividers down.",
+[
+"∥ = in parallel. Two equal resistors in parallel = half: 10k ∥ 10k = 5 kΩ.",
+"Divider: V_out = 9 × 5 ÷ (10 + 5) = 3 V.",
+"Before the load it was 4.5 V, so connecting a load lowered it."
+]
+],
+"n10q2": [
+"Current splits between branches the opposite way to their resistance. The 4 Ω branch gets the smaller share: 1 A out of 3 A.",
+[
+"I₄ = the current in the 4 Ω branch.",
+"Rule: the share for one branch = total × (the OTHER branch's R) ÷ (sum of both).",
+"I₄ = 3 × 2 ÷ (2 + 4) = 6 ÷ 6 = 1 A."
+]
+],
+"l21q1": [
+"Squish side-by-side groups into one resistor first, then add the ones in a row, then use current = voltage ÷ resistance.",
+[
+"Step 1: replace each parallel group with its combined value.",
+"Step 2: add the series resistances.",
+"Step 3: total current I = V ÷ R."
+]
+],
+"l21q3": [
+"Two 6 Ω side by side act like 3 Ω. Add the 3 Ω in series: 3 + 3 = 6 Ω.",
+[
+"∥ = in parallel. Equal resistors in parallel = half: 6 ∥ 6 = 3 Ω.",
+"Series adds: 3 + 3 = 6 Ω."
+]
+],
+"n11q1": [
+"12 Ω and 6 Ω side by side act like 4 Ω. With the rest, the total is 8 Ω, so 3 A flows, and the pair gets 3 × 4 = 12 V.",
+[
+"∥ = in parallel. Product over sum: (12 × 6) ÷ (12 + 6) = 72 ÷ 18 = 4 Ω.",
+"Total 8 Ω, so I = V ÷ R = 24 ÷ 8 = 3 A.",
+"The pair's voltage: V = I × R = 3 × 4 = 12 V."
+]
+],
+"n11q2": [
+"Power = voltage × current: 24 V × 3 A = 72 W.",
+[
+"P = power (watts), V = voltage, I = current.",
+"P = V × I = 24 × 3 = 72 W."
+]
+],
+"n11q3": [
+"The 6 Ω and 3 Ω branches together act like 2 Ω, so 9 ÷ 2 = 4.5 A flows from the battery.",
+[
+"∥ = in parallel. Product over sum: (6 × 3) ÷ (6 + 3) = 2 Ω.",
+"Ohm's law: I = V ÷ R = 9 ÷ 2 = 4.5 A."
+]
+],
+"n14q1": [
+"'Same net' means electrically connected: they're on the same strip, or a wire joins them.",
+[
+"A net is a group of points joined by conductors.",
+"On a breadboard, holes in one strip are already joined."
+]
+],
+"l28q1": [
+"R3 sits between point C (2 V) and ground (0 V), so it gets 2 V. Check: 4 + 3 + 2 = 9 V, the whole battery.",
+[
+"Ground = the 0 V reference point.",
+"A part's voltage = the difference between its two ends: 2 − 0 = 2 V.",
+"KVL (Kirchhoff's voltage law): going around a loop, the parts' voltages add up to the battery's voltage."
+]
+],
+"l28q2": [
+"Around a loop, the parts' voltages add up to the battery. 5 + 4 = 9, so the third part gets 12 − 9 = 3 V.",
+[
+"KVL (Kirchhoff's voltage law): the battery's push is shared, and the shares add up to it.",
+"12 = 5 + 4 + ?",
+"? = 12 − 9 = 3 V."
+]
+],
+"l29q1": [
+"What flows in must flow out. 2 + 1.5 = 3.5 A comes in, so 3.5 A leaves. One wire takes 1 A, so the last one carries 2.5 A.",
+[
+"KCL (Kirchhoff's current law): current in = current out at any junction.",
+"In: 2 + 1.5 = 3.5 A.",
+"Out: 1 + ? = 3.5, so ? = 2.5 A."
+]
+],
+"l29q2": [
+"What comes into a junction must leave it. 5 A in, 2 A out one way, so 3 A goes the other way.",
+[
+"KCL (Kirchhoff's current law): in = out.",
+"5 = 2 + ?, so ? = 3 A."
+]
+],
+"n15q1": [
+"Around the loop, the voltages add up to the battery: 9 = 2 + 4.5 + V₂, so V₂ = 2.5 V.",
+[
+"KVL (Kirchhoff's voltage law): the parts' voltages add up to the battery.",
+"V₂ = the unknown voltage.",
+"V₂ = 9 − 2 − 4.5 = 2.5 V."
+]
+],
+"n15q2": [
+"Current in = current out. 30 + 5 = 35 mA comes in, 12 mA leaves one way, so 23 mA leaves the other way.",
+[
+"KCL (Kirchhoff's current law): in = out.",
+"30 + 5 = 12 + I.",
+"I = 35 − 12 = 23 mA."
+]
+],
+"l30q1": [
+"Point B reads 4 V above ground. Only at 4 V do the currents into and out of B match (2 mA each), so the math agrees.",
+[
+"Ground = 0 V. A node is a meeting point in a circuit.",
+"At the right node voltage, current in = current out (KCL)."
+]
+],
+"l30q2": [
+"A part's voltage is the difference between its two ends: 7 − 3 = 4 V.",
+[
+"Node voltages are measured from ground (0 V).",
+"Across a part = top end − bottom end = 7 − 3 = 4 V."
+]
+],
+"l31q1": [
+"Look at one battery at a time: V1 alone gives 3 V, V2 alone gives 2 V. Together they add: 3 + 2 = 5 V, which is what the meter shows.",
+[
+"Superposition: with several sources, find each one's effect alone, then add them up.",
+"V1 alone: half of 6 V = 3 V (R1 = R2 split it evenly).",
+"V2 alone: half of 4 V = 2 V.",
+"Both: 3 + 2 = 5 V."
+]
+],
+"l31q2": [
+"Add up the effect of each source on its own: 2 + 1.5 = 3.5 V.",
+[
+"Superposition: one source at a time, then add the results.",
+"2 + 1.5 = 3.5 V."
+]
+],
+"n16q1": [
+"Add each source's effect: one pushes +2 mA, the other −0.5 mA (the opposite way), so 2 − 0.5 = 1.5 mA.",
+[
+"Superposition: one source at a time, then add.",
+"A negative number means current in the opposite direction.",
+"2 + (−0.5) = 1.5 mA."
+]
+],
+"n16q2": [
+"The resistor gets 7 − 2.5 = 4.5 V, so 4.5 ÷ 1,500 = 3 mA flows.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"Voltage across = difference: 7 − 2.5 = 4.5 V.",
+"I = V ÷ R = 4.5 ÷ 1,500 = 0.003 A = 3 mA."
+]
+],
+"l32q1": [
+"The divider acts like a 6 V battery with a 3 kΩ resistor in series. Both circuits give the same voltage to any load you connect.",
+[
+"Thévenin: any battery-and-resistor network can be swapped for one battery (V_Th) plus one resistor (R_Th).",
+"V_Th = the open voltage: 12 × 6 ÷ 12 = 6 V.",
+"R_Th = the resistors seen from the output, side by side: 6 kΩ ∥ 6 kΩ = 3 kΩ."
+]
+],
+"l32q2": [
+"With nothing connected, it's just a divider: the 2 kΩ is half the 4 kΩ total, so it gets half of 10 V: 5 V.",
+[
+"Divider: V_out = 10 × 2 ÷ 4.",
+"= 5 V."
+]
+],
+"n17q1": [
+"The bottom 4 kΩ is two-thirds of the 6 kΩ total, so it gets two-thirds of 6 V: 4 V.",
+[
+"Divider: V_out = 6 × 4 ÷ (2 + 4).",
+"= 24 ÷ 6 = 4 V."
+]
+],
+"n17q2": [
+"The circuit's inside resistance is the open voltage divided by the short-circuit current: 12 ÷ 0.004 = 3 kΩ.",
+[
+"R_Th = the circuit's equivalent resistance. V_oc = voltage with nothing connected (open circuit). I_sc = current when the output is shorted.",
+"R_Th = V_oc ÷ I_sc (Ohm's law, R = V ÷ I).",
+"12 ÷ 0.004 = 3,000 Ω = 3 kΩ."
+]
+],
+"n17q3": [
+"A load gets the most power when its resistance matches the circuit's inside resistance (R_Th).",
+[
+"R_Th = the circuit's equivalent resistance.",
+"Too small a load: lots of current but little voltage. Too big: lots of voltage but little current.",
+"Equal resistance is the sweet spot for power."
+]
+],
+"c33q1": [
+"'Micro' (µ) means one millionth, so 470 µF = 0.00047 F.",
+[
+"F = farads, the unit of capacitance (how much charge a capacitor can store per volt).",
+"1 µF = 0.000001 F.",
+"470 × 0.000001 = 0.00047 F."
+]
+],
+"c33q2": [
+"Code 104 means 10 followed by four zeros, in pF: 100,000 pF = 100 nF = 0.1 µF.",
+[
+"pF = picofarads, nF = nanofarads, µF = microfarads. Each step is × 1,000.",
+"10 × 10⁴ = 100,000 pF.",
+"100,000 pF ÷ 1,000 = 100 nF; ÷ 1,000 again = 0.1 µF."
+]
+],
+"c33q5": [
+"Stored charge = capacitance × voltage: 0.00047 F × 9 V ≈ 0.0042 C (4.2 millicoulombs).",
+[
+"Q = charge (coulombs, C), C = capacitance (farads, F), V = voltage.",
+"A capacitor stores more charge when it's bigger or pushed harder: Q = C × V.",
+"0.00047 × 9 ≈ 0.0042 C = 4.2 mC."
+]
+],
+"c33q6": [
+"Pick a capacitor rated well above the voltage it will see (about 1.5× or more). Running at or above its rating stresses it.",
+[
+"The voltage rating is the most a capacitor can safely handle.",
+"Extra headroom keeps it safe and long-lasting."
+]
+],
+"c33q7": [
+"Capacitance = charge ÷ voltage. Same charge but twice the voltage means half the capacitance.",
+[
+"C = capacitance, Q = charge, V = voltage.",
+"From Q = C × V, divide by V: C = Q ÷ V.",
+"Twice the V on the bottom = half the C."
+]
+],
+"c34q1": [
+"The time constant τ (tau) is resistance × capacitance. 10 kΩ × 100 µF = 1 second, and so do 100 kΩ × 10 µF or 22 kΩ × 47 µF (about 1.03 s).",
+[
+"τ (tau) = the time constant: how long a capacitor takes to fill about 63% of the way.",
+"τ = R × C (resistance in ohms × capacitance in farads gives seconds).",
+"10,000 × 0.0001 = 1 s. 100,000 × 0.00001 = 1 s. 22,000 × 0.000047 ≈ 1.03 s."
+]
+],
+"c34q2": [
+"τ (the time constant) = resistance × capacitance: 10,000 Ω × 0.000047 F = 0.47 seconds.",
+[
+"τ (tau) = how long a capacitor takes to fill about 63% of the way.",
+"τ = R × C.",
+"10,000 × 0.000047 = 0.47 s."
+]
+],
+"c34q4": [
+"A capacitor is basically full after 5 time constants (5τ). For 1 to 2 seconds, τ must be 0.2 to 0.4 s, like 4.7 kΩ × 47 µF ≈ 0.22 s.",
+[
+"τ (tau) = R × C, the time constant.",
+"Full ≈ 5τ, so τ = (1 to 2 s) ÷ 5 = 0.2 to 0.4 s.",
+"4,700 × 0.000047 ≈ 0.22 s, or 10,000 × 0.000022 = 0.22 s."
+]
+],
+"c34q5": [
+"The time constant τ = R × C, so a bigger resistor (or capacitor) means a slower fill.",
+[
+"τ (tau) = how long a capacitor takes to fill most of the way.",
+"Double R → double τ. Same for C."
+]
+],
+"c34q6": [
+"Each time constant fills 63% of what's still empty. After two, it's 86% full: 0.86 × 9 V ≈ 7.8 V.",
+[
+"τ (tau) = the time constant.",
+"After 1τ: 63% full, 37% still empty.",
+"After 2τ: 63% of that 37% fills too, about 23% more, so about 86%.",
+"0.86 × 9 ≈ 7.8 V."
+]
+],
+"c34q7": [
+"τ = 2,200 Ω × 0.001 F = 2.2 seconds. It's basically empty after 5τ, about 11 seconds.",
+[
+"τ (tau) = R × C, the time constant.",
+"2,200 × 0.001 = 2.2 s.",
+"Fully discharged ≈ 5τ = 5 × 2.2 = 11 s."
+]
+],
+"c35q2": [
+"With the switch on, 5 V pushes a small current through the 10 kΩ resistor into the transistor's base. That turns the transistor fully on, and the LED lights.",
+[
+"A transistor is an electronic switch: a small current into its base lets a big current flow through it.",
+"Saturated = switched fully on."
+]
+],
+"c35q3": [
+"The base resistor sets how much current switches the transistor on. 4.7 kΩ or 10 kΩ give a good amount (about 0.9 or 0.43 mA). 1 kΩ wastes current, and 47 kΩ or 100 kΩ give too little.",
+[
+"The base needs about 0.7 V, so 5 − 0.7 = 4.3 V is left for the resistor (R_B).",
+"I_B (base current) = 4.3 ÷ R_B.",
+"4.7 kΩ: ≈ 0.9 mA. 10 kΩ: ≈ 0.43 mA. 1 kΩ: 4.3 mA (wasteful). 100 kΩ: 0.043 mA (too little to switch fully on)."
+]
+],
+"c35q4": [
+"The base needs about 1 mA to switch fully on, so the base resistor should be about 4,300 Ω.",
+[
+"I_B = base current. The transistor multiplies it by about 200 (its gain).",
+"Needed: 20 mA ÷ 200 = 0.1 mA. Use 10× extra to be safe: 1 mA.",
+"The base takes about 0.7 V, so 5 − 0.7 = 4.3 V is left for the resistor.",
+"Ohm's law says resistance = voltage ÷ current (R = V ÷ I). R = 4.3 ÷ 0.001 = 4,300 Ω."
+]
+],
+"c36q1": [
+"The 555 timer's blink speed is f = 1.44 ÷ ((R1 + 2 × R2) × C). With these parts, 4.7 kΩ + 4.7 kΩ + 100 µF gives about 1 blink a second.",
+[
+"f = frequency, blinks per second (Hz). R1, R2 = the two resistors. C = the capacitor.",
+"Bigger parts = slower blinking, because the capacitor takes longer to fill.",
+"4.7k + 4.7k + 100 µF: 1.44 ÷ ((4,700 + 9,400) × 0.0001) ≈ 1.02 Hz.",
+"10k + 22k + 22 µF: ≈ 1.21 Hz."
+]
+],
+"c36q2": [
+"Using the 555 formula, these parts blink about 1.46 times a second.",
+[
+"f = frequency (blinks per second, Hz). Formula: f = 1.44 ÷ ((R1 + 2 × R2) × C).",
+"R1 + 2 × R2 = 1k + 20k = 21,000 Ω.",
+"21,000 × 0.000047 ≈ 0.987.",
+"1.44 ÷ 0.987 ≈ 1.46 Hz."
+]
+],
+"c36q3": [
+"To keep the light on less than 60% of the time, R2 must be much bigger than R1 (like 1 kΩ and 10 kΩ, about 52%). Then choose C for at least 2 blinks a second: 22 µF gives about 3.1.",
+[
+"Duty = the part of each blink when the output is ON.",
+"On-time depends on R1 + R2, off-time on R2 alone, so a big R2 makes them nearly equal.",
+"Duty = (1 + 10) ÷ (1 + 20) ≈ 52%."
+]
+],
+"c36q4": [
+"A bigger capacitor takes longer to fill, so the blinking gets slower: frequency goes down as C goes up.",
+[
+"f = frequency, C = capacitance.",
+"f is proportional to 1 ÷ C: double C, half f."
+]
+],
+"c36q5": [
+"While the capacitor fills through R1 and R2, the output is ON. While it empties through R2 only, the output is OFF.",
+[
+"The 555 switches between charging and discharging the capacitor.",
+"Charging path: R1 + R2. Discharging path: R2."
+]
+],
+"c36q6": [
+"For half a blink per second with these resistors, the capacitor needs to be about 137 µF.",
+[
+"Start from f = 1.44 ÷ ((R1 + 2 × R2) × C) and solve for C: C = 1.44 ÷ (f × (R1 + 2 × R2)).",
+"R1 + 2 × R2 = 21,000 Ω, f = 0.5 Hz.",
+"0.5 × 21,000 = 10,500.",
+"1.44 ÷ 10,500 ≈ 0.000137 F = 137 µF."
+]
+],
+"c37q1": [
+"Only in the dark is the light sensor's resistance high (about 100 kΩ), so the divider sends enough current to the base to switch the transistor fully on.",
+[
+"LDR = light-dependent resistor: low resistance in light, high in the dark.",
+"Saturate = switch the transistor fully on."
+]
+],
+"c37q2": [
+"In light (LDR 5 kΩ), the base must stay under 0.7 V so the LED stays off, which needs a top resistor over about 59 kΩ. 100 kΩ works; 220 kΩ leaves the LED dim in the dark.",
+[
+"LDR = light-dependent resistor. The base needs about 0.7 V to start switching on.",
+"Divider: 9 × 5 ÷ (R + 5) must be below 0.7.",
+"Solve: R + 5 > 9 × 5 ÷ 0.7 ≈ 64, so R > about 59 kΩ."
+]
+],
+"c37q3": [
+"Equal resistors split the voltage in half: 9 × 100 ÷ 200 = 4.5 V. (Once connected, the base holds it near 0.7 V.)",
+[
+"Divider: equal resistors share equally.",
+"9 ÷ 2 = 4.5 V."
+]
+],
+"c37q6": [
+"A high voltage across the transistor (V_CE) means it isn't fully on: the base isn't getting enough current.",
+[
+"V_CE = voltage from the transistor's collector to emitter.",
+"Fully on (saturated): V_CE is tiny, close to 0.",
+"High V_CE = only partly on."
+]
+],
+"T4q6": [
+"Breadboard holes are 0.1 inch apart, which is 2.54 mm.",
+[
+"1 inch = 25.4 mm, so 0.1 inch = 2.54 mm."
+]
+],
+"T4q8": [
+"The flat edge and the short leg mark the cathode, the − side of the LED.",
+[
+"Cathode = where current comes out (−). Anode = the long leg (+)."
+]
+],
+"T5q1": [
+"7 V is left for the resistor, and for 15 mA it needs about 467 Ω. The nearest standard size is 470 Ω.",
+[
+"V = voltage, I = current, R = resistance.",
+"Ohm's law says resistance = voltage ÷ current (R = V ÷ I).",
+"7 ÷ 0.015 ≈ 467 Ω → 470 Ω."
+]
+],
+"T5q2": [
+"The LED uses 3 V, leaving 2 V for the resistor. For 20 mA: 2 ÷ 0.02 = 100 Ω.",
+[
+"Left for the resistor: 5 − 3 = 2 V.",
+"20 mA = 0.02 A.",
+"Ohm's law says resistance = voltage ÷ current (R = V ÷ I). 2 ÷ 0.02 = 100 Ω."
+]
+],
+"T5q3": [
+"10 V is left for the resistor. 1 kΩ lets about 10 mA flow (good). 470 Ω lets about 20 mA through (too much).",
+[
+"Left: 12 − 2 = 10 V.",
+"Current = voltage ÷ resistance.",
+"10 ÷ 1,000 = 10 mA. 10 ÷ 470 ≈ 21 mA."
+]
+],
+"T5q6": [
+"The LED uses 6 V, leaving 3 V. For 15 mA: 3 ÷ 0.015 = 200 Ω.",
+[
+"Left: 9 − 6 = 3 V.",
+"15 mA = 0.015 A.",
+"Ohm's law says resistance = voltage ÷ current (R = V ÷ I). 3 ÷ 0.015 = 200 Ω."
+]
+],
+"T5q8": [
+"Four LEDs at 18 mA use 72 mA. A 2000 mAh battery lasts about 2000 ÷ 72 ≈ 28 hours.",
+[
+"Total current: 4 × 18 = 72 mA.",
+"mAh (milliamp-hours) is the battery's 'fuel tank'.",
+"Hours = 2000 ÷ 72 ≈ 28."
+]
+],
+"T6q4": [
+"For 16 mA, the total resistance must be about 7 ÷ 0.016 ≈ 440 Ω. Take away the 220 Ω, and the pot is about 200 Ω.",
+[
+"Pot = a knob resistor.",
+"Total R = V ÷ I = 7 ÷ 0.016 ≈ 437 Ω.",
+"Pot = 437 − 220 ≈ 200 Ω."
+]
+],
+"T6q5": [
+"80% of 5 kΩ is 4 kΩ.",
+[
+"0.8 × 5 = 4 kΩ."
+]
+],
+"T6q6": [
+"The bottom resistor is 10 parts of 12 in total, so it gets 10/12 of 9 V: 7.5 V.",
+[
+"Divider: 9 × 10 ÷ 12.",
+"= 90 ÷ 12 = 7.5 V."
+]
+],
+"T6q8": [
+"To get more than half of 9 V, the sensor's resistance must be bigger than the 10 kΩ resistor. The 20 kΩ setting (6 V) is the first one above.",
+[
+"Divider: 9 × R ÷ (10k + R).",
+"Exactly half when R = 10 kΩ, so it needs R > 10 kΩ.",
+"20 kΩ: 9 × 20 ÷ 30 = 6 V."
+]
+],
+"T6q9": [
+"40 mA in total from a 500 mAh battery lasts about 500 ÷ 40 = 12.5 hours.",
+[
+"mAh = the battery's 'fuel tank'.",
+"Hours = capacity ÷ current."
+]
+],
+"T6q12": [
+"Branch A takes about 21 mA and B takes 10 mA, so about 31 mA in total.",
+[
+"Current = voltage ÷ resistance.",
+"A: 7 ÷ 330 ≈ 21 mA. B: 6.8 ÷ 680 = 10 mA.",
+"Total: 21 + 10 = 31 mA."
+]
+],
+"t2q5": [
+"Less resistance lets more current through with the same voltage. 10 Ω is the smallest, so the bulb is brightest.",
+[
+"Resistance (Ω, ohms) slows the flow.",
+"More current = brighter."
+]
+],
+"t2q7": [
+"1 amp is 1,000 milliamps, so 0.5 A = 500 mA.",
+[
+"mA = milliamps (thousandths of an amp).",
+"0.5 × 1,000 = 500 mA."
+]
+],
+"T1x1": [
+"0.5 A for 120 seconds moves 60 coulombs of charge. Each coulomb gets 9 joules from the 9 V battery, so 540 J in total.",
+[
+"Q = charge (coulombs), I = current (amps), t = time (seconds).",
+"Q = I × t = 0.5 × 120 = 60 C.",
+"9 V = 9 joules per coulomb, so 60 × 9 = 540 J."
+]
+],
+"t3q1": [
+"Current = voltage ÷ resistance: 12 ÷ 4 = 3 A.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"Ohm's law: I = V ÷ R.",
+"12 ÷ 4 = 3 A."
+]
+],
+"t3q3": [
+"Current = voltage ÷ resistance, so twice the resistance gives half the current.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"Dividing by a bigger number gives a smaller answer."
+]
+],
+"t3q5": [
+"Voltage = current × resistance: 0.5 × 20 = 10 V.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"Ohm's law: V = I × R.",
+"0.5 × 20 = 10 V."
+]
+],
+"t3q7": [
+"Power = voltage × current: 9 × 0.5 = 4.5 W.",
+[
+"P = power (watts, how much energy each second), V = voltage, I = current.",
+"P = V × I = 9 × 0.5 = 4.5 W."
+]
+],
+"t3q9": [
+"Power = voltage × current. 12 V × 1 A = 12 W, and 6 V × 1.5 A = 9 W, so the 12 V one uses more.",
+[
+"P = power (watts), V = voltage, I = current.",
+"P = V × I for each, then compare."
+]
+],
+"t4q6": [
+"Two equal resistors side by side give half: two 12 Ω make 6 Ω.",
+[
+"In parallel, two equal paths = half the resistance.",
+"12 ÷ 2 = 6 Ω."
+]
+],
+"t4q8": [
+"With R2 = 3 kΩ, the divider gives 12 × 3 ÷ 9 = 4 V, which matches.",
+[
+"Divider: V_out = 12 × R2 ÷ (R1 + R2).",
+"12 × 3 ÷ (6 + 3) = 36 ÷ 9 = 4 V."
+]
+],
+"t4q10": [
+"Both get the same voltage, and current = voltage ÷ resistance, so the smaller resistor carries more current.",
+[
+"V = voltage (the push), I = current (how much electricity flows), R = resistance (how much a part slows the flow).",
+"I = V ÷ R: smaller R → bigger I."
+]
+],
+"T2x1": [
+"The two 6 Ω side by side act like 3 Ω, so the total is 6 Ω and 3 A flows. Each 6 Ω carries half (1.5 A) and turns 1.5 × 1.5 × 6 = 13.5 W into heat.",
+[
+"P = power (watts), I = current (amps), R = resistance (ohms). I² means I × I.",
+"Where P = I²R comes from: P = V × I, and Ohm's law says V = I × R, so P = I × R × I = I²R.",
+"6 ∥ 6 = 3 Ω (equal resistors in parallel halve). Total 3 + 3 = 6 Ω.",
+"Total current: I = 18 ÷ 6 = 3 A. It splits evenly: 1.5 A each.",
+"P = 1.5 × 1.5 × 6 = 2.25 × 6 = 13.5 W."
+]
+],
+"T2x2": [
+"3 kΩ and 6 kΩ side by side act like 2 kΩ. The divider then gives 12 × 2 ÷ 8 = 3 V.",
+[
+"∥ = in parallel. Product over sum: (3 × 6) ÷ (3 + 6) = 2 kΩ.",
+"Divider: 12 × 2 ÷ (6 + 2) = 3 V."
+]
+],
+"t6q2": [
+"R2 sits between B (5 V) and C (2 V), so it gets the difference: 5 − 2 = 3 V.",
+[
+"Voltage across a part = the difference between its two ends."
+]
+],
+"t6q4": [
+"What comes in must go out: 4 A in, 1.5 A out one way, so 2.5 A out the other.",
+[
+"KCL (Kirchhoff's current law): in = out.",
+"1.5 + ? = 4, so ? = 2.5 A."
+]
+],
+"t6q6": [
+"The voltage across is the difference: 12 − 8 = 4 V.",
+[
+"Across a part = top end − bottom end."
+]
+],
+"t6q8": [
+"Add the effect of each source alone: 4 + 1 = 5 V.",
+[
+"Superposition: one source at a time, then add."
+]
+],
+"t6q10": [
+"The circuit acts like a 6 V battery with a 2 kΩ resistor: V_Th = 9 × 6 ÷ 9 = 6 V, and R_Th = 3 ∥ 6 = 2 kΩ.",
+[
+"Thévenin: swap the network for one battery (V_Th) plus one resistor (R_Th).",
+"V_Th = divider voltage: 9 × 6 ÷ (3 + 6) = 6 V.",
+"R_Th = resistors side by side: (3 × 6) ÷ (3 + 6) = 2 kΩ."
+]
+],
+"t6q11": [
+"Two equal 4 kΩ resistors side by side make 2 kΩ.",
+[
+"Equal resistors in parallel = half: 4 ÷ 2 = 2 kΩ."
+]
+],
+"T3x1": [
+"For 4 V out of 10 V, the 2 kΩ must be 4/10 of the total, so the total is 5 kΩ and R is 3 kΩ.",
+[
+"Divider: 4 = 10 × 2 ÷ (R + 2).",
+"So R + 2 = 10 × 2 ÷ 4 = 5.",
+"R = 5 − 2 = 3 kΩ."
+]
+],
+"T7q1": [
+"1 µF is 1,000 nF, so 0.22 µF = 220 nF.",
+[
+"µF = microfarads, nF = nanofarads (1,000 times smaller).",
+"0.22 × 1,000 = 220 nF."
+]
+],
+"T7q3": [
+"Charge = capacitance × voltage: 0.0001 F × 12 V = 0.0012 C.",
+[
+"Q = charge (coulombs), C = capacitance (farads), V = voltage.",
+"Q = C × V = 0.0001 × 12 = 0.0012 C."
+]
+],
+"T7q4": [
+"The time constant is resistance × capacitance. For example 10 kΩ × 47 µF = 0.47 s, or 22 kΩ × 22 µF ≈ 0.48 s.",
+[
+"τ (tau) = R × C, how long a capacitor takes to fill about 63%.",
+"10,000 × 0.000047 = 0.47 s. 22,000 × 0.000022 ≈ 0.48 s."
+]
+],
+"T7q6": [
+"τ = 47,000 Ω × 0.00022 F ≈ 10.3 seconds, and it's basically full after 5τ, about 52 seconds.",
+[
+"τ (tau) = R × C, the time constant.",
+"47,000 × 0.00022 ≈ 10.3 s.",
+"5 × 10.3 ≈ 52 s."
+]
+],
+"T7q8": [
+"10 kΩ gives about 0.43 mA into the base, just right. 4.7 kΩ gives 0.9 mA (more than needed), and 47 kΩ only 0.09 mA (too little).",
+[
+"The base takes about 0.7 V, so 5 − 0.7 = 4.3 V is left for the resistor.",
+"Current = voltage ÷ resistance: 4.3 ÷ 10,000 ≈ 0.43 mA."
+]
+],
+"T7q9": [
+"The transistor multiplies base current about 200 times, so 15 mA needs at least 15 ÷ 200 = 0.075 mA (75 µA) at the base. Use more to be safe.",
+[
+"Gain = how many times the transistor multiplies the base current.",
+"15 ÷ 200 = 0.075 mA = 75 µA (microamps)."
+]
+],
+"T7q10": [
+"For example R1 1 kΩ, R2 10 kΩ and C 22 µF blink about 3.1 times a second.",
+[
+"555 formula: f = 1.44 ÷ ((R1 + 2 × R2) × C).",
+"(1,000 + 20,000) × 0.000022 = 0.462.",
+"1.44 ÷ 0.462 ≈ 3.1 Hz."
+]
+],
+"T7q11": [
+"Duty = on-time ÷ whole blink: (1 + 1) ÷ (1 + 2) = 2/3, about 67%.",
+[
+"Duty = the part of each blink that's ON.",
+"On ∝ R1 + R2, whole cycle ∝ R1 + 2 × R2.",
+"(1 + 1) ÷ (1 + 2) = 2 ÷ 3 ≈ 67%."
+]
+]
+};
+const JARGON = [
+  [/\bKVL\b/, 'KVL (Kirchhoff\'s voltage law): around any loop, the voltages of the parts add up to the battery\'s voltage.'],
+  [/\bKCL\b/, 'KCL (Kirchhoff\'s current law): the current flowing into a junction equals the current flowing out.'],
+  [/Th[ée]venin|\bR_Th\b|\bV_Th\b/, 'Thévenin equivalent: any battery-and-resistor network can be replaced by one battery plus one resistor.'],
+  [/superposition/i, 'Superposition: with several batteries, work out each one\'s effect alone, then add them up.'],
+  [/saturat/i, 'Saturated: a transistor switched fully on.'],
+  [/\btransistor/i, 'Transistor: an electronic switch; a small current into its base controls a big current through it.'],
+  [/\bbase\b/i, 'Base: the transistor\'s control pin.'],
+  [/\bcollector|\bemitter/i, 'Collector and emitter: the two pins the big current flows between in a transistor.'],
+  [/\banode/i, 'Anode: the + side of an LED or diode, where current goes in.'],
+  [/\bcathode/i, 'Cathode: the − side of an LED or diode, where current comes out.'],
+  [/polarity|polarized/i, 'Polarity: which way round a part goes (+ and −).'],
+  [/forward voltage/i, 'Forward voltage: the voltage an LED or diode uses up when it\'s on.'],
+  [/\bdiode/i, 'Diode: a one-way valve for current.'],
+  [/\bLDR\b/, 'LDR (light-dependent resistor): its resistance goes down in light and up in the dark.'],
+  [/potentiometer|\bpot\b|wiper/i, 'Potentiometer (pot): a resistor with a knob; the wiper is the middle pin that slides along it.'],
+  [/\bduty\b/i, 'Duty cycle: the part of each blink when the output is on.'],
+  [/\bcapacitor|\bcap\b/i, 'Capacitor: a part that stores charge, like a tiny, fast rechargeable tank.'],
+  [/\bnode\b|\bnet\b/i, 'Node (or net): all the points that are wired together, so they share one voltage.'],
+  [/\bground\b|\bGND\b/i, 'Ground: the 0 V reference point that other voltages are measured from.'],
+  [/\brail/i, 'Rail: the long strips along a breadboard\'s edge, used for power (+) and ground (−).'],
+  [/short circuit|\bshort\b/i, 'Short circuit: a path with almost no resistance, so far too much current flows.'],
+  [/open circuit|\bopen\b/i, 'Open circuit: a gap in the loop, so no current can flow.'],
+  [/\bseries\b/i, 'Series: parts in a single line, one after another, so the same current goes through each.'],
+  [/\bparallel\b/i, 'Parallel: parts side by side, each on its own branch, all getting the same voltage.'],
+  [/insulat/i, 'Insulator: a material that stops electricity flowing (like plastic or rubber).'],
+  [/conduct/i, 'Conductor: a material that lets electricity flow easily (like copper).'],
+  [/\bresist/i, 'Resistance: how much a part slows the flow of current (measured in ohms, Ω).'],
+  [/\bcurrent\b/i, 'Current: how much electricity flows (measured in amps, A).'],
+  [/\bvolt/i, 'Voltage: the push that makes current flow (measured in volts, V).'],
+];
+(() => {
+  const all = [...Object.values(LESSONS).flatMap(L => L.steps || []), ...Object.values(TESTS).flatMap(T => T.steps || [])];
+  const txt = h => String(h || '').replace(/<[^>]+>/g, ' ');
+  all.forEach(s => {
+    if (!s || !s.why || s._kid) return; s._kid = 1;
+    const k = s.id && KIDWHY[s.id];
+    if (k) { s.whyOrig = s.why; s.why = k[0]; s.whyMore = k[1]; return; }
+    const w = JARGON.filter(([re]) => re.test(txt(s.why))).slice(0, 3).map(j => j[1]);
+    if (w.length) s.whyWords = w;
+  });
+})();
+// the Why box: short default + collapsed detail
+function whyHTML(step) {
+  const li = a => a.map(x => `<li>${x}</li>`).join('');
+  return `${step.why}${step.whyMore ? `<details class="whymore" ontoggle="this.open&&this.scrollIntoView({block:'nearest',behavior:'smooth'})"><summary>More detail</summary><ol>${li(step.whyMore)}</ol></details>` : step.whyWords ? `<details class="whymore"><summary>Words to know</summary><ul>${li(step.whyWords)}</ul></details>` : ''}`;
+}
+/* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
 const KEY = 'zapling.v1';
@@ -3131,7 +4473,7 @@ async function doCheck() {
   const praise = ['Nice!', 'Great job!', 'You got it!', 'Brilliant!', 'Spot on!'];
   const head = step.graded === false ? 'Experiment complete!' : ok ? praise[Math.floor(Math.random() * praise.length)] : 'Not quite';
   const ans = !ok && CTRL.answer ? `<div style="font-weight:800;margin:-4px 0 10px;color:var(--corald)">Correct answer: <span style="color:var(--ink)">${CTRL.answer}</span></div>` : '';
-  const whyH = `${ans}<div class="whylbl">${ICON.why()} Why</div><div class="why on" id="whyBox">${step.why}</div>`;
+  const whyH = `${ans}<div class="whylbl">${ICON.why()} Why</div><div class="why on" id="whyBox">${whyHTML(step)}</div>`;
   if (R.kind === 'lesson' && R.phase === 'main') { R.hist = R.hist || {}; R.hist[R.idx] = { stage: $('#stage').innerHTML, ok, fb: `<div class="fbhead"><span class="ic">${ok ? ICON.check() : ICON.cross()}</span><b>${step.graded === false ? 'Experiment complete!' : ok ? 'You got this right' : 'You missed this one'}</b></div>${whyH}` }; }
   const f = footer(`<div class="fbhead"><span class="ic">${ok ? ICON.check() : ICON.cross()}</span><b>${head}</b>${gain ? `<span class="xp">+${gain} XP</span>` : ''}</div>${whyH}${!ok && step.graded !== false ? `<button class="askbtn askwrong" id="askWhy">${askIcon()}Ask why I got this wrong</button>` : ''}
     ${frow(`<button class="btn ${ok ? 'primary' : 'coral'}" id="btnNext">Continue</button>`)}`);
@@ -3176,7 +4518,7 @@ function retryPast(i) {
     if (BUSY) return; BUSY = true; $('#btnCheck').disabled = true;
     const ok = await CTRL.check(); if (CTRL.lock) CTRL.lock(ok); ok ? SFX.good() : SFX.bad();
     const ans = !ok && CTRL.answer ? `<div style="font-weight:800;margin:-4px 0 10px;color:var(--corald)">Correct answer: <span style="color:var(--ink)">${CTRL.answer}</span></div>` : '';
-    footer(`<div class="fbhead"><span class="ic">${ok ? ICON.check() : ICON.cross()}</span><b>${ok ? 'Got it! (practice)' : 'Not quite (practice)'}</b></div>${ans}<div class="whylbl">${ICON.why()} Why</div><div class="why on">${step.why}</div>${pastFoot(i, true)}`).classList.add('fb', ok ? 'good' : 'bad');
+    footer(`<div class="fbhead"><span class="ic">${ok ? ICON.check() : ICON.cross()}</span><b>${ok ? 'Got it! (practice)' : 'Not quite (practice)'}</b></div>${ans}<div class="whylbl">${ICON.why()} Why</div><div class="why on">${whyHTML(step)}</div>${pastFoot(i, true)}`).classList.add('fb', ok ? 'good' : 'bad');
     bindPast(i); BUSY = false;
   };
 }
@@ -3653,7 +4995,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.6 (2026-10-03)';
+const APP_VERSION = '7.7 (2026-10-03)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -4160,7 +5502,7 @@ function curStepCtx(mistake) {
   else {
     c.question = plain(step.q);
     if (step.opts) c.options = step.opts.map(plain); else if (step.type === 'tf') c.options = ['True', 'False'];
-    if (answered) { c.why = plain(step.why); c.correct = plain(CTRL && CTRL.answer); }
+    if (answered) { c.why = plain(step.why); c.whyMore = (step.whyMore || []).map(plain); c.correct = plain(CTRL && CTRL.answer); }
     if (mistake) {
       let her = CTRL && CTRL.picked ? CTRL.picked() : null;
       if (!her) { const s = $$('#stage .status'); her = s.length ? 'On screen: ' + plain(s[s.length - 1].innerHTML) : null; }
@@ -4189,7 +5531,7 @@ function ctxLines(c) {
   return out;
 }
 function copyPrompt(c, q) {
-  return ['I\'m a complete beginner learning electronics with a beginner app (Zapling). Please explain in plain, friendly words and short steps. Define every term and symbol the first time you use it, and use a small example with simple numbers if it helps.',
+  return ['I\'m a young beginner learning electronics with a kids-friendly app (Zapling). Please explain like you would to a curious kid: plain words, 1-3 short sentences. Define every symbol and term the first time you use it (like "I = current, how much electricity flows"), show where any formula comes from, and only give numbered steps if I ask for more detail.',
     c.hintOnly ? 'I\'m in the middle of a practice test, so please give me a HINT only. Don\'t tell me which option is correct.' : '',
     ...ctxLines(c), '', `My question: ${q || (c.kind === 'mistake' ? 'Why was my answer wrong, and how do I think about it next time?' : 'Can you explain this simply?')}`].filter((x, i) => x !== '' || i > 1).join('\n');
 }
@@ -4198,12 +5540,14 @@ function copyPrompt(c, q) {
 function offlineAnswer(c, q) {
   const parts = [], qq = [q, c.question, c.conceptTitle, c.kind === 'mistake' ? c.why : ''].filter(Boolean).join(' ');
   if (c.hintOnly) parts.push(`<h5>Hint mode (unit test)</h5>I can't give test answers, but here's a nudge. Re-read the question slowly, and check the idea below.`);
-  else if (c.why) parts.push(`<h5>${c.kind === 'mistake' ? 'Why the right answer is right' : 'Why?'}</h5>${esc(c.why)}${c.correct ? `<div class="note">Correct answer: <b>${esc(c.correct)}</b>${c.her ? ` · You picked: ${esc(c.her)}` : ''}</div>` : ''}`);
+  else if (c.why) parts.push(`<h5>${c.kind === 'mistake' ? 'Why the right answer is right' : 'Why?'}</h5>${esc(c.why)}${c.correct ? `<div class="note">Correct answer: <b>${esc(c.correct)}</b>${c.her ? ` · You picked: ${esc(c.her)}` : ''}</div>` : ''}${c.whyMore && c.whyMore.length ? `<h5>Step by step</h5><ol>${c.whyMore.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}`);
+  if (!c.hintOnly) { const f = formulaHit(q); if (f) parts.unshift(`<h5>${esc(f.name)}</h5>${esc(f.short)}<ol>${f.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>`); }
   const con = sprigSearch(qq, c, 'concept', 2).filter(e => !(c.conceptTitle && e.title === c.conceptTitle && !q));
   const conc = c.conceptTitle && !q ? { title: c.conceptTitle, text: c.concept } : con[0];
-  if (conc) parts.push(`<h5>From the lesson: ${esc(conc.title)}</h5>${esc(conc.text.length > 420 ? conc.text.slice(0, 420) + '…' : conc.text)}`);
+  if (conc && !(q && formulaHit(q))) parts.push(`<h5>From the lesson: ${esc(conc.title)}</h5>${esc(conc.text.length > 420 ? conc.text.slice(0, 420) + '…' : conc.text)}`);
   if (!c.hintOnly && q) { const qs = sprigSearch(q, c, 'q', 1)[0]; if (qs && qs.text !== c.why) parts.push(`<h5>A related explanation</h5>${esc(qs.title)}<br><i>${esc(qs.text)}</i>`); }
   const cards = sprigSearch(qq + ' ' + (q || ''), c, 'card', 3);
+  const sy = symbolsIn([q, c.question, c.why].filter(Boolean).join(' ')); if (sy.length) parts.push(`<h5>Symbols</h5>${sy.map(([k, d]) => `<b>${esc(k)}</b> = ${esc(d)}`).join('<br>')}`);
   if (cards.length) parts.push(`<h5>Glossary</h5>${cards.map(e => `<b>${esc(e.title)}:</b> ${esc(e.text)}`).join('<br>')}`);
   if (!parts.length || (parts.length === 1 && c.hintOnly)) parts.push(`I couldn't find that in my lessons yet. Try different words (like "series", "ground" or "KVL"), or copy the question to a full AI below.`);
   return parts.join('');
@@ -4217,6 +5561,8 @@ const brief = (t, n = 2, max = 230) => { const s = String(t || '').replace(/\s+/
 function offlineBrief(c, q) {
   const full = offlineAnswer(c, q);
   if (wantsDetail(q)) return { html: full, more: null };
+  const fh = !c.hintOnly && formulaHit(q); if (fh) return { html: esc(fh.short), more: full };
+  const sh = !c.hintOnly && symbolAsk(q); if (sh) return { html: `<b>${esc(sh[0])}</b> = ${esc(sh[1])}`, more: full };
   const qq = [q, c.question, c.conceptTitle].filter(Boolean).join(' ');
   if (c.hintOnly) { const k = c.conceptTitle && !q ? { text: c.concept } : sprigSearch(qq, c, 'concept', 1)[0]; return { html: `Hint: re-read the question slowly.${k ? ' ' + esc(brief(k.text, 1)) : ''}`, more: full }; }
   if (c.why) return { html: `${esc(c.why)}${c.correct && c.kind === 'mistake' ? `<div class="note">Correct answer: <b>${esc(c.correct)}</b></div>` : ''}`, more: full }; // lesson "Why" text, unchanged
@@ -4228,8 +5574,8 @@ const moreChip = '<div><button class="morechip">' + MORE_Q + '</button></div>';
 
 /* ---------- Mode 2: bring your own key ---------- */
 function sprigSystem(c) {
-  return 'You are Sprig, the friendly sprout mascot and electronics tutor in Zapling, a beginner app. The learner is a complete beginner. '
-    + 'BREVITY RULE: reply in 1–3 short sentences of plain, beginner-friendly words. Lead with the single most important point or next step. No lists, headings or long explanations unless the learner asks for more ("explain more", "why", "details", "step by step"); then you may use up to about 150 words and short steps. Define any term or symbol the first time you use it. '
+  return 'You are Sprig, the friendly sprout mascot and electronics tutor in Zapling, a beginner app used by young learners. Explain like you would to a curious kid or a complete beginner: plain, everyday words and friendly tone. '
+    + 'BREVITY RULE: reply in 1–3 short sentences. Lead with the single most important point or next step. Define every symbol and term the first time you use it (for example "I = current, how much electricity flows; R = resistance, how much a part slows the flow"). When a formula comes up, say where it comes from in plain words (for example P = I²R comes from P = V × I, and since V = I × R, P = I × R × I). No lists or headings by default. Only when the learner asks for more ("explain more", "why", "details", "step by step") give short numbered steps, up to about 150 words, with a tiny example using simple numbers. '
     + 'Use the lesson or mistake context you are given; if the app\'s explanation is included, build on it. If you are unsure, say so. Stay on electronics and learning. Use plain text, no LaTeX.'
     + (c.kind === 'lab' ? ' The learner is building on a virtual breadboard in Circuit Lab. Base your answer on the circuit description you are given (holes a–e in one numbered row are connected, f–j likewise; rails run along the edges). Point to specific parts and holes, and suggest one fix at a time.' : '')
     + (c.hintOnly ? ' IMPORTANT: the learner is in the middle of a unit test and has not answered yet. Give a hint or remind them of the relevant idea only. Do NOT say which option is correct and do NOT compute the final answer.' : '');
@@ -4366,6 +5712,37 @@ function aiPanel() {
   $('#aiOn', p).onclick = () => { const c = aiLoad(); if (!c.key) return; c.on = c.on === false; aiSave(c); renderProfile(); };
   return p;
 }
+
+/* ---------- kid-friendly formula explainers + symbol glossary for the offline helper ---------- */
+const SYMBOLS = [['V', 'voltage, the push that makes electricity flow (in volts, V)'], ['I', 'current, how much electricity flows (in amps, A)'], ['R', 'resistance, how much a part slows the flow (in ohms, Ω)'],
+  ['P', 'power, how much energy is used each second (in watts, W)'], ['Ω', 'ohm, the unit of resistance'], ['A', 'amp, the unit of current'], ['mA', 'milliamp, a thousandth of an amp'], ['W', 'watt, the unit of power'],
+  ['J', 'joule, a unit of energy'], ['E', 'energy (in joules, J)'], ['Q', 'charge, an amount of electricity (in coulombs)'], ['C', 'capacitance, how much charge a capacitor stores per volt (in farads, F); C can also mean coulombs'],
+  ['F', 'farad, the unit of capacitance'], ['µF', 'microfarad, a millionth of a farad'], ['τ', 'tau, the time constant: how long a capacitor takes to fill about 63% of the way (τ = R × C)'], ['t', 'time (in seconds)'],
+  ['f', 'frequency, how many times per second something repeats (in hertz, Hz)'], ['Hz', 'hertz, times per second'], ['kΩ', 'kilo-ohm, 1,000 ohms'], ['∥', 'in parallel (side by side)'], ['²', 'squared: the number times itself (I² = I × I)'], ['√', 'square root: the number that times itself gives this one'], ['≈', 'about, roughly equal']];
+const symDef = k => (SYMBOLS.find(s => s[0] === k) || [])[1];
+function symbolsIn(t) {
+  const s = String(t || ''); if (!/[=×÷∥²√τΩ]|\^|\*|\//.test(s)) return [];
+  return SYMBOLS.filter(([k]) => k.length > 1 || /[^A-Za-z]/.test(k) ? s.includes(k) : new RegExp('(^|[^A-Za-z])' + k + '(?![A-Za-z])').test(s)).slice(0, 6);
+}
+function symbolAsk(q) { const m = String(q || '').match(/what(?:'s| is| does)\s+(?:an?\s+|the\s+)?(?:symbol\s+)?["']?([A-Za-zΩτµ∥²√≈]{1,3})["']?\s*(?:mean|stand for|symbol)?\s*\??\s*$/i); if (!m) return null; const k = m[1], d = symDef(k) || symDef(k.toUpperCase()) || (/^ohms?$/i.test(k) && symDef('Ω')) || (/^tau$/i.test(k) && symDef('τ')); return d ? [k, d] : null; }
+const FORMULAS = [
+  { re: /i\s*(\^\s*2|²|\*\s*i|squared)\s*\*?\s*r|p\s*=\s*i\s*(\^|²)/i, name: 'P = I²R', short: 'P = I²R tells you how much power (P, the energy used each second, in watts) a resistor turns into heat. I is the current (how much electricity flows), R is the resistance (how much the part slows the flow), and I² means I × I, so twice the current makes four times the heat.',
+    steps: ['Start with power = push × flow: P = V × I (V = voltage, the push).', 'Ohm\'s law says V = I × R.', 'Put I × R where the V was: P = (I × R) × I.', 'That\'s I × I × R, written I²R.', 'Example: 2 A through a 3 Ω resistor: P = 2 × 2 × 3 = 12 W.'] },
+  { re: /v\s*(\^\s*2|²|squared)\s*(\/|÷|over)\s*r/i, name: 'P = V² ÷ R', short: 'P = V² ÷ R finds power (P, energy used each second) from the voltage (V, the push) and resistance (R, how much the part slows the flow). V² means V × V.',
+    steps: ['Start with P = V × I (I = current, how much flows).', 'Ohm\'s law says I = V ÷ R.', 'Put that in: P = V × (V ÷ R) = V² ÷ R.', 'Example: 6 V across 12 Ω: P = 6 × 6 ÷ 12 = 3 W.'] },
+  { re: /p\s*=\s*(v\s*[×x*·]?\s*i|i\s*[×x*·]?\s*v)\b|power formula|how (do i|to) (find|work out|calculate) power/i, name: 'P = V × I', short: 'Power (P, the energy used each second, in watts) = voltage (V, the push) × current (I, how much flows). A bigger push or a bigger flow both mean more power.',
+    steps: ['Voltage tells how much energy each bit of charge carries.', 'Current tells how much charge flows each second.', 'Multiply them: energy per second = P = V × I.', 'Example: 9 V × 0.5 A = 4.5 W.'] },
+  { re: /v\s*=\s*i\s*[×x*·]?\s*r|i\s*=\s*v\s*(\/|÷)\s*r|r\s*=\s*v\s*(\/|÷)\s*i|ohm'?s law/i, name: 'Ohm\'s law: V = I × R', short: 'Ohm\'s law links the push (V, voltage), the flow (I, current) and how much a part slows it (R, resistance): V = I × R. More push means more flow; more resistance means less flow.',
+    steps: ['V = I × R: voltage = current × resistance.', 'Divide both sides by R to find current: I = V ÷ R.', 'Divide both sides by I to find resistance: R = V ÷ I.', 'Example: 6 V across 3 Ω: I = 6 ÷ 3 = 2 A.'] },
+  { re: /τ|\btau\b|time constant|\brc\b/i, name: 'τ = R × C', short: 'τ (tau, the time constant) = resistance (R) × capacitance (C). It\'s how long a capacitor takes to fill about 63% of the way; after about 5τ it\'s basically full.',
+    steps: ['A bigger resistor lets charge in more slowly.', 'A bigger capacitor needs more charge to fill.', 'So the fill time grows with both: τ = R × C (ohms × farads = seconds).', 'Example: 10,000 Ω × 0.0001 F = 1 second.'] },
+  { re: /q\s*=\s*c\s*[×x*·]?\s*v/i, name: 'Q = C × V', short: 'The charge a capacitor holds (Q) = its capacitance (C, how much it stores per volt) × the voltage (V, the push).', steps: ['Capacitance means charge stored per volt.', 'So charge = capacitance × volts: Q = C × V.', 'Example: 0.0001 F × 12 V = 0.0012 C.'] },
+  { re: /q\s*=\s*i\s*[×x*·]?\s*t/i, name: 'Q = I × t', short: 'Charge (Q) = current (I, how much flows each second) × time (t, in seconds).', steps: ['Current means charge per second.', 'So in t seconds, the charge is I × t.', 'Example: 0.5 A for 10 s = 5 coulombs.'] },
+  { re: /e\s*=\s*p\s*[×x*·]?\s*t/i, name: 'E = P × t', short: 'Energy (E, in joules) = power (P, joules each second) × time (t, in seconds).', steps: ['A watt is one joule every second.', 'So over t seconds: E = P × t.', 'Example: 30 W for 180 s = 5,400 J.'] },
+  { re: /product over sum|parallel resistor|resistors? in parallel/i, name: 'Resistors in parallel', short: 'Side-by-side resistors give the current extra paths, so the total is SMALLER than the smallest one. For two: (R1 × R2) ÷ (R1 + R2).', steps: ['Each path lets some current through, so more paths = easier flow.', 'For two resistors: multiply them, then divide by their sum.', 'Example: 6 Ω and 3 Ω: (6 × 3) ÷ (6 + 3) = 2 Ω.'] },
+  { re: /voltage divider|\bv_?out\b/i, name: 'Voltage divider', short: 'Two resistors in a row share the voltage by size: each gets a slice that matches its share of the total resistance.', steps: ['V_out = V_in × R2 ÷ (R1 + R2) (R2 is the bottom resistor).', 'Equal resistors split it in half.', 'Example: 9 V, R1 = 10 kΩ, R2 = 5 kΩ: 9 × 5 ÷ 15 = 3 V.'] },
+];
+const formulaHit = q => q ? FORMULAS.find(f => f.re.test(String(q).replace(/\s+/g, ' '))) : null;
 /* =========================================================
    GAMES: 12 quick mini-games (2 per unit) on one shared shell
    Unlock: a unit's games open once that unit's first lesson is done.
@@ -5547,11 +6924,15 @@ const LAB_CH = [
   { id: 'size', name: 'Right-Size It', goal: ['Light a red LED at 15 mA (12–18 mA counts).'], how: 'Resistor = (battery V − 2 V) ÷ 0.015 A. With 9 V: 7 ÷ 0.015 ≈ 467 Ω, so pick the nearest value you have.', ok: (P, sol) => P.some(p => p.kind === 'led' && p.color === 'red' && ledState(sol, p.id) === 'lit' && sol.I[p.id] >= .012 && sol.I[p.id] <= .018) && !P.some(p => p.kind === 'led' && ledState(sol, p.id) === 'burnt') },
   { id: 'pcb', name: 'Board Builder', goal: ['Design your own printed circuit board (PCB).'], soon: true }];
 const labGoal = ch => ch.goal[Math.min(labS().stage, ch.goal.length - 1)] || ch.goal[0];
-function labCheck(P, sol) {
-  const L = labS(), ch = LAB_CH.find(c => c.id === L.ch); if (!ch || ch.soon || L.done[ch.id] || sol.nobat || sol.short) return;
+function labCheck(P, sol, d) {
+  const L = labS(), ch = LAB_CH.find(c => c.id === L.ch); if (!ch || ch.soon || sol.nobat || sol.short) return;
+  d = d || labDiag(P);
+  if (d.chips.some(c => c.k === 'bad' || (c.k === 'warn' && !/^Switch is open/.test(c.t)))) return; // only a full, valid circuit counts
+  if (L.done[ch.id]) { if (!labExample() && ch.ok(P, sol, ch.goal.length - 1) && !(LAB.replayed || (LAB.replayed = {}))[ch.id]) { LAB.replayed[ch.id] = 1; SFX.good(); toast(`Already done: ${ch.name} ✓ (no tokens this time)`, ICON.check()); } return; }
   if (labExample()) return; // an unmodified Cookbook example never completes (or pays) a challenge
   if (!ch.ok(P, sol, L.stage)) return;
   if (L.stage + 1 < ch.goal.length) { L.stage++; save(); SFX.good(); toast(`Step done! ${labGoal(ch)}`, ICON.check()); renderLabCh(); return; }
+  if (LAB.paying) return; LAB.paying = 1; setTimeout(() => { LAB.paying = 0; }, 1000);
   L.done[ch.id] = today(); L.stage = 0; S.tokens = (S.tokens || 0) + LAB_TOK; const lv = addXp(LAB_XP); save();
   renderTop(); confetti(); SFX.reward(); toast(`+${LAB_TOK} tokens · +${LAB_XP} XP: ${ch.name} complete!`, ICON.token()); renderLabCh();
   if (lv) setTimeout(levelUp, 1400);
@@ -5687,7 +7068,17 @@ function labRefresh(commit) {
   if ($('#labCancel')) $('#labCancel').onclick = () => { LAB.tool = null; LAB.legs = []; labRefresh(false); };
   $$('.palbtn').forEach(b => b.classList.toggle('on', b.dataset.k === LAB.tool));
   $('#labRot').disabled = $('#labDel').disabled = !sp; $('#labUndo').disabled = !LAB.hist.length; $('#labClr').disabled = !P.length;
-  if (commit) labCheck(P, d.sol);
+  if (commit) labSchedule();
+}
+// re-check the goal ~600 ms after the board settles (never mid-drag), against a fresh, stable simulation
+function labSchedule() {
+  clearTimeout(LAB.chkT); const sig = labSig(labS().parts) + '|' + labS().parts.map(p => p.on ? 1 : 0).join('');
+  LAB.chkT = setTimeout(() => {
+    const L = labS(), now = labSig(L.parts) + '|' + L.parts.map(p => p.on ? 1 : 0).join('');
+    if (LAB.press && LAB.press.moved || LAB.tool || LAB.legs.length) return labSchedule();
+    if (now !== sig || !$('#labBoard')) return;
+    const d = labDiag(L.parts); labCheck(L.parts, d.sol, d);
+  }, 600);
 }
 
 function labHandles() {
@@ -5740,8 +7131,58 @@ function labCtx() {
   const L = labS(), d = LAB.last || labDiag(L.parts), ch = LAB_CH.find(c => c.id === L.ch && !c.soon);
   return { kind: 'lab', label: 'Circuit Lab', unit: 'U4', lid: 'L22', circuit: labDescribe(L.parts, d.sol), problems: d.chips.filter(c => c.k === 'bad' || c.k === 'warn').map(c => c.t).join('; ') || 'none', challenge: ch ? `${ch.name}: ${labGoal(ch)}` : '' };
 }
+// ---- question intents first (how-to / what next / why not working); the generic board check is only the fallback ----
+function labIntent(q) {
+  q = String(q || '').toLowerCase().replace(/['’]/g, ''); if (!q.trim()) return null;
+  const why = /\b(why|whats wrong)\b.*\b(not|wont|dont|doesnt|isnt|cant|arent|didnt)\b|\b(not|wont|doesnt|isnt|cant) (work|light|glow|turn|go)|\bnothing happens|\bbroken\b|\bstays? (dark|off)\b|\bwhats wrong\b/.test(q);
+  const how = /\b(how (do|can|should|would|to)|where (do|should|can)|can i|help me|i want to|let me)\b.*\b(add|put|use|wire|connect|place|hook|make|insert|build)\b|\badd (a|an|another|one more|more|some)\b|\bhow (do|does) (a|an|the)? ?(switch|button|resistor|buzzer)/.test(q);
+  const next = /\bwhat (should|can|could) i (add|build|do|try|make)\b|\bwhat'?s next\b|\bnext\b|\bidea|\bbored\b/.test(q);
+  const sp = /\bseries\b|\bparallel\b/.test(q);
+  const topic = /push ?button|\bbutton\b/.test(q) ? 'btn' : /\bswitch|toggle/.test(q) ? 'switch' : /buzz|beep|sound/.test(q) ? 'buzzer' : /(another|second|two|2|more|extra|one more) leds?\b|\bleds\b/.test(q) ? 'led2' : /resist|ohm/.test(q) ? 'res' : /\bleds?\b|light/.test(q) ? 'led' : null;
+  if (why) return { k: 'why' };
+  if (sp) return { k: 'sp' };
+  if (how && topic) return { k: 'how', t: topic };
+  if (next) return { k: 'next' };
+  if (how) return { k: 'how', t: topic || 'led' };
+  return null;
+}
+function labKidFix(t) {
+  if (/backwards/i.test(t)) return 'Your LED is in backwards. LEDs only let electricity through one way, so turn it around so the long leg (+) points toward the battery\'s + side.';
+  if (/Open circuit|nothing connects/i.test(t)) return 'There\'s a gap in the loop, so electricity can\'t get all the way around. Follow the path from battery + through each part and back to −, and add a wire where it stops.';
+  if (/No resistor/i.test(t)) return 'There\'s no resistor, so too much electricity would rush through the LED and burn it out. Add a resistor (about 470 Ω) in the loop before the LED.';
+  if (/too small|burn/i.test(t)) return 'Your resistor is too small, so too much electricity flows and the LED would burn out. Swap it for a bigger one, like 470 Ω.';
+  if (/Short circuit/i.test(t)) return 'That\'s a short circuit: electricity found a shortcut from + straight to − without going through the LED. Find the wire that joins them directly and remove it.';
+  if (/Switch is open/i.test(t)) return 'Your switch is open (off), so the loop has a gap. Tap the switch to close it, or hold the button down.';
+  if (/Not enough voltage/i.test(t)) return 'There isn\'t enough push (voltage) left to light that LED. Use fewer LEDs in a row, a smaller resistor, or a bigger battery.';
+  if (/No battery/i.test(t)) return 'There\'s no battery yet, and nothing works without one. Drag the battery onto the rails along the edge.';
+  if (/too bright/i.test(t)) return 'The LED is getting a bit too much current. Use a bigger resistor to keep it safe.';
+  return labFix(t);
+}
+function labHow(it, L, d) {
+  const P = L.parts, has = k => P.some(p => p.kind === k), led = has('led'), bat = P.find(p => p.kind === 'bat'), V = bat ? bat.volts : 9, R = Math.max(0, Math.round((V - 2) / .015));
+  const wire = P.find(p => p.kind === 'wire'), loopTip = led && wire ? ' Easiest way on your board: swap one of the jumper wires in the loop for it.' : '';
+  const nextCh = (LAB_CH.find(ch => !ch.soon && !L.done[ch.id]) || { name: 'a free build' }).name;
+  if (it.k === 'sp') return 'Series means parts in one line, one after another: the same electricity goes through each, so one break turns them all off. Parallel means side by side, each on its own path from + to −: each one gets the full push, and one can go off without the others.';
+  if (it.k === 'next') return !P.length ? 'Start with First Glow: battery, resistor and LED in one loop.' : !led ? 'Add an LED with a resistor in front of it, so you can see your circuit work.' : !has('spst') && !has('btn') && !has('sw') ? 'Next, add a switch in the loop so you can turn your LED on and off.' : P.filter(p => p.kind === 'led').length < 2 ? 'Try adding a second LED, first in series (in a line) and then in parallel (side by side).' : `Try the ${nextCh} challenge next. Pick it in the challenge row above.`;
+  switch (it.t) {
+    case 'switch': return has('spst') || has('sw') ? 'You already have a switch on the board. Make sure it sits in the loop, then tap it to flip it on and off.' : 'Put the switch in the wire between the battery and the LED, so it breaks the loop when it\'s off. Grab the slide switch from the parts, and place its legs so the loop has to go through it.' + loopTip;
+    case 'btn': return has('btn') ? 'You already have a pushbutton. Make sure it\'s in the loop, then press and hold it to light the LED.' : 'Put the pushbutton in the loop between the battery and the LED, like a switch. The LED only lights while you hold the button down.' + loopTip;
+    case 'res': return `Put the resistor in the loop before the LED, from battery + to the LED's long leg. It slows the electricity so the LED doesn't burn out: about ${R} Ω works with your ${V} V battery.`;
+    case 'buzzer': return 'The Lab doesn\'t have a buzzer part yet. On a real breadboard, put a buzzer where the LED would go, with its + leg toward battery +. Most small buzzers don\'t need a resistor.';
+    case 'led2': return 'For two LEDs in series, put them in a line: the first LED\'s short leg (−) shares a row with the second LED\'s long leg (+). For parallel, give each LED its own path from + to −, each with its own resistor.';
+    default: return led ? 'Your LED needs one loop: battery + → resistor → LED long leg (+), then LED short leg (−) → back to the − rail.' : 'Put an LED in a loop: battery + → resistor (about 470 Ω) → LED long leg (+), then LED short leg (−) → back to battery −.';
+  }
+}
+function labIntentAnswer(q) {
+  const it = labIntent(q); if (!it) return null;
+  const L = labS(), d = LAB.last || labDiag(L.parts), probs = d.chips.filter(x => x.k === 'bad' || x.k === 'warn');
+  if (it.k === 'why') return { it, h: !L.parts.length ? 'Your board is empty. Start with a battery, a resistor and an LED in one loop.' : probs.length ? esc(labKidFix(probs[0].t)) + (probs.length > 1 ? ' Fix that first, then ask again.' : '') : d.chips.some(x => x.k === 'ok') ? 'It\'s actually working: your LED is lit! If you wanted it off, add a switch in the loop.' : esc(labKidFix(d.chips[0] ? d.chips[0].t : '')) };
+  const status = probs.length && it.k === 'how' ? `<div class="note">By the way: ${esc(probs[0].t)}.</div>` : ''; // only when something on the board needs fixing
+  return { it, h: esc(labHow(it, L, d)) + status };
+}
 function labAnswer(c, q) {
   const d = LAB.last || labDiag(labS().parts), out = [], probs = d.chips.filter(x => x.k === 'bad' || x.k === 'warn'), good = d.chips.filter(x => x.k === 'ok');
+  const ia = labIntentAnswer(q); if (ia) out.push(`<h5>${ia.it.k === 'why' ? 'Why it isn\'t working' : 'Answer'}</h5>${ia.h}`);
   out.push(`<h5>On your board</h5>${probs.length ? probs.map(x => `• <b>${esc(x.t)}</b><br>${esc(labFix(x.t))}`).join('<br>') : good.length ? good.map(x => '• ' + esc(x.t)).join('<br>') + '<br>No problems spotted. Nice build!' : esc(d.chips[0] ? d.chips[0].t + '. ' + labFix(d.chips[0].t) : '')}`);
   const bat = labS().parts.find(p => p.kind === 'bat'), V = bat ? bat.volts : 9;
   if (/resist|ohm|current|size|value|bright|right/i.test(q)) out.push(`<h5>Sizing the resistor</h5>R = (battery V − LED V) ÷ current. With your ${V} V battery and a red LED (about 2 V) at 15 mA: (${V} − 2) ÷ 0.015 ≈ ${Math.max(0, Math.round((V - 2) / .015))} Ω. Pick the nearest value you have; bigger is safer (dimmer).`);
@@ -5756,8 +7197,9 @@ function labBrief(c, q) {
   const L = labS(), d = LAB.last || labDiag(L.parts), probs = d.chips.filter(x => x.k === 'bad' || x.k === 'warn'), bat = L.parts.find(p => p.kind === 'bat'), V = bat ? bat.volts : 9;
   const nextCh = (LAB_CH.find(ch => !ch.soon && !L.done[ch.id]) || { name: 'a free build' }).name;
   const top = probs[0] ? `<b>${esc(probs[0].t)}.</b> ${esc(brief(labFix(probs[0].t), 1))}${probs.length > 1 ? ` Fix that first, then ask again.` : ''}` : '';
-  let h;
-  if (/resist|ohm|size|value/i.test(q)) h = `Use about ${Math.max(0, Math.round((V - 2) / .015))} Ω: (${V} V − 2 V for a red LED) ÷ 0.015 A. A bigger value is safer, just dimmer.`;
+  let h; const ia = labIntentAnswer(q);
+  if (ia) h = ia.h;
+  else if (/resist|ohm|size|value/i.test(q)) h = `Use about ${Math.max(0, Math.round((V - 2) / .015))} Ω: (${V} V − 2 V for a red LED) ÷ 0.015 A. A bigger value is safer, just dimmer.`;
   else if (/next|try|idea|build/i.test(q)) h = top || `Nice, no problems on your board. Try the ${esc(nextCh)} challenge next.`;
   else if (/led|light|work|on\b|off\b|wrong|circuit|board|fix|broke|dark|dim|glow|bright|wire|battery|switch|hole|row|rail/i.test(q) || !q) h = top || (d.chips.some(x => x.k === 'ok') ? 'No problems spotted: your circuit looks good!' : esc(brief((d.chips[0] ? d.chips[0].t + '. ' + labFix(d.chips[0].t) : 'Your board is empty. Tap a part, then tap two holes to place it.'), 2)));
   else { const o = offlineBrief(Object.assign({}, c, { kind: 'topic' }), q); h = o.html; }
@@ -5902,6 +7344,7 @@ function mergeSaves(a, b) {
   m.tokPaid = maxMap(base.tokPaid, o.tokPaid); m.testPaidNew = maxMap(base.testPaidNew, o.testPaidNew); m.tokGranted = Object.assign({}, ob(o.tokGranted), ob(base.tokGranted));
   const av = ob(base.avatar), ov = ob(o.avatar); m.avatar = Object.assign({}, cl(ov), cl(av), { owned: uni(av.owned, ov.owned), eq: cl(av.eq || ov.eq) });
   Object.keys(ov).forEach(k => { if (/^mig/.test(k)) m.avatar[k] = Math.max(+av[k] || 0, +ov[k] || 0); });
+  if (base.lab || o.lab) { m.lab = Object.assign({}, cl(ob(o.lab)), cl(ob(base.lab))); m.lab.done = Object.assign({}, ob(ob(o.lab).done), ob(ob(base.lab).done)); }
   m.deckRw = {}; uni(Object.keys(ob(base.deckRw)), Object.keys(ob(o.deckRw))).forEach(u => { const x = ob(base.deckRw)[u], y = ob(o.deckRw)[u];
     m.deckRw[u] = !x || !y ? cl(x || y) : { d: (x.d || '') > (y.d || '') ? x.d : y.d, seen: uni(x.seen, y.seen), days: uni(x.days, y.days), paid: Math.max(x.paid || 0, y.paid || 0) }; });
   m.fcTest = {}; uni(Object.keys(ob(base.fcTest)), Object.keys(ob(o.fcTest))).forEach(u => { const x = ob(base.fcTest)[u], y = ob(o.fcTest)[u]; m.fcTest[u] = !x || !y ? cl(x || y) : Object.assign({}, y, x, { best: Math.max(x.best || 0, y.best || 0) }); });
