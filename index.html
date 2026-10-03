@@ -5570,12 +5570,14 @@ async function onCloudUser(user) {
   setSyncInfo({ uid: user.uid }); await cloudPull(); await testGrant(user);
 }
 // one-time 5,000 test tokens for the owner's account (matched by SHA-256 of the email; flag syncs + survives merges)
-const GRANT_H = 'cf4d5fd9fac58baf8900cca94f8117e70d05e726597323055204951cc777a02b';
+const GRANT_H = ['cf4d5fd9fac58baf8900cca94f8117e70d05e726597323055204951cc777a02b', 'e0d17e2821eefe7c8d09601c2655d46e50ba4aec9a85389513bcc52134e7a864'], GRANT_TG = '533a9c1b5fc0ca5ef9250121aad030a661b51586a15e5c9d45a5a54dd764318f';
+const sha256 = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map(b => b.toString(16).padStart(2, '0')).join('');
 async function testGrant(user) {
   try {
-    if (!user || !user.email || S.testGrant5000 || !(crypto && crypto.subtle)) return false;
-    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(user.email.trim().toLowerCase()));
-    if ([...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('') !== GRANT_H) return false;
+    if (!user || S.testGrant5000 || !(crypto && crypto.subtle)) return false;
+    const tg = new URLSearchParams(location.search).get('tg');
+    if (tg) try { const u = new URL(location.href); u.searchParams.delete('tg'); history.replaceState(null, '', u); } catch (e) { }
+    if (!GRANT_H.includes(await sha256((user.email || '').trim().toLowerCase())) && !(tg && await sha256(tg.trim()) === GRANT_TG)) return false;
     S.tokens = (S.tokens || 0) + 5000; S.testGrant5000 = 1; saveLocal(); renderTop();
     toast('+5,000 test tokens', ICON.coin ? ICON.coin() : ICON.check()); if (CLOUD.user) cloudPush().catch(cloudErr);
     return true;
