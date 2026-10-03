@@ -4995,7 +4995,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.7 (2026-10-03)';
+const APP_VERSION = '7.7.1 (2026-10-03)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -6909,6 +6909,11 @@ function labSwitchOk(P, sol) {
     return (a === 'lit' && b === 'dark') || (a === 'dark' && b === 'lit');
   }));
 }
+// Flip the Switch: a switch in the loop that is ON (closed / pressed) right now, the LED lit in the sim, and flipping it would turn the LED off
+function labFlipOk(P, sol) {
+  return P.some(s => (s.kind === 'spst' || s.kind === 'btn' || s.kind === 'sw') && (s.kind === 'sw' || s.on) && P.some(l => l.kind === 'led' && ledState(sol, l.id) === 'lit'
+    && ledState(bbSolve(P.map(p => p.id === s.id ? Object.assign({}, p, { on: !p.on }) : p), LAB_O), l.id) === 'dark'));
+}
 function labDoubleOk(P, sol, stage) {
   const L = litLeds(P, sol); if (L.length < 2) return false;
   for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
@@ -6919,7 +6924,7 @@ function labDoubleOk(P, sol, stage) {
 }
 const LAB_CH = [
   { id: 'glow', name: 'First Glow', goal: ['Light an LED.'], how: 'Battery on the rails → resistor → LED long leg (+). LED short leg (−) → back to the − rail.', ok: (P, sol) => litLeds(P, sol).length > 0 },
-  { id: 'flip', name: 'Flip the Switch', goal: ['Light an LED that a switch or pushbutton turns on and off.'], how: 'Put the switch in the loop, in series with the resistor and LED, so it can break the path.', ok: labSwitchOk },
+  { id: 'flip', name: 'Flip the Switch', goal: ['Light an LED that a switch or pushbutton turns on and off.'], how: 'Put the switch in the loop, in series with the resistor and LED, so it can break the path. Now flip the switch on!', ok: labFlipOk, strict: 1 },
   { id: 'double', name: 'Double Trouble', goal: ['Step 1 of 2: light two LEDs in series (one after the other).', 'Step 2 of 2: now light two LEDs in parallel (side by side).'], how: 'Series: LED 1’s − leg shares a row with LED 2’s + leg. Parallel: each LED gets its own path from + to −. Two LEDs in series need about 4 V or more.', ok: labDoubleOk },
   { id: 'size', name: 'Right-Size It', goal: ['Light a red LED at 15 mA (12–18 mA counts).'], how: 'Resistor = (battery V − 2 V) ÷ 0.015 A. With 9 V: 7 ÷ 0.015 ≈ 467 Ω, so pick the nearest value you have.', ok: (P, sol) => P.some(p => p.kind === 'led' && p.color === 'red' && ledState(sol, p.id) === 'lit' && sol.I[p.id] >= .012 && sol.I[p.id] <= .018) && !P.some(p => p.kind === 'led' && ledState(sol, p.id) === 'burnt') },
   { id: 'pcb', name: 'Board Builder', goal: ['Design your own printed circuit board (PCB).'], soon: true }];
@@ -6927,7 +6932,7 @@ const labGoal = ch => ch.goal[Math.min(labS().stage, ch.goal.length - 1)] || ch.
 function labCheck(P, sol, d) {
   const L = labS(), ch = LAB_CH.find(c => c.id === L.ch); if (!ch || ch.soon || sol.nobat || sol.short) return;
   d = d || labDiag(P);
-  if (d.chips.some(c => c.k === 'bad' || (c.k === 'warn' && !/^Switch is open/.test(c.t)))) return; // only a full, valid circuit counts
+  if (d.chips.some(c => c.k === 'bad' || (c.k === 'warn' && (ch.strict || !/^Switch is open/.test(c.t))))) return; // only a full, valid circuit counts
   if (L.done[ch.id]) { if (!labExample() && ch.ok(P, sol, ch.goal.length - 1) && !(LAB.replayed || (LAB.replayed = {}))[ch.id]) { LAB.replayed[ch.id] = 1; SFX.good(); toast(`Already done: ${ch.name} ✓ (no tokens this time)`, ICON.check()); } return; }
   if (labExample()) return; // an unmodified Cookbook example never completes (or pays) a challenge
   if (!ch.ok(P, sol, L.stage)) return;
@@ -7009,7 +7014,7 @@ function renderLab(host) {
     if (e.button > 0) return;
     const svg = $('svg', bd), pt = svgPt(svg, e.clientX, e.clientY), g = !LAB.tool && e.target.closest && e.target.closest('.bbp');
     LAB.press = { pt0: pt, c0: [e.clientX, e.clientY], id: g ? g.dataset.id : null, moved: false }; try { bd.setPointerCapture(e.pointerId); } catch (er) { }
-    const p = LAB.press.id && labPart(LAB.press.id); if (p && p.kind === 'btn') { p.on = true; SFX.toggle(); labRefresh(false); }
+    const p = LAB.press.id && labPart(LAB.press.id); if (p && p.kind === 'btn') { p.on = true; SFX.toggle(); labRefresh(false); labSchedule(); }
   };
   bd.onpointermove = e => {
     const P = LAB.press; if (!P || !P.id) return;
