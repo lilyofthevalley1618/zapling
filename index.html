@@ -1713,11 +1713,11 @@ Object.assign(ART, {
     ${wire('M40 130H60V110H80M60 130V150H80M120 110H140V150H120M140 130H160')}${sym('res', 100, 110)}${sym('res', 100, 150)}${dot(60, 130)}${dot(140, 130)}${lbl(100, 97, '10 Ω')}${lbl(100, 175, '10 Ω')}${lbl(196, 135, '=', INK, 18)}${sym('res', 250, 130)}${lbl(250, 114, '5 Ω', '#E0604F')}`, 'Series resistors add; two equal resistors in parallel give half', 190); },
   dividerArt(vin = 9, r1 = 10, r2 = 5) {
     const vout = +(vin * r2 / (r1 + r2)).toFixed(2);
-    return svgBox(`${wire('M60 60V30H200V52M200 88V152M200 188V210H60V100')}${sym('bat', 60, 80, 90)}${lbl(30, 84, vin + ' V', '#E0604F', 13)}${sym('res', 200, 70, 90)}${lbl(226, 74, `R1 ${r1} kΩ`, INK, 12, 'start')}${sym('res', 200, 170, 90)}${lbl(226, 174, `R2 ${r2} kΩ`, INK, 12, 'start')}${dot(200, 120)}${wire('M200 120H280')}${lbl(290, 124, 'V_out', '#1C9E80', 12, 'start')}${lbl(284, 144, vout + ' V', '#1C9E80', 15, 'start')}${wire('M200 210H280')}${lbl(290, 214, '0 V', '#6B6899', 11, 'start')}`, 'A voltage divider: two resistors in series with the output taken between them', 230);
+    return svgBox(`${wire('M60 60V30H200V52M200 88V152M200 188V210H60V100')}${sym('bat', 60, 80, 90)}${lbl(30, 84, vin + ' V', '#E0604F', 13)}${sym('res', 200, 70, 90)}${lbl(226, 74, `R1 ${r1} kΩ`, INK, 12, 'start')}${sym('res', 200, 170, 90)}${lbl(226, 174, `R2 ${r2} kΩ`, INK, 12, 'start')}${dot(200, 120)}${wire('M200 120H280')}${lbl(312, 124, 'V_out', '#1C9E80', 12, 'end')}${lbl(312, 144, vout + ' V', '#1C9E80', 15, 'end')}${wire('M200 210H280')}${lbl(312, 214, '0 V', '#6B6899', 11, 'end')}`, 'A voltage divider: two resistors in series with the output taken between them', 230);
   },
   loadArt() { return svgBox(`${wire('M60 60V30H200V52M200 88V152M200 188V210H60V100M200 120H270V150M270 190V210H200')}${sym('bat', 60, 80, 90)}${sym('res', 200, 70, 90)}${sym('res', 200, 170, 90)}${dot(200, 120)}${dot(200, 210)}<g transform="translate(270,170)"><circle r="18" fill="#EAFBF5" stroke="#2EC4A0" stroke-width="3"/>${lbl(0, 5, 'load', '#1C9E80', 11)}</g>${lbl(140, 124, 'V_out drops', '#E0604F', 12)}`, 'A load connected to the divider output pulls its voltage down', 230); },
-  splitArt() { return svgBox(`${WS('M46 90V40H270V200H46V155')}${WS('M160 40V200')}${cuteCell(46, 125, '6 V')}${sym('res', 160, 120, 90)}${sym('res', 270, 120, 90)}${lbl(186, 116, '6 Ω', INK, 13, 'start')}${lbl(186, 134, '1 A', '#E0604F', 13, 'start')}${lbl(292, 116, '12 Ω', INK, 13, 'start')}${lbl(292, 134, '0.5 A', '#E0604F', 13, 'start')}${dot(160, 40)}${dot(160, 200)}${lbl(110, 30, '1.5 A total', '#5A61D8', 12)}`, 'Current splits between parallel branches: more through the smaller resistor', 232); },
-  comboArt() { return svgBox(`${wire('M50 60V30H90M130 30H190V60M190 100V130H290V100M290 60V30H190M50 100V130H190')}${sym('bat', 50, 80, 90)}${lbl(22, 84, '12 V', '#E0604F', 12)}${sym('res', 110, 30)}${lbl(110, 18, 'R1 2 Ω')}${sym('res', 190, 80, 90)}${lbl(214, 84, 'R2 4 Ω', INK, 12, 'start')}${sym('res', 290, 80, 90)}${lbl(252, 84, 'R3 4 Ω', INK, 12, 'end')}${dot(190, 30)}${dot(190, 130)}
+  splitArt() { return svgBox(`${WS('M46 90V40H240V200H46V155')}${WS('M140 40V200')}${cuteCell(46, 125, '6 V')}${sym('res', 140, 120, 90)}${sym('res', 240, 120, 90)}${lbl(158, 92, '6 Ω', INK, 13, 'start')}${lbl(158, 158, '1 A', '#E0604F', 13, 'start')}${lbl(262, 92, '12 Ω', INK, 13, 'start')}${lbl(262, 158, '0.5 A', '#E0604F', 13, 'start')}${dot(140, 40)}${dot(140, 200)}${lbl(110, 30, '1.5 A total', '#5A61D8', 12)}`, 'Current splits between parallel branches: more through the smaller resistor', 232); },
+  comboArt() { return svgBox(`${wire('M50 60V30H90M130 30H190V60M190 100V130H290V100M290 60V30H190M50 100V130H190')}${sym('bat', 50, 80, 90)}${lbl(22, 84, '12 V', '#E0604F', 12)}${sym('res', 110, 30)}${lbl(110, 18, 'R1 2 Ω')}${sym('res', 190, 80, 90)}${lbl(168, 84, 'R2 4 Ω', INK, 12, 'end')}${sym('res', 290, 80, 90)}${lbl(290, 48, 'R3 4 Ω', INK, 12)}${dot(190, 30)}${dot(190, 130)}
     ${lbl(170, 160, 'R2 ∥ R3 = 4×4 ÷ (4+4) = 2 Ω', '#5A61D8', 12)}${lbl(170, 180, 'Total = 2 Ω + 2 Ω = 4 Ω → I = 12 ÷ 4 = 3 A', '#E0604F', 12)}`, 'R1 in series with R2 and R3 in parallel', 196); },
   comboBulbs() { return svgBox(`${WS('M46 90V40H290V200H46V155')}${WS('M190 40V200')}${cuteCell(46, 125, '')}${cuteBulb(115, 40, .8)}${cuteBulb(190, 120, .22)}${cuteBulb(290, 120, .22)}${dot(190, 40)}${dot(190, 200)}${lbl(115, 84, 'A', INK, 14)}${lbl(218, 124, 'B', INK, 14, 'start')}${lbl(262, 124, 'C', INK, 14, 'end')}`, 'Bulb A in series with bulbs B and C, which are in parallel', 232); },
 });
@@ -4995,7 +4995,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.7.1 (2026-10-03)';
+const APP_VERSION = '7.7.2 (2026-10-03)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -5104,9 +5104,9 @@ RENDER.sim_branch = (step, st) => {
   const tot = () => step.v / step.r1 + step.v / r2;
   const upd = () => {
     const i1 = step.v / step.r1, i2 = step.v / r2;
-    box.innerHTML = svgBox(`${WS('M46 90V40H270V100M270 140V200H46V155')}${WS('M160 40V100M160 140V200')}${dot(160, 40)}${dot(160, 200)}${cuteCell(46, 125, step.v + ' V')}${sym('res', 160, 120, 90)}${sym('res', 270, 120, 90)}
-      ${lbl(180, 116, 'R1 ' + step.r1 + ' Ω', INK, 12, 'start')}${lbl(180, 134, fx(i1) + ' A', '#E0604F', 12, 'start')}${lbl(250, 116, 'R2 ' + r2 + ' Ω', INK, 12, 'end')}${lbl(250, 134, fx(i2) + ' A', '#E0604F', 12, 'end')}
-      <path d="M92 26h26M118 26l-7-5M118 26l-7 5" stroke="#E0604F" stroke-width="3" fill="none" stroke-linecap="round"/>${lbl(160, 26, 'total ' + fx(tot()) + ' A', '#E0604F', 13, 'start')}`, 'Two resistors in parallel sharing the battery current', 220);
+    box.innerHTML = svgBox(`${WS('M46 90V40H240V100M240 140V200H46V155')}${WS('M140 40V100M140 140V200')}${dot(140, 40)}${dot(140, 200)}${cuteCell(46, 125, step.v + ' V')}${sym('res', 140, 120, 90)}${sym('res', 240, 120, 90)}
+      ${lbl(158, 92, 'R1 ' + step.r1 + ' Ω', INK, 12, 'start')}${lbl(158, 158, fx(i1) + ' A', '#E0604F', 12, 'start')}${lbl(262, 92, 'R2 ' + r2 + ' Ω', INK, 12, 'start')}${lbl(262, 158, fx(i2) + ' A', '#E0604F', 12, 'start')}
+      <path d="M92 26h26M118 26l-7-5M118 26l-7 5" stroke="#E0604F" stroke-width="3" fill="none" stroke-linecap="round"/>${lbl(148, 26, 'total ' + fx(tot()) + ' A', '#E0604F', 13, 'start')}`, 'Two resistors in parallel sharing the battery current', 220);
     $('.v', sl).textContent = `R2 = ${r2} Ω`;
     say(`Total = ${fx(i1)} A + ${fx(i2)} A = ${fx(tot())} A`, Math.abs(tot() - step.target) < 1e-6 ? 'ok' : '');
   };
