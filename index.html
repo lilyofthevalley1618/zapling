@@ -4505,6 +4505,51 @@ Object.assign(LESSONS, {
   const T4 = TESTS.T4; T4.steps = T4.steps.map(s => Object.assign({}, s, { tag: M[s.tag] || s.tag }));
   T4.steps.push(Object.assign(H('t4h1', 'e5', 'f5'), { tag: 'B1' }), Object.assign(FW('t4f1', 'blue', 3), { tag: 'B4' }), Object.assign(LR('t4r1', 9, 2, 10), { tag: 'B5' }), Object.assign(LR('t4r2', 5, 2, 15), { tag: 'B5' }));
 })();
+/* v7.12: Unit 5 rewrite (C1-C5 replace L23-L27), shared helpers for Units 5-7 */
+const u3x = (q, a, w, unit, short, steps) => Object.assign(mcq(q[0], q[1], u2opts(a, w, unit), ''), u2w(short, steps));
+const mixSteps = (old, gens) => { const o = old.slice(), g = gens.slice(), out = [o.shift()]; while (o.length || g.length) { out.push(...g.splice(0, 2)); if (o.length) out.push(o.shift()); } return out; };
+const reLesson = (oldId, title, goal, gens, p, forms, n) => ({ title, goal, cards: LESSONS[oldId].cards.slice(), steps: [...mixSteps(LESSONS[oldId].steps, gens), ...rev(p, forms, n)] });
+const reUnit = (uid, map, test, extra) => {
+  const U = UNITS.find(u => u.id === uid); U.lessons = Object.values(map);
+  Object.values(CARDS).forEach(c => { if (map[c.lesson]) c.lesson = map[c.lesson]; });
+  TESTS[test].steps = TESTS[test].steps.map(s => Object.assign({}, s, { tag: map[s.tag] || s.tag })).concat(extra);
+};
+Object.assign(U2Q, {
+  LEDS(id, V, n, vf, mA) { const a = (V - n * vf) / (mA / 1000); return u3x([id, `<b>${V} V</b>, <b>${n}</b> LEDs in series (<b>${vf} V</b> each), <b>${mA} mA</b>. What resistor?`], a, [(V - vf) / (mA / 1000), V / (mA / 1000)], 'Ω',
+    `R = (${V} − ${n} × ${vf}) ÷ ${mA / 1000} = ${u2n(a)} Ω.`, ['In series, the LED voltages add up.', `LEDs use ${n} × ${vf} = ${u2n(n * vf)} V, leaving ${u2n(V - n * vf)} V for the resistor.`, `R = ${u2n(V - n * vf)} ÷ ${mA / 1000} A = ${u2n(a)} Ω.`]); },
+  MAH(id, mAh, mA) { const a = mAh / mA; return u3x([id, `A <b>${mAh} mAh</b> battery runs a circuit drawing <b>${mA} mA</b>. About how many hours will it last?`], a, [mAh * mA / 1000, mA / mAh * 100], 'h',
+    `Hours = ${mAh} ÷ ${mA} = ${u2n(a)} h.`, ['mAh = how many mA it can give for one hour.', 'Drawing less current makes it last longer.', `${mAh} ÷ ${mA} = ${u2n(a)} hours.`]); },
+  CELLS(id, n) { const a = n * 1.5; return u3x([id, `<b>${n}</b> AA cells (1.5 V each) in <b>series</b> give…`], a, [1.5, n * 3], 'V',
+    `${n} × 1.5 = ${u2n(a)} V.`, ['Series cells stack their pushes.', 'Each AA gives 1.5 V.', `${n} × 1.5 = ${u2n(a)} V.`]); },
+  PSUM(id, n, mA) { const a = n * mA; return u3x([id, `<b>${n}</b> parallel LED branches each draw <b>${mA} mA</b>. What does the battery supply?`], a, [mA, mA / n], 'mA',
+    `Add the branches: ${n} × ${mA} = ${u2n(a)} mA.`, ['Each branch takes its own current.', 'The battery supplies all of them together (KCL).', `${n} × ${mA} = ${u2n(a)} mA.`]); },
+  MI(id, V, R) { const a = V / R * 1000; return u3x([id, `Your meter reads <b>${V} V</b> across a <b>${R} Ω</b> resistor. What current flows?`], a, [V * R / 1000, R / V], 'mA',
+    `I = ${V} ÷ ${R} = ${u2n(a / 1000)} A = ${u2n(a)} mA.`, ['Measure the voltage across a resistor, then use Ohm’s law.', `I = V ÷ R = ${V} ÷ ${R} = ${u2n(a / 1000)} A.`, `× 1000 to get mA: ${u2n(a)} mA.`]); },
+});
+Object.assign(U2BANK, { LEDS: [[9, 2, 2, 10], [12, 3, 3, 20], [6, 2, 2, 10]], MAH: [[2000, 25], [500, 50], [1000, 20]], CELLS: [[2], [3], [4], [6]], PSUM: [[3, 15], [2, 20], [4, 10]], MI: [[4.7, 470], [6.6, 330], [2, 100]] });
+{ const Q = U2Q;
+Object.assign(LESSONS, {
+  C1: reLesson('L23', 'Choosing the LED resistor', 'R = (supply − LED volts) ÷ current.', [Q.LEDR('c1q1', 5, 2, 15), Q.LEDR('c1q2', 9, 2, 20), Q.LEDR('c1q3', 6, 3, 10), Q.LEDR('c1q4', 12, 2, 10), Q.LEDR('c1q5', 9, 3, 15), Q.LEDR('c1q6', 4.5, 2, 10), Q.FWD('c1q7', 'blue', 3), Q.LEDR('c1q8', 5, 3, 20), Q.LEDR('c1q9', 3, 2, 10)], 'c1', ['HOLE', 'FWD', 'KVL', 'LEDR'], 4),
+  C2: reLesson('L24', 'Switches & pushbuttons', 'Switches go in series to break or complete the loop.', [
+    tfk('c2t1', 'A pushbutton only connects while you hold it down.', true, 'Yes: let go and the path opens.', ['Pushbuttons are “momentary”.', 'Pressed = closed = current flows.', 'Released = open = no current.']),
+    tfk('c2t2', 'A slide switch stays where you put it.', true, 'Yes: it “latches” on or off.', ['Slide switches hold their position.', 'Pushbuttons spring back.', 'Choose by what you need.']),
+    Object.assign(mcq('c2q1', 'An SPDT (2-way) switch has a middle pin. What does it connect to?', ['One side or the other', 'Both sides at once', 'Nothing'], ''), u2w('The middle (common) pin connects to one side or the other.', ['SPDT = single pole, double throw.', 'The common pin swings between two outputs.', 'Great for “this LED or that LED”.'])),
+    tfk('c2t3', 'An open switch anywhere in a series loop turns everything in that loop off.', true, 'Yes: one gap breaks the whole loop.', ['A series loop has only one path.', 'An open switch is a gap.', 'No path = no current anywhere in it.']),
+    Object.assign(mcq('c2q2', 'Where should a switch go to control one LED?', ['In series with that LED', 'Across the battery', 'In parallel with the LED'], ''), u2w('In series: it’s a gate in the LED’s path.', ['In series, opening the switch breaks the path.', 'Across the battery = a short when closed!', 'In parallel it would bypass the LED.'])),
+    tfk('c2t4', 'A switch wired straight across the battery is safe when closed.', false, 'No: closed, it’s a short circuit.', ['Closed switch ≈ a wire.', 'Wire across the battery = short.', 'Always put a load (LED + resistor) in the loop.']),
+    Q.HOLE('c2q3', 'c4', 'g4'), Q.LEDR('c2q4', 9, 2, 10)], 'c2', ['LEDR', 'HOLE', 'FWD', 'SYM'], 4),
+  C3: reLesson('L25', 'LEDs in series & parallel', 'Series LEDs share volts; parallel LEDs each need a resistor.', [Q.LEDS('c3q1', 9, 2, 2, 10), Q.PSUM('c3q2', 3, 15), Q.LEDS('c3q3', 12, 3, 3, 20), Q.PSUM('c3q4', 2, 20), Q.LEDS('c3q5', 6, 2, 2, 10), Q.PSUM('c3q6', 4, 10),
+    tfk('c3t1', 'Three blue LEDs (3 V each) in series need more than 9 V to light properly.', true, 'Yes: 3 × 3 = 9 V leaves nothing for the resistor.', ['Series LED voltages add up.', '3 × 3 V = 9 V.', 'You need extra voltage for the resistor too.']),
+    Q.LEDS('c3q7', 12, 4, 2, 20), Q.PSUM('c3q8', 5, 12)], 'c3', ['LEDR', 'PAR', 'SER', 'FWD'], 4),
+  C4: reLesson('L26', 'Battery packs & power', 'Series cells add volts; mAh tells you how long.', [Q.CELLS('c4q1', 2), Q.MAH('c4q2', 2000, 25), Q.CELLS('c4q3', 4), Q.MAH('c4q4', 500, 50), Q.CELLS('c4q5', 6), Q.MAH('c4q6', 1000, 20),
+    tfk('c4t1', 'Cells in parallel give the same voltage but last longer.', true, 'Yes: same push, more capacity.', ['Parallel cells share the work.', 'Voltage stays at one cell’s.', 'Capacity (mAh) adds up.']),
+    Q.MAH('c4q7', 300, 15), Q.LEDR('c4q8', 4.5, 2, 10)], 'c4', ['LEDS', 'PSUM', 'LEDR', 'CELLS'], 4),
+  C5: reLesson('L27', 'Multimeter on the breadboard', 'Volts across a part; current from V ÷ R.', [Q.MI('c5q1', 4.7, 470), Q.MI('c5q2', 2, 100), Q.MI('c5q3', 6.6, 330), Q.MI('c5q4', 9, 1000),
+    tfk('c5t1', 'To measure voltage, touch the probes across the part (one each side).', true, 'Yes: voltage is measured across.', ['Volts = the difference between two points.', 'Red probe on one side, black on the other.', 'The circuit stays as it is.']),
+    tfk('c5t2', 'Continuity (beep) mode is for checking connections with the power OFF.', true, 'Yes: power off, then beep-test.', ['Continuity mode sends its own tiny current.', 'Circuit power can confuse it or damage the meter.', 'Turn the battery off first.']),
+    Q.MI('c5q5', 3.3, 220), Q.MI('c5q6', 1.5, 150)], 'c5', ['MAH', 'LEDR', 'KVL', 'LEDS'], 4),
+}); }
+reUnit('U5', { L23: 'C1', L24: 'C2', L25: 'C3', L26: 'C4', L27: 'C5' }, 'T5', [Object.assign(U2Q.LEDS('t5s1', 9, 2, 2, 10), { tag: 'C3' }), Object.assign(U2Q.MAH('t5m1', 1000, 50), { tag: 'C4' }), Object.assign(U2Q.MI('t5i1', 4.7, 470), { tag: 'C5' }), Object.assign(U2Q.LEDR('t5r1', 5, 2, 10), { tag: 'C1' })]);
 /* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
@@ -5439,7 +5484,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.11 (2026-10-07)';
+const APP_VERSION = '7.12 (2026-10-07)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -6809,6 +6854,28 @@ ensureShop = function () {
   }
   return _ensureShopU4.apply(this, arguments);
 };
+
+/* v7.12+: one-to-one unit rewrites (Units 5-7). Credit = what the old lesson paid; never pays twice. */
+function migUnit(flag, map, uid) {
+  const prev = ensureShop;
+  ensureShop = function () {
+    if (!S[flag] && S.done) {
+      S.tokPaid = S.tokPaid && typeof S.tokPaid === 'object' ? S.tokPaid : {}; S.tokGranted = S.tokGranted && typeof S.tokGranted === 'object' ? S.tokGranted : {};
+      Object.entries(map).forEach(([l, id]) => {
+        if (!LESSONS[id] || !S.done[l]) return;
+        if (!S.done[id]) S.done[id] = Object.assign({}, typeof S.done[l] === 'object' ? S.done[l] : { at: today() }, { mig: l });
+        const paid = S.tokPaid[l] != null ? S.tokPaid[l] : (S.tokGranted[l] ? TOK_UNIT[uid] : 0);
+        S.tokPaid[id] = Math.max(S.tokPaid[id] || 0, Math.min(tokTier(id), paid)); S.tokGranted[id] = 1;
+        if (S.mastered && S.mastered[l]) S.mastered[id] = 1;
+      });
+      S[flag] = 1;
+    }
+    return prev.apply(this, arguments);
+  };
+}
+if (LESSONS.C1) migUnit('u5mig1', { L23: 'C1', L24: 'C2', L25: 'C3', L26: 'C4', L27: 'C5' }, 'U5');
+if (LESSONS.F1) migUnit('u6mig1', { L28: 'F1', L29: 'F2', L30: 'F3', L31: 'F4', L32: 'F5' }, 'U6');
+if (LESSONS.K1) migUnit('u7mig1', { L33: 'K1', L34: 'K2', L35: 'K3', L36: 'K4', L37: 'K5' }, 'U7');
 /* =========================================================
    AVATAR v2: cuter bodies, expressions, layered accessories, shop, idle animation
    Bodies (v3): Cappy, Chiplet, Glowbie, Flippy, Lumi, Beep, Knobby, Boing, Volty, Stripes. Old bodies were refunded once (S.avatar.migBodies2, see ensureShop).
