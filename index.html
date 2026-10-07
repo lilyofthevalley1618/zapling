@@ -4446,6 +4446,66 @@ Object.assign(LESSONS, {
   T3.steps.push(Object.assign(Q3.SYM('t3y1', 'led'), { tag: 'S2' }), Object.assign(Q3.KVL('t3k1', 9, 2, 4.5), { tag: 'S5' }), Object.assign(Q3.KCL('t3c1', 30, 12, 8), { tag: 'S6' }), Object.assign(Q3.NODEM('t3m1', 12, 2, 1), { tag: 'S7' }));
 })();
 /* =========================================================
+   v7.11: Unit 4 rewrite: B1-B5 replace L18-L22 (same ideas, one per lesson), each with lots of solo practice + mixed review.
+   ========================================================= */
+const bbSame = (a, b) => bbNet(a) === bbNet(b);
+const bbWhyH = h => { const p = bbParse(h); return p.rail ? `${h} is on the ${p.rail[0] === 'T' ? 'top' : 'bottom'} ${p.rail[1] === '+' ? '+' : '−'} rail (the whole long strip).` : `${h} is in column ${p.c}, ${'abcde'.includes(p.r) ? 'top half (a–e)' : 'bottom half (f–j)'}.`; };
+Object.assign(U2Q, {
+  HOLE(id, h1, h2) { const y = bbSame(h1, h2); return Object.assign(mcq(id, `Are holes <b>${h1}</b> and <b>${h2}</b> connected?`, y ? ['Yes, same strip', 'No, different strips'] : ['No, different strips', 'Yes, same strip'], ''),
+    u2w(y ? `Yes: they share one metal strip.` : `No: they’re on different strips.`, [bbWhyH(h1), bbWhyH(h2), 'Holes connect only if they’re in the same column on the same half (a–e or f–j), or on the same rail.'])); },
+  LEDR(id, V, vf, mA) { const a = (V - vf) / (mA / 1000); return Object.assign(mcq(id, `<b>${V} V</b> battery, LED needs <b>${vf} V</b>, you want <b>${mA} mA</b>. What resistor?`, u2opts(a, [V / (mA / 1000), vf / (mA / 1000)], 'Ω'), ''),
+    u2w(`R = (${V} − ${vf}) ÷ ${mA / 1000} A = ${u2n(a)} Ω.`, ['The LED keeps its own voltage; the resistor gets the rest.', `Resistor voltage = ${V} − ${vf} = ${u2n(V - vf)} V.`, `${mA} mA = ${mA / 1000} A, so R = ${u2n(V - vf)} ÷ ${mA / 1000} = ${u2n(a)} Ω.`])); },
+  FWD(id, color, V) { const vf = LEDVF[color], y = V > vf; return Object.assign(mcq(id, `A <b>${color}</b> LED needs about <b>${vf} V</b>. Will it light from <b>${V} V</b> (with a resistor)?`, y ? ['Yes', 'No'] : ['No', 'Yes'], ''),
+    u2w(y ? `Yes: ${V} V is more than the ${vf} V it needs.` : `No: ${V} V is less than the ${vf} V it needs.`, ['An LED stays dark until it gets its turn-on voltage.', `${color} needs about ${vf} V.`, `The battery must be bigger than that, with the extra going to the resistor.`])); },
+});
+Object.assign(U2BANK, { HOLE: [['a3', 'e3'], ['e3', 'f3'], ['T+2', 'T+9'], ['c4', 'c5'], ['g7', 'j7'], ['T+3', 'T-3']], LEDR: [[9, 2, 10], [5, 2, 15], [6, 3, 10], [9, 3, 20]], FWD: [['red', 3], ['blue', 1.5], ['green', 4.5], ['white', 3]] });
+const H = U2Q.HOLE, LR = U2Q.LEDR, FW = U2Q.FWD;
+Object.assign(LESSONS, {
+  B1: { title: 'Inside a breadboard', goal: 'Which holes are joined underneath.', cards: ['tstrip', 'cgap', 'bbshort'], steps: [
+    ...OS('L18', [0, 1, 2]), H('b1q1', 'a2', 'c2'), H('b1q2', 'a2', 'a3'), ...OS('L18', [3]), H('b1q3', 'e6', 'f6'), H('b1q4', 'g9', 'j9'),
+    ...OS('L18', [4, 5]), H('b1q5', 'b11', 'd11'), H('b1q6', 'd4', 'd5'), ...OS('L18', [6, 7]), H('b1q7', 'f1', 'j1'), H('b1q8', 'c13', 'h13'),
+    tfk('b1t1', 'The center gap splits each column into two separate strips.', true, 'Yes: a–e is one strip, f–j is another.', ['The gap is there on purpose.', 'Top half a–e: one strip per column.', 'Bottom half f–j: another strip.']),
+    ...rev('b1', ['KVL', 'SYM', 'NODE', 'KCL'], 4)] },
+  B2: { title: 'Power rails & ground', goal: 'The long + and − rails carry the battery to every row.', cards: ['prail', 'gnd0', 'splitr'], steps: [
+    ...OS('L19', [0, 1, 2]), H('b2q1', 'T+1', 'T+12'), H('b2q2', 'T+4', 'T-4'), ...OS('L19', [3]),
+    tfk('b2t1', 'The red-line rail is usually +, the blue-line rail is usually −.', true, 'Yes: red = +, blue = −.', ['Rails are the long strips along the edges.', 'Red line = + (battery +).', 'Blue line = − (ground).']),
+    ...OS('L19', [4, 5, 6]), H('b2q3', 'B-2', 'B-14'), H('b2q4', 'T-5', 'B-5'),
+    ...OS('L19', [7, 8]), H('b2q5', 'T+6', 'a6'),
+    tfk('b2t2', 'A wire straight from + rail to − rail is a short circuit.', true, 'Yes: nothing slows the current, so it rushes and heats.', ['A short = a path with almost no resistance.', 'Huge current flows.', 'Batteries and wires get hot. Never do it!']),
+    ...rev('b2', ['HOLE', 'KVL', 'HOLE', 'SYM'], 4)] },
+  B3: { title: 'Jumpers, pins & headers', goal: 'Jumpers join strips; chips sit across the gap.', cards: ['jumper', 'header', 'dip'], steps: [
+    ...OS('L20', [0, 1, 2]), H('b3q1', 'a3', 'T+3'),
+    tfk('b3t1', 'A jumper wire joins two strips that weren’t connected before.', true, 'Yes: it’s a bridge between strips.', ['Strips only connect inside themselves.', 'A jumper adds a path between two of them.', 'That’s how power gets from the rail into a row.']),
+    ...OS('L20', [3, 4]), H('b3q2', 'e10', 'f10'),
+    tfk('b3t2', 'A chip (DIP) straddles the gap so its two rows of pins aren’t shorted together.', true, 'Yes: each pin gets its own strip.', ['Pins on the same side are in different columns.', 'Pins across from each other must not touch.', 'The gap keeps them apart.']),
+    ...OS('L20', [5, 6, 7]), H('b3q3', 'c7', 'c8'), H('b3q4', 'h2', 'f2'),
+    tfk('b3t3', 'Jumper colour changes how much current it can carry.', false, 'No: colour is just a label (red +, black −).', ['All jumpers are the same copper inside.', 'Colours help you read your build.', 'Red for +, black for −, others for signals.']),
+    ...rev('b3', ['HOLE', 'KCL', 'NODEM', 'HOLE'], 4)] },
+  B4: { title: 'LEDs: anode & cathode', goal: 'Long leg +, flat side −, and it needs enough voltage.', cards: ['anode', 'cathode', 'fwdv'], steps: [
+    ...OS('L21', [0, 1]),
+    tfk('b4t1', 'The longer leg of a new LED is the + leg (anode).', true, 'Yes: long leg = + = anode.', ['LEDs only work one way.', 'Long leg goes toward battery +.', 'The flat edge of the rim marks the − leg.']),
+    ...OS('L21', [2, 3]), FW('b4q1', 'red', 9), FW('b4q2', 'blue', 1.5),
+    ...OS('L21', [4]), FW('b4q3', 'green', 3), FW('b4q4', 'white', 2),
+    Object.assign(mcq('b4q5', 'An LED is plugged in backwards. What happens?', ['It stays dark', 'It glows dimly', 'It explodes'], ''), u2w('It stays dark: current can’t go backwards through it.', ['An LED is a diode: a one-way valve.', 'Backwards = valve shut.', 'Flip it and it lights (with its resistor).'])),
+    ...OS('L21', [5, 6]), FW('b4q6', 'yellow', 4.5),
+    tfk('b4t2', 'The flat edge on an LED’s rim marks the cathode (−).', true, 'Yes: flat = −.', ['Look at the bottom rim of the LED.', 'One side is flat.', 'That leg is the cathode, toward −.']),
+    ...rev('b4', ['HOLE', 'FWD', 'SYM', 'KVL'], 4)] },
+  B5: { title: 'Your first LED circuit', goal: 'Rail → resistor → LED → rail, with the right resistor.', cards: ['limr', 'bbloop'], steps: [
+    ...OS('L22', [0]), LR('b5q1', 9, 2, 10), LR('b5q2', 5, 2, 10), ...OS('L22', [1]),
+    LR('b5q3', 9, 3, 20), LR('b5q4', 6, 2, 20), ...OS('L22', [2, 3]), LR('b5q5', 4.5, 2, 5),
+    ...OS('L22', [4, 5]), LR('b5q6', 12, 2, 20), LR('b5q7', 3, 2, 5),
+    ...OS('L22', [6]),
+    tfk('b5t1', 'Without a resistor, an LED on a 9 V battery would burn out.', true, 'Yes: nothing limits the current.', ['The LED only “uses” about 2 V.', 'Without a resistor the rest becomes a huge current.', 'The resistor keeps it safe.']),
+    ...rev('b5', ['LEDR', 'HOLE', 'FWD', 'KVL', 'LEDR'], 5)] },
+});
+(() => {
+  const U4 = UNITS.find(u => u.id === 'U4'); U4.lessons = ['B1', 'B2', 'B3', 'B4', 'B5'];
+  const M = { L18: 'B1', L19: 'B2', L20: 'B3', L21: 'B4', L22: 'B5' };
+  Object.values(CARDS).forEach(c => { if (M[c.lesson]) c.lesson = M[c.lesson]; });
+  const T4 = TESTS.T4; T4.steps = T4.steps.map(s => Object.assign({}, s, { tag: M[s.tag] || s.tag }));
+  T4.steps.push(Object.assign(H('t4h1', 'e5', 'f5'), { tag: 'B1' }), Object.assign(FW('t4f1', 'blue', 3), { tag: 'B4' }), Object.assign(LR('t4r1', 9, 2, 10), { tag: 'B5' }), Object.assign(LR('t4r2', 5, 2, 15), { tag: 'B5' }));
+})();
+/* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
 const KEY = 'zapling.v1';
@@ -5379,7 +5439,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.10 (2026-10-07)';
+const APP_VERSION = '7.11 (2026-10-07)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -6731,6 +6791,24 @@ renderPath = function () {
   Object.values(OPT_LESSONS).flat().forEach(id => { const b = $(`.node[data-id="${id}"]`); if (!b) return; b.classList.add('optnode'); b.insertAdjacentHTML('afterbegin', '<span class="startbubble optb">OPTIONAL</span>'); });
 };
 document.head.insertAdjacentHTML('beforeend', '<style>.node.opt .disc{background:#FFC94D;--sh:#C9831A}.startbubble.optb{background:#FFF3D6;color:#8A5A00;animation:none}</style>');
+
+/* v7.11: Unit 4 rewrite. Old L18-L22 → B1-B5 one-to-one; same tier, so already-paid lessons never pay again. */
+const U4_MAP = { B1: 'L18', B2: 'L19', B3: 'L20', B4: 'L21', B5: 'L22' };
+const _ensureShopU4 = ensureShop;
+ensureShop = function () {
+  if (!S.u4mig1 && S.done) {
+    S.tokPaid = S.tokPaid && typeof S.tokPaid === 'object' ? S.tokPaid : {}; S.tokGranted = S.tokGranted && typeof S.tokGranted === 'object' ? S.tokGranted : {};
+    Object.entries(U4_MAP).forEach(([id, l]) => {
+      if (!S.done[l]) return;
+      if (!S.done[id]) S.done[id] = Object.assign({}, typeof S.done[l] === 'object' ? S.done[l] : { at: today() }, { mig: l });
+      const paid = S.tokPaid[l] != null ? S.tokPaid[l] : (S.tokGranted[l] ? TOK_UNIT.U4 : 0);
+      S.tokPaid[id] = Math.max(S.tokPaid[id] || 0, Math.min(tokTier(id), paid)); S.tokGranted[id] = 1;
+      if (S.mastered && S.mastered[l]) S.mastered[id] = 1;
+    });
+    S.u4mig1 = 1;
+  }
+  return _ensureShopU4.apply(this, arguments);
+};
 /* =========================================================
    AVATAR v2: cuter bodies, expressions, layered accessories, shop, idle animation
    Bodies (v3): Cappy, Chiplet, Glowbie, Flippy, Lumi, Beep, Knobby, Boing, Volty, Stripes. Old bodies were refunded once (S.avatar.migBodies2, see ensureShop).
