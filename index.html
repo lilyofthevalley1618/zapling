@@ -4550,6 +4550,40 @@ Object.assign(LESSONS, {
     Q.MI('c5q5', 3.3, 220), Q.MI('c5q6', 1.5, 150)], 'c5', ['MAH', 'LEDR', 'KVL', 'LEDS'], 4),
 }); }
 reUnit('U5', { L23: 'C1', L24: 'C2', L25: 'C3', L26: 'C4', L27: 'C5' }, 'T5', [Object.assign(U2Q.LEDS('t5s1', 9, 2, 2, 10), { tag: 'C3' }), Object.assign(U2Q.MAH('t5m1', 1000, 50), { tag: 'C4' }), Object.assign(U2Q.MI('t5i1', 4.7, 470), { tag: 'C5' }), Object.assign(U2Q.LEDR('t5r1', 5, 2, 10), { tag: 'C1' })]);
+/* v7.13: Unit 6 rewrite (F1-F5 replace L28-L32) */
+Object.assign(U2Q, {
+  POTR(id, k, pct) { const a = k * pct / 100; return u3x([id, `A <b>${k} kΩ</b> knob (potentiometer) is turned <b>${pct}%</b> of the way from end A. Resistance from A to the wiper?`], a, [k - a, k], 'kΩ',
+    `${pct}% of ${k} kΩ = ${u2n(a)} kΩ.`, ['The wiper slides along the resistive track.', 'From end A to the wiper is the part it has travelled.', `${pct}% × ${k} = ${u2n(a)} kΩ (the rest, ${u2n(k - a)} kΩ, is on the other side).`]); },
+  LDRV(id, Vin, Rt, Rl) { const a = Vin * Rl / (Rt + Rl); return u3x([id, `<b>${Vin} V</b>, <b>${Rt} kΩ</b> on top, light sensor (LDR) on the bottom reading <b>${Rl} kΩ</b>. V_out?`], a, [Vin * Rt / (Rt + Rl), Vin / 2 === a ? Vin : Vin / 2], 'V',
+    `V_out = ${Vin} × ${Rl} ÷ (${Rt} + ${Rl}) = ${u2n(a)} V.`, ['It’s a voltage divider: V_out is across the bottom part (the LDR).', `LDR’s share = ${Rl} ÷ ${Rt + Rl}.`, `${Vin} × ${Rl}/${Rt + Rl} = ${u2n(a)} V. Darker → bigger LDR → bigger V_out.`]); },
+});
+Object.assign(U2BANK, { POTR: [[10, 30], [10, 75], [5, 40], [100, 10]], LDRV: [[5, 10, 10], [5, 10, 1], [9, 10, 20], [6, 2, 1]] });
+{ const Q = U2Q;
+Object.assign(LESSONS, {
+  F1: reLesson('L28', 'Debugging breadboard builds', 'Check power, rows, LED direction, resistor, ground.', [
+    Object.assign(mcq('f1q1', 'LED dark. First thing to check?', ['Is the battery connected to the rails?', 'Is the LED the right colour?', 'Are the jumpers the right colour?'], ''), u2w('Power first: no power, nothing works.', ['Start at the source.', 'Is the battery on the rails, the right way round?', 'Then follow the path.'])),
+    tfk('f1t1', 'An “off-by-one” mistake means a leg is one column away from where it should be.', true, 'Yes: very common, and easy to fix.', ['Columns are close together.', 'A leg in the wrong column is in a different strip.', 'Count columns carefully.']),
+    Q.HOLE('f1q2', 'd6', 'd7'), Q.HOLE('f1q3', 'b9', 'e9'),
+    Object.assign(mcq('f1q4', 'You measure 9 V across the LED and 0 V across the resistor. Most likely?', ['The LED is in backwards (or broken)', 'The resistor is too big', 'The battery is flat'], ''), u2w('Full voltage across the LED with no current = LED isn’t conducting.', ['0 V across the resistor = no current.', 'All the voltage sits across the LED.', 'So the LED is blocking: backwards or dead.'])),
+    tfk('f1t2', 'If the resistor and LED legs are in different columns with nothing joining them, the loop is open.', true, 'Yes: different strips = not connected.', ['Each column strip is separate.', 'Parts must share a strip or be jumpered.', 'Otherwise there’s a gap.']),
+    Q.FWD('f1q5', 'red', 9), Q.LEDR('f1q6', 9, 2, 15)], 'f1', ['HOLE', 'MI', 'LEDR', 'MAH'], 4),
+  F2: reLesson('L29', 'Potentiometers & dimmers', 'A knob is an adjustable resistor (or divider).', [Q.POTR('f2q1', 10, 30), Q.POTR('f2q2', 10, 75), Q.POTR('f2q3', 5, 40), Q.POTR('f2q4', 100, 10),
+    tfk('f2t1', 'Turning a dimmer to MORE resistance makes the LED dimmer.', true, 'Yes: more resistance, less current, dimmer.', ['Current = V ÷ R.', 'Bigger R → smaller current.', 'Smaller current → dimmer LED.']),
+    Q.LEDR('f2q5', 9, 2, 10), Q.POTR('f2q6', 10, 50), Q.DIV('f2q7', 10, 1, 1), Q.POTR('f2q8', 1, 20)], 'f2', ['LEDR', 'HOLE', 'DIV', 'MI'], 4),
+  F3: reLesson('L30', 'Light sensors: LDR dividers', 'Dark = more resistance; a divider turns that into a voltage.', [Q.LDRV('f3q1', 5, 10, 10), Q.LDRV('f3q2', 5, 10, 1), Q.LDRV('f3q3', 9, 10, 20), Q.LDRV('f3q4', 6, 2, 1),
+    tfk('f3t1', 'In the dark, an LDR’s resistance goes way up.', true, 'Yes: less light, more resistance.', ['LDR = light dependent resistor.', 'Bright: low resistance.', 'Dark: high resistance.']),
+    Q.LDRV('f3q5', 9, 10, 100), Q.LDRV('f3q6', 5, 10, 40), Q.POTR('f3q7', 10, 60)], 'f3', ['POTR', 'DIV', 'LEDR', 'HOLE'], 4),
+  F4: reLesson('L31', 'Capstone: indicator panel', 'Plan, build and test a multi-LED panel.', [Q.PSUM('f4q1', 3, 12), Q.MAH('f4q2', 500, 40), Q.LEDR('f4q3', 9, 2.2, 10), Q.PSUM('f4q4', 2, 15),
+    tfk('f4t1', 'In a parallel panel, each LED should get its own resistor.', true, 'Yes: so each one gets its own safe current.', ['LEDs differ slightly.', 'Sharing one resistor lets one hog the current.', 'One resistor per LED is the safe build.']),
+    Q.MI('f4q5', 6.8, 680), Q.MAH('f4q6', 1000, 50), Q.LEDR('f4q7', 9, 3, 15)], 'f4', ['LDRV', 'POTR', 'PSUM', 'LEDS'], 4),
+  F5: reLesson('L32', 'Capstone: fault-finding', 'Measure, halve the problem, fix.', [
+    Object.assign(mcq('f5q1', 'Half-splitting means…', ['Check the middle first to halve where the fault can be', 'Cut the circuit in half', 'Use half the battery'], ''), u2w('Test the middle: the fault is then in one half.', ['Like guessing a number: start in the middle.', 'Each test cuts the search in half.', 'You find faults fast.'])),
+    Object.assign(mcq('f5q2', 'Rail to rail reads 9 V, but 0 V across the resistor and 0 V across the LED. Where’s the break?', ['A jumper or connection in the loop', 'The battery', 'Nothing: it’s fine'], ''), u2w('No voltage across either part = no current = a break somewhere else in the loop.', ['Power is fine (9 V at the rails).', 'No drop across parts means no current.', 'So a jumper or row connection is open.'])),
+    Q.MI('f5q3', 4.7, 470), Q.LEDR('f5q4', 9, 2, 20),
+    tfk('f5t1', 'A very dim LED might mean the resistor is much too big.', true, 'Yes: too much resistance, too little current.', ['Check the resistor’s colour bands.', '47 kΩ instead of 470 Ω = 100× less current.', 'Swap in the right value.']),
+    Q.HOLE('f5q5', 'a12', 'f12'), Q.LDRV('f5q6', 5, 10, 10), Q.PSUM('f5q7', 2, 15)], 'f5', ['LEDR', 'MI', 'POTR', 'LDRV', 'HOLE'], 5),
+}); }
+reUnit('U6', { L28: 'F1', L29: 'F2', L30: 'F3', L31: 'F4', L32: 'F5' }, 'T6', [Object.assign(U2Q.POTR('t6p1', 10, 40), { tag: 'F2' }), Object.assign(U2Q.LDRV('t6l1', 5, 10, 40), { tag: 'F3' }), Object.assign(U2Q.PSUM('t6s1', 3, 12), { tag: 'F4' }), Object.assign(U2Q.HOLE('t6h1', 'e4', 'f4'), { tag: 'F1' })]);
 /* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
@@ -5484,7 +5518,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.12 (2026-10-07)';
+const APP_VERSION = '7.13 (2026-10-07)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
