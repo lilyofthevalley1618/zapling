@@ -452,6 +452,7 @@ body:has(#v-games.on) #askFab{display:none}
 @media (prefers-reduced-motion:reduce){.avface *,.sppv.boing svg{animation:none!important}}
 .whymore{margin-top:8px;font-size:14.5px}.whymore summary{cursor:pointer;font-weight:900;color:var(--peri);list-style:none;display:inline-flex;align-items:center;gap:4px}.whymore summary::-webkit-details-marker{display:none}
 .whymore summary::before{content:'▸';transition:transform .15s}.whymore[open] summary::before{transform:rotate(90deg)}.whymore ol,.whymore ul{margin:6px 0 0;padding-left:20px;line-height:1.45}.whymore li{margin:3px 0}
+.unitfc{display:flex;align-items:center;justify-content:center;gap:6px;margin:10px auto 0;width:auto;padding:8px 14px;font-size:14px}.unitfc svg{width:20px;height:20px}.unitfc .small{opacity:.75;font-weight:700}
 </style>
 </head>
 <body>
@@ -4070,6 +4071,171 @@ function whyHTML(step) {
   return `${step.why}${step.whyMore ? `<details class="whymore" ontoggle="this.open&&this.scrollIntoView({block:'nearest',behavior:'smooth'})"><summary>More detail</summary><ol>${li(step.whyMore)}</ol></details>` : step.whyWords ? `<details class="whymore"><summary>Words to know</summary><ul>${li(step.whyWords)}</ul></details>` : ''}`;
 }
 /* =========================================================
+   UNIT 2 SLOW REWRITE — PREVIEW ONLY (lessons 1 & 2)
+   Duolingo-style: one formula per lesson, lots of easy practice.
+   Loaded only by the u2-preview build; live main is untouched.
+   ========================================================= */
+Object.assign(ART, {
+  ohmFindR() {
+    return svgBox(`${sym('bat', 50, 110, 90)}${lbl(22, 114, 'V', '#E0604F', 14)}${wire('M50 90V40H250V80M250 140V180H50V130')}${sym('res', 250, 110, 90)}${lbl(276, 114, 'R = ?', INK, 13, 'start')}
+      <path d="M120 28h40M160 28l-8-6M160 28l-8 6" stroke="#1C9E80" stroke-width="3" fill="none" stroke-linecap="round"/>${lbl(175, 32, 'R = V ÷ I', '#1C9E80', 15, 'start')}
+      ${lbl(160, 210, 'Cover R → left with V ÷ I', '#6B6899', 12)}`, 'Ohm\'s law for resistance: R equals V divided by I', 228);
+  },
+  ohmTri() {
+    return svgBox(`<path d="M160 30L250 180H70Z" fill="#FFF3E0" stroke="#E0604F" stroke-width="4" stroke-linejoin="round"/><path d="M98 120H222M160 120V180" stroke="#E0604F" stroke-width="3"/>
+      ${lbl(160, 100, 'V', '#E0604F', 30)}${lbl(125, 162, 'I', '#5A61D8', 28)}${lbl(195, 162, 'R', '#1C9E80', 28)}${lbl(160, 208, 'Cover the one you want!', '#6B6899', 13)}`, 'The Ohm triangle with V on top and I and R below', 220);
+  },
+  ohmFindI() {
+    return svgBox(`${sym('bat', 50, 110, 90)}${lbl(22, 114, 'V', '#E0604F', 14)}${wire('M50 90V40H250V80M250 140V180H50V130')}${sym('res', 250, 110, 90)}${lbl(276, 104, 'R', INK, 14, 'start')}${lbl(276, 124, 'Ω', INK, 12, 'start')}
+      <path d="M120 28h40M160 28l-8-6M160 28l-8 6" stroke="#E0604F" stroke-width="3" fill="none" stroke-linecap="round"/>${lbl(175, 32, 'I = V ÷ R', '#E0604F', 15, 'start')}
+      ${lbl(160, 210, 'I current · V voltage · R resistance', '#6B6899', 12)}`, 'Ohm\'s law for current: I equals V divided by R', 228);
+  },
+  ohmFindV() {
+    return svgBox(`${sym('bat', 50, 110, 90)}${lbl(18, 114, 'V = ?', '#E0604F', 13)}${wire('M50 90V40H250V80M250 140V180H50V130')}${sym('res', 250, 110, 90)}${lbl(276, 104, 'R', INK, 14, 'start')}
+      <path d="M120 28h40M160 28l-8-6M160 28l-8 6" stroke="#5A61D8" stroke-width="3" fill="none" stroke-linecap="round"/>${lbl(175, 32, 'V = I × R', '#5A61D8', 15, 'start')}
+      ${lbl(160, 210, 'Cover V → left with I × R', '#6B6899', 12)}`, 'Ohm\'s law for voltage: V equals I times R', 228);
+  },
+});
+
+
+const u2w = (short, steps) => ({ why: short, whyMore: steps });
+const u2n = x => String(+(+x).toFixed(3));
+const u2opts = (ans, cands, unit) => { const o = [ans]; cands.forEach(c => { c = +(+c).toFixed(3); if (c > 0 && !o.includes(c) && o.length < 3) o.push(c); }); [ans * 2, ans / 2, ans + 1, ans * 10].forEach(c => { c = +(+c).toFixed(3); if (c > 0 && !o.includes(c) && o.length < 3) o.push(c); }); return o.map(v => u2n(v) + ' ' + unit); };
+// one question generator per form; kid-friendly Why + More detail, symbols defined
+const U2Q = {
+  I(id, V, R, story) {
+    const a = V / R;
+    return Object.assign(mcq(id, story || `<b>${V} V</b> across a <b>${R} Ω</b> resistor. What is the current?`, u2opts(a, [V * R, R / V], 'A'), ''),
+      u2w(`I = V ÷ R = ${V} ÷ ${R} = ${u2n(a)} A.`, ['I = current, how much flows (amps). V = voltage, the push (volts). R = resistance, the slowdown (ohms).', `Current = push ÷ slowdown: ${V} ÷ ${R}.`, `${V} ÷ ${R} = ${u2n(a)}, so I = ${u2n(a)} A.`]));
+  },
+  V(id, I, R, story) {
+    const a = I * R;
+    return Object.assign(mcq(id, story || `<b>${I} A</b> flows through a <b>${R} Ω</b> resistor. What voltage is across it?`, u2opts(a, [I / R, R / I], 'V'), ''),
+      u2w(`V = I × R = ${I} × ${R} = ${u2n(a)} V.`, ['V = voltage, the push (volts). I = current, the flow (amps). R = resistance (ohms).', `Push = flow × slowdown: ${I} × ${R}.`, `${I} × ${R} = ${u2n(a)}, so V = ${u2n(a)} V.`]));
+  },
+  R(id, V, I, story) {
+    const a = V / I;
+    return Object.assign(mcq(id, story || `<b>${V} V</b> pushes <b>${I} A</b> through a resistor. What is its resistance?`, u2opts(a, [V * I, I / V], 'Ω'), ''),
+      u2w(`R = V ÷ I = ${V} ÷ ${I} = ${u2n(a)} Ω.`, ['R = resistance, how much a part slows the flow (ohms, Ω). V = voltage (volts). I = current (amps).', `Resistance = push ÷ flow: ${V} ÷ ${I}.`, `${V} ÷ ${I} = ${u2n(a)}, so R = ${u2n(a)} Ω.`]));
+  },
+  which(id, want, story) {
+    const F = { I: 'I = V ÷ R', V: 'V = I × R', R: 'R = V ÷ I' }, name = { I: 'current (I)', V: 'voltage (V)', R: 'resistance (R)' };
+    return Object.assign(mcq(id, `${story} <b>Which formula do you need?</b>`, [F[want], ...Object.keys(F).filter(k => k !== want).map(k => F[k])], ''),
+      u2w(`You want the ${name[want]}, so use ${F[want]}.`, ['Find the letter you DON\'T know: that\'s what you solve for.', 'Cover it in the Ohm triangle (V on top, I and R on the bottom).', `What\'s left is ${F[want]}.`]));
+  },
+};
+// review helper: later lessons auto-insert a few earlier-formula questions (fresh ids, deterministic numbers)
+const U2BANK = { I: [[12, 4], [9, 3], [6, 12], [20, 5], [8, 4], [15, 3]], V: [[2, 6], [0.5, 10], [3, 4], [1.5, 2], [0.2, 50], [4, 5]], R: [[12, 2], [9, 0.5], [6, 3], [10, 0.5], [24, 4], [5, 0.25]] };
+function u2Review(prefix, forms, n) {
+  const out = []; let k = 0;
+  for (let i = 0; out.length < n; i++) { const f = forms[i % forms.length], p = U2BANK[f][(i * 7 + prefix.length) % U2BANK[f].length]; out.push(Object.assign(U2Q[f](`${prefix}r${++k}`, p[0], p[1]), { review: f })); }
+  return out;
+}
+const u2Tag = (q, t) => Object.assign(q, { q: `<span style="display:inline-block;background:#FFE9A8;color:#8A5A00;border-radius:999px;padding:1px 8px;font-size:12px;margin-right:6px">🔁 ${t}</span>` + q.q });
+
+Object.assign(LESSONS, {
+  LS1: {
+    title: 'Find I: I = V ÷ R', goal: 'Find the current with I = V ÷ R. Lots of practice!', cards: ['ohmslaw', 'divI'],
+    steps: [
+      { type: 'concept', kicker: 'New idea', title: 'Current from push and slowdown', art: ART.ohmFindI,
+        html: `<p class="body">Ohm's law links three friends: the <b>push</b>, the <b>flow</b>, and how much a part <b>slows</b> the flow.</p><div class="def" style="font-size:18px;text-align:center"><b>I = V ÷ R</b></div><div class="def"><b>I</b> = current, how much electricity flows (amps, A).<br><b>V</b> = voltage, the push (volts, V).<br><b>R</b> = resistance, how much a part slows the flow (ohms, Ω).<br>Bigger push → more flow. Bigger resistance → less flow.</div>`,
+        tip: 'This lesson only finds I. Cover I in the Ohm triangle: you\'re left with V ÷ R.' },
+      Object.assign(mcq('ls1q1', 'In <b>I = V ÷ R</b>, the letter <b>I</b> stands for…', ['Current (how much flows)', 'Voltage (the push)', 'Resistance (the slowdown)'], ''), u2w('I = current, how much electricity flows (amps, A).', ['V = voltage, the push (volts).', 'R = resistance, the slowdown (ohms, Ω).', 'I = V ÷ R means flow = push ÷ slowdown.'])),
+      U2Q.I('ls1q2', 10, 10), U2Q.I('ls1q3', 6, 3), U2Q.I('ls1q4', 8, 2),
+      Object.assign(tfq('ls1q5', 'If V stays the same and R gets bigger, the current gets smaller.', true, ''), u2w('True: bigger R → smaller I when V stays the same.', ['I = V ÷ R.', 'Dividing by a bigger number gives a smaller answer.', 'More slowdown → less flow.'])),
+      U2Q.I('ls1q6', 12, 6), U2Q.I('ls1q7', 9, 3),
+      { type: 'sim', kind: 'ohm', id: 'ls1q8', graded: true, V: 6, R: { min: 2, max: 12, step: 1, start: 3 }, target: { q: 'I', val: 1, tol: 0.001 }, q: 'Battery fixed at <b>6 V</b>. Slide R until the current is exactly <b>1 A</b>, then press Check.', answer: '6 Ω',
+        ...u2w('6 ÷ 6 = 1 A, so R = 6 Ω.', ['You want I = 1 A with V = 6 V.', 'I = V ÷ R, so try R = 6: 6 ÷ 6 = 1.', 'Check: 1 A ✓']) },
+      U2Q.I('ls1q9', 20, 4), U2Q.I('ls1q10', 5, 10),
+      Object.assign(tfq('ls1q11', 'The formula for current is I = V × R.', false, ''), u2w('False: current is I = V ÷ R (divide, not times).', ['Cover I in the triangle.', 'V is on top, R is below → V ÷ R.', 'So I = V ÷ R.'])),
+      U2Q.I('ls1q12', 24, 8), U2Q.I('ls1q13', 3, 6), U2Q.I('ls1q14', 9, 30),
+      U2Q.I('ls1q15', 12, 24, 'A toy car motor is <b>24 Ω</b> and runs on a <b>12 V</b> battery. How much current flows?'),
+      { type: 'sim', kind: 'ohm', id: 'ls1q16', graded: true, V: 12, R: { min: 2, max: 24, step: 2, start: 4 }, target: { q: 'I', val: 2, tol: 0.001 }, q: 'Battery fixed at <b>12 V</b>. Slide R until I is exactly <b>2 A</b>, then press Check.', answer: '6 Ω',
+        ...u2w('12 ÷ 6 = 2 A, so R = 6 Ω.', ['Want I = 2 A with V = 12 V.', 'Try R = 6: 12 ÷ 6 = 2.', 'Check: 2 A ✓']) },
+      U2Q.I('ls1q17', 100, 50),
+    ],
+  },
+  LS2: {
+    title: 'Find V: V = I × R', goal: 'Find the voltage with V = I × R, then review I.', cards: ['ohmslaw', 'prop'],
+    steps: [
+      { type: 'concept', kicker: 'New idea', title: 'Voltage from flow and slowdown', art: ART.ohmFindV,
+        html: `<p class="body">Same three friends, but now we find the <b>push</b>.</p><div class="def" style="font-size:18px;text-align:center"><b>V = I × R</b></div><div class="def"><b>V</b> = voltage, the push (volts, V).<br><b>I</b> = current, how much flows (amps, A).<br><b>R</b> = resistance, the slowdown (ohms, Ω).<br>More flow or more resistance → you need a bigger push.</div>`,
+        tip: 'Cover V in the Ohm triangle: you\'re left with I × R.' },
+      Object.assign(mcq('ls2q1', 'In <b>V = I × R</b>, the letter <b>V</b> stands for…', ['Voltage (the push)', 'Current (the flow)', 'Resistance (the slowdown)'], ''), u2w('V = voltage, the push (volts).', ['I = current, the flow (amps).', 'R = resistance, the slowdown (ohms).', 'V = I × R means push = flow × slowdown.'])),
+      U2Q.V('ls2q2', 2, 5), U2Q.V('ls2q3', 1, 9), U2Q.V('ls2q4', 3, 3),
+      Object.assign(tfq('ls2q5', 'If the current stays the same and R gets bigger, the voltage gets bigger too.', true, ''), u2w('True: same I, bigger R → bigger V.', ['V = I × R.', 'I is fixed; a bigger R makes I × R bigger.', 'A tougher part needs more push for the same flow.'])),
+      U2Q.V('ls2q6', 0.5, 8), U2Q.V('ls2q7', 4, 3),
+      { type: 'sim', kind: 'ohm', id: 'ls2q8', graded: true, V: { min: 1, max: 12, step: 1, start: 3 }, R: 10, target: { q: 'I', val: 0.5, tol: 0.001 }, q: 'R is fixed at <b>10 Ω</b>. Slide V until the current is exactly <b>0.5 A</b>, then press Check.', answer: '5 V',
+        ...u2w('V = 0.5 × 10 = 5 V.', ['Want I = 0.5 A through 10 Ω.', 'V = I × R = 0.5 × 10 = 5 V.', 'Check: 5 ÷ 10 = 0.5 A ✓']) },
+      U2Q.V('ls2q9', 2, 6), U2Q.V('ls2q10', 0.2, 50),
+      Object.assign(tfq('ls2q11', 'The formula for voltage is V = I ÷ R.', false, ''), u2w('False: voltage is V = I × R (times, not divide).', ['Cover V in the triangle.', 'I and R sit side by side → multiply.', 'So V = I × R.'])),
+      U2Q.V('ls2q12', 1.5, 4), U2Q.V('ls2q13', 0.1, 100), U2Q.V('ls2q14', 0.25, 20),
+      U2Q.V('ls2q15', 0.5, 24, 'A bulb draws <b>0.5 A</b> and has <b>24 Ω</b> of resistance. What battery voltage is it on?'),
+      { type: 'sim', kind: 'ohm', id: 'ls2q16', graded: true, V: { min: 1, max: 12, step: 1, start: 2 }, R: 4, target: { q: 'I', val: 2, tol: 0.001 }, q: 'R is fixed at <b>4 Ω</b>. Slide V until the current is exactly <b>2 A</b>, then press Check.', answer: '8 V',
+        ...u2w('V = 2 × 4 = 8 V.', ['Want I = 2 A through 4 Ω.', 'V = I × R = 2 × 4 = 8 V.', 'Check: 8 ÷ 4 = 2 A ✓']) },
+      U2Q.V('ls2q17', 0.03, 300),
+      ...u2Review('ls2', ['I'], 5).map(q => u2Tag(q, 'Review: find I')),
+    ],
+  },
+  LS3: {
+    title: 'Find R: R = V ÷ I', goal: 'Find the resistance with R = V ÷ I, then review I and V.', cards: ['ohmslaw', 'divR'],
+    steps: [
+      { type: 'concept', kicker: 'New idea', title: 'How much is it slowing the flow?', art: ART.ohmFindR,
+        html: `<p class="body">Now the mystery is the <b>slowdown</b>. If you know the push and the flow, you can find it.</p><div class="def" style="font-size:18px;text-align:center"><b>R = V ÷ I</b></div><div class="def"><b>R</b> = resistance, how much a part slows the flow (ohms, Ω).<br><b>V</b> = voltage, the push (volts).<br><b>I</b> = current, the flow (amps).<br>Big push but tiny flow → big resistance.</div>`,
+        tip: 'Cover R in the Ohm triangle: you\'re left with V ÷ I.' },
+      Object.assign(mcq('ls3q1', 'In <b>R = V ÷ I</b>, the letter <b>R</b> stands for…', ['Resistance (the slowdown)', 'Voltage (the push)', 'Current (the flow)'], ''), u2w('R = resistance, how much a part slows the flow (ohms, Ω).', ['V = voltage (volts).', 'I = current (amps).', 'R = V ÷ I means slowdown = push ÷ flow.'])),
+      U2Q.R('ls3q2', 10, 1), U2Q.R('ls3q3', 6, 2), U2Q.R('ls3q4', 12, 3),
+      Object.assign(tfq('ls3q5', 'Same push (V), but LESS current flows. That means MORE resistance.', true, ''), u2w('True: less flow for the same push means more slowdown.', ['R = V ÷ I.', 'Dividing by a smaller I gives a bigger R.', 'Tiny flow → big resistance.'])),
+      U2Q.R('ls3q6', 9, 3), U2Q.R('ls3q7', 20, 2),
+      { type: 'sim', kind: 'ohm', id: 'ls3q8', graded: true, V: 9, R: { min: 5, max: 60, step: 5, start: 10 }, target: { q: 'I', val: 0.3, tol: 0.001 }, q: 'Battery fixed at <b>9 V</b>. Find the resistance that lets exactly <b>0.3 A</b> flow, then press Check.', answer: '30 Ω',
+        ...u2w('R = 9 ÷ 0.3 = 30 Ω.', ['Want I = 0.3 A with V = 9 V.', 'R = V ÷ I = 9 ÷ 0.3 = 30 Ω.', 'Check: 9 ÷ 30 = 0.3 A ✓']) },
+      U2Q.R('ls3q9', 12, 0.5), U2Q.R('ls3q10', 5, 0.5),
+      Object.assign(tfq('ls3q11', 'The formula for resistance is R = I ÷ V.', false, ''), u2w('False: resistance is R = V ÷ I (push on top).', ['Cover R in the triangle.', 'V is on top, I is below → V ÷ I.', 'So R = V ÷ I.'])),
+      U2Q.R('ls3q12', 24, 0.2), U2Q.R('ls3q13', 3, 0.01),
+      U2Q.R('ls3q14', 6, 0.5, 'A flashlight bulb on a <b>6 V</b> battery draws <b>0.5 A</b>. What is the bulb\'s resistance?'),
+      { type: 'sim', kind: 'ohm', id: 'ls3q15', graded: true, V: 12, R: { min: 2, max: 24, step: 2, start: 4 }, target: { q: 'I', val: 0.5, tol: 0.001 }, q: 'Battery fixed at <b>12 V</b>. Pick the resistance that lets exactly <b>0.5 A</b> flow, then press Check.', answer: '24 Ω',
+        ...u2w('R = 12 ÷ 0.5 = 24 Ω.', ['Want I = 0.5 A with V = 12 V.', 'R = V ÷ I = 12 ÷ 0.5 = 24 Ω.', 'Check: 12 ÷ 24 = 0.5 A ✓']) },
+      U2Q.R('ls3q16', 9, 0.03),
+      ...u2Review('ls3', ['I', 'V'], 5).map(q => u2Tag(q, q.review === 'I' ? 'Review: find I' : 'Review: find V')),
+    ],
+  },
+  LS4: {
+    title: 'Ohm mix', goal: 'Pick the right form, then solve. All three together!', cards: ['ohmslaw', 'divI', 'divR'],
+    steps: [
+      { type: 'concept', kicker: 'Put it together', title: 'One triangle, three answers', art: ART.ohmTri,
+        html: `<p class="body">You know all three forms now. The trick: find the letter you <b>don't</b> know, and cover it.</p><div class="def">Want <b>I</b> (current) → <b>V ÷ R</b><br>Want <b>V</b> (voltage) → <b>I × R</b><br>Want <b>R</b> (resistance) → <b>V ÷ I</b></div>`,
+        tip: 'Read the question, circle the two numbers you have, and name the one you need.' },
+      U2Q.which('ls4q1', 'I', 'You know the voltage and the resistance.'),
+      U2Q.which('ls4q2', 'V', 'You know the current and the resistance.'),
+      U2Q.which('ls4q3', 'R', 'You know the voltage and the current.'),
+      U2Q.I('ls4q4', 9, 3), U2Q.V('ls4q5', 2, 4), U2Q.R('ls4q6', 12, 4),
+      U2Q.which('ls4q7', 'I', 'A 9 V battery is hooked to a 45 Ω buzzer. You want to know how much electricity flows.'),
+      U2Q.I('ls4q8', 9, 45, 'A <b>9 V</b> battery runs a <b>45 Ω</b> buzzer. How much current flows?'),
+      U2Q.which('ls4q9', 'V', 'A robot motor draws 2 A and has 6 Ω of resistance. You want the battery voltage.'),
+      U2Q.V('ls4q10', 2, 6, 'A robot motor draws <b>2 A</b> and has <b>6 Ω</b>. What voltage does it need?'),
+      U2Q.which('ls4q11', 'R', 'A lamp on 12 V draws 0.5 A. You want to know how much it slows the flow.'),
+      U2Q.R('ls4q12', 12, 0.5, 'A lamp on <b>12 V</b> draws <b>0.5 A</b>. What is its resistance?'),
+      Object.assign(tfq('ls4q13', 'To find R, you divide the voltage by the current.', true, ''), u2w('True: R = V ÷ I.', ['Cover R in the triangle.', 'V on top, I below.', 'So R = V ÷ I.'])),
+      U2Q.V('ls4q14', 0.5, 18), U2Q.I('ls4q15', 5, 20), U2Q.R('ls4q16', 3, 0.1),
+      { type: 'sim', kind: 'ohm', id: 'ls4q17', graded: true, V: { min: 0, max: 12, step: 1, start: 3 }, R: { min: 2, max: 12, step: 1, start: 3 }, target: { q: 'I', val: 0.5, tol: 0.001 }, q: 'Use both sliders to make the current exactly <b>0.5 A</b>, then press Check.', answer: 'Any pair where V is half of R, like 6 V and 12 Ω',
+        ...u2w('Any V and R where V ÷ R = 0.5 works, like 5 V and 10 Ω.', ['I = V ÷ R.', 'For 0.5 A, V must be half of R.', '3 V & 6 Ω, 5 V & 10 Ω, 6 V & 12 Ω all work.']) },
+      U2Q.I('ls4q18', 6, 1.5, 'A <b>6 V</b> battery drives a <b>1.5 Ω</b> fan. Current?'),
+    ],
+  },
+});
+/* =========================================================
+   v7.8: new Unit 2 lessons 1-4 (one Ohm form per lesson) go live as O1-O4, replacing old L6 on the path.
+   Old L7-L11 stay after them for now. LESSONS.L6 is kept (off the path) so old references don't break.
+   ========================================================= */
+[['O1', 'LS1'], ['O2', 'LS2'], ['O3', 'LS3'], ['O4', 'LS4']].forEach(([n, o]) => { LESSONS[n] = LESSONS[o]; delete LESSONS[o]; });
+(() => {
+  const U = UNITS.find(u => u.id === 'U2'); U.lessons = ['O1', 'O2', 'O3', 'O4', ...U.lessons.filter(l => l !== 'L6')];
+  // flashcards and unit-test topic tags that pointed at old L6 now point at the matching new lesson
+  const CMAP = { ohmslaw: 'O1', divI: 'O1', prop: 'O2', divR: 'O3' };
+  Object.entries(CARDS).forEach(([id, c]) => { if (c.lesson === 'L6') c.lesson = CMAP[id] || 'O4'; });
+  Object.values(TESTS).forEach(T => (T.steps || []).forEach(s => { if (s.tag === 'L6') s.tag = 'O4'; }));
+})();
+/* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
 const KEY = 'zapling.v1';
@@ -4300,7 +4466,7 @@ function renderTop() {
   $('#btnSound').setAttribute('aria-pressed', S.sound);
   const due = dueCards().length;
   $('#tabLearn').innerHTML = ICON.path() + 'Learn';
-  $('#tabReview').innerHTML = ICON.cards() + 'Flashcards' + (due ? `<span class="badge">${due}</span>` : '');
+  $('#tabReview').innerHTML = ICON.cards() + 'Flashcards'; $('#tabReview').style.display = 'none'; // v7.8: decks open from each unit on the Learn path
   $('#tabGames').innerHTML = ICON.game() + 'Practice';
   $('#tabShop').innerHTML = ICON.shop() + 'Shop';
   $('#chipTok').innerHTML = ICON.token() + `<span>${S.tokens || 0}</span>`;
@@ -4341,6 +4507,8 @@ function renderPath() {
     ue.appendChild(el(`<div class="unitbanner ${unlocked ? '' : 'locked'}" style="background:${u.color};box-shadow:0 5px 0 ${u.dark}">
       <div><div class="num">Unit ${u.n}${unlocked ? '' : ' · locked'}</div><h2>${u.title}</h2></div>
       <div class="meta">${unlocked ? `${doneCount}/${nodes.length}` : ICON.lock('#9E99C2').replace('<svg', '<svg width="26" height="26"')}</div></div>`));
+    { const ids = earnedCards(u), due = ids.filter(id => S.cards[id].due <= today()).length;
+      if (ids.length) { const b = el(`<button class="btn ghost unitfc" data-u="${u.id}">${ICON.cards()} Review flashcards <span class="small">${ids.length} card${ids.length === 1 ? '' : 's'}${due ? ` · ${due} due` : ''}</span></button>`); b.onclick = () => { SFX.tap(); openUnitDeck(u.id); }; ue.appendChild(b); } }
     const SP = 124, H = nodes.length * SP + 30;
     const pw = el(`<div class="pathwrap" style="width:320px;height:${H}px"></div>`);
     let svg = `<svg class="pathsvg" viewBox="0 0 320 ${H}" preserveAspectRatio="none">`;
@@ -4553,7 +4721,7 @@ function next() {
   R.idx++;
   if (R.idx < R.steps.length) return renderStep();
   if (R.kind === 'test') return testResults();
-  if (R.phase === 'main') { R.phase = 'cards'; return renderCards(); }
+  if (R.phase === 'main') R.phase = 'cards'; // v7.8: no flashcard screens at lesson end; cards still join the unit deck
   if (R.phase === 'cards' && R.missed.length) { R.phase = 'review'; R.steps = R.missed; R.idx = 0; return reviewIntro(); }
   complete();
 }
@@ -4944,12 +5112,18 @@ RENDER.sim_iv = (step, st, ready) => {
 const BOX_DAYS = [0, 1, 2, 4, 8, 16];
 function dueCards() { const t = today(); return Object.keys(S.cards).filter(id => CARDS[id] && S.cards[id].due <= t); }
 let RV = null;
+// v7.8: one deck per unit, opened from the unit banner on the Learn path
+let RVU = null;
+const earnedCards = u => Object.keys(S.cards || {}).filter(id => CARDS[id] && u.lessons.includes(CARDS[id].lesson));
+function openUnitDeck(uid) { RVU = uid; RV = null; if (typeof FT !== 'undefined') FT = null; showTab('review'); }
 function renderReview() {
   const v = $('#v-review'); v.innerHTML = '';
   if (typeof FT !== 'undefined' && FT) return renderFcTest();
   if (RV) return renderReviewCard();
-  const earned = Object.keys(S.cards).filter(id => CARDS[id]), due = dueCards(), total = Object.keys(CARDS).length;
-  v.appendChild(el(`<div class="pagehead"><span style="width:56px">${mascot('think')}</span><div><h1>Flashcards</h1><p>${earned.length} of ${total} cards earned · finish lessons to earn more</p></div></div>`));
+  const UU = RVU && UNITS.find(u => u.id === RVU);
+  const earned = UU ? earnedCards(UU) : Object.keys(S.cards).filter(id => CARDS[id]), due = dueCards().filter(id => earned.includes(id)), total = UU ? Object.keys(CARDS).filter(id => UU.lessons.includes(CARDS[id].lesson)).length : Object.keys(CARDS).length;
+  v.appendChild(el(`<div class="pagehead"><span style="width:56px">${mascot('think')}</span><div><h1>${UU ? `Unit ${UU.n} flashcards` : 'Flashcards'}</h1><p>${earned.length} of ${total} cards earned · finish lessons to earn more</p></div></div>`));
+  { const bk = el(`<button class="btn ghost" style="margin:0 16px 10px;width:auto">‹ Back to Learn</button>`); bk.onclick = () => { RVU = null; showTab('learn'); }; v.appendChild(bk); }
   const p = el(`<div class="panel"></div>`);
   if (!earned.length) p.innerHTML = `<div class="empty">${mascot('happy')}<p><b>No cards yet.</b><br>Finish your first lesson to start your deck.</p></div>`;
   else if (due.length) { p.innerHTML = `<h3>${due.length} card${due.length === 1 ? '' : 's'} due today</h3><p class="small" style="margin:0 0 12px">Cards you know well come back less often: 1, 2, 4, 8, then 16 days.</p><button class="btn primary" id="rvgo">Start review</button>`; }
@@ -4959,7 +5133,7 @@ function renderReview() {
   $('#rvgo', v) && ($('#rvgo', v).onclick = () => go(due));
   $('#rvall', v) && ($('#rvall', v).onclick = () => go(earned));
   if (earned.length) {
-    UNITS.forEach(u => {
+    UNITS.filter(u => !UU || u === UU).forEach(u => {
       const ids = earned.filter(id => u.lessons.includes(CARDS[id].lesson)); if (!ids.length) return;
       const pn = el(`<div class="panel"><h3>Unit ${u.n}: ${esc(u.title)}</h3>${deckBar(u, ids)}<div class="cardgrid"></div></div>`);
       $('.fctest', pn).onclick = () => startFcTest(u.id);
@@ -4995,7 +5169,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.7.2 (2026-10-03)';
+const APP_VERSION = '7.8 (2026-10-07)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -6278,6 +6452,24 @@ function applyPlacement(n, level) {
   return { bonusT, bonusX };
 }
 
+/* v7.8 migration: finishing old L6 (Ohm's law) counts for new O1-O4. Already paid (no new tokens), mastery and
+   placement copied, nothing taken away. Runs before the shop's top-up pass so the new lessons never pay twice. */
+const U2_NEW = ['O1', 'O2', 'O3', 'O4'];
+const _ensureShopU2 = ensureShop;
+ensureShop = function () {
+  if (!S.u2mig1 && S.done && S.done.L6) {
+    if (!S.tokPaid || typeof S.tokPaid !== 'object') S.tokPaid = {};
+    if (!S.tokGranted || typeof S.tokGranted !== 'object') S.tokGranted = {};
+    const d = S.done.L6;
+    U2_NEW.forEach(id => {
+      if (!S.done[id]) S.done[id] = Object.assign({}, typeof d === 'object' ? d : { at: today() }, { mig: 'L6' });
+      S.tokPaid[id] = Math.max(S.tokPaid[id] || 0, tokTier(id)); S.tokGranted[id] = 1;
+      if (S.mastered && S.mastered.L6) S.mastered[id] = 1;
+    });
+  }
+  if (S.done) S.u2mig1 = 1;
+  return _ensureShopU2.apply(this, arguments);
+};
 /* =========================================================
    AVATAR v2: cuter bodies, expressions, layered accessories, shop, idle animation
    Bodies (v3): Cappy, Chiplet, Glowbie, Flippy, Lumi, Beep, Knobby, Boing, Volty, Stripes. Old bodies were refunded once (S.avatar.migBodies2, see ensureShop).
