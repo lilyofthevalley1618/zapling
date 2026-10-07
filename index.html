@@ -4584,6 +4584,42 @@ Object.assign(LESSONS, {
     Q.HOLE('f5q5', 'a12', 'f12'), Q.LDRV('f5q6', 5, 10, 10), Q.PSUM('f5q7', 2, 15)], 'f5', ['LEDR', 'MI', 'POTR', 'LDRV', 'HOLE'], 5),
 }); }
 reUnit('U6', { L28: 'F1', L29: 'F2', L30: 'F3', L31: 'F4', L32: 'F5' }, 'T6', [Object.assign(U2Q.POTR('t6p1', 10, 40), { tag: 'F2' }), Object.assign(U2Q.LDRV('t6l1', 5, 10, 40), { tag: 'F3' }), Object.assign(U2Q.PSUM('t6s1', 3, 12), { tag: 'F4' }), Object.assign(U2Q.HOLE('t6h1', 'e4', 'f4'), { tag: 'F1' })]);
+/* v7.14: Unit 7 rewrite (K1-K5 replace L33-L37) */
+Object.assign(U2Q, {
+  TAU(id, Rk, C) { const a = Rk * C; return u3x([id, `<b>${Rk} kΩ</b> and <b>${C} µF</b>. What is the time constant τ (tau)?`], a, [Rk + C, Rk * C / 10], 'ms',
+    `τ = R × C = ${Rk} kΩ × ${C} µF = ${u2n(a)} ms.`, ['τ (tau) = how long the cap takes to fill about 63%.', 'τ = R × C. Handy trick: kΩ × µF gives milliseconds.', `${Rk} × ${C} = ${u2n(a)} ms${a >= 1000 ? ` (${u2n(a / 1000)} s)` : ''}.`]); },
+  CAPQ(id, C, V) { const a = C * V; return u3x([id, `A <b>${C} µF</b> capacitor is charged to <b>${V} V</b>. How much charge does it hold?`], a, [C / V, C + V], 'µC',
+    `Q = C × V = ${C} × ${V} = ${u2n(a)} µC.`, ['Q = charge, C = capacitance, V = voltage.', 'Bigger cap or more volts = more charge.', `${C} µF × ${V} V = ${u2n(a)} µC.`]); },
+  F555(id, R1, R2, C) { const a = 1440 / ((R1 + 2 * R2) * C); return u3x([id, `555 blinker: R1 = <b>${R1} kΩ</b>, R2 = <b>${R2} kΩ</b>, C = <b>${C} µF</b>. About how fast does it blink?`], a, [1440 / ((R1 + R2) * C), a * 2], 'Hz',
+    `f ≈ 1.44 ÷ ((R1 + 2·R2) × C) = 1440 ÷ (${R1 + 2 * R2} × ${C}) ≈ ${u2n(+a.toFixed(2))} Hz.`, ['The 555 formula: f ≈ 1.44 ÷ ((R1 + 2 × R2) × C).', `R1 + 2 × R2 = ${R1} + ${2 * R2} = ${R1 + 2 * R2} kΩ.`, `With kΩ and µF: 1440 ÷ (${R1 + 2 * R2} × ${C}) ≈ ${u2n(+a.toFixed(2))} blinks per second.`]); },
+  IB(id, IC, beta) { const a = IC / beta; return u3x([id, `A transistor must switch <b>${IC} mA</b> and has gain β = <b>${beta}</b>. Minimum base current?`], a, [IC * beta, IC - beta > 0 ? IC - beta : IC / 2], 'mA',
+    `I_B = I_C ÷ β = ${IC} ÷ ${beta} = ${u2n(a)} mA (then give it extra, about 10×, to switch hard).`, ['β (beta) = how many times bigger the collector current can be than the base current.', `I_B = ${IC} ÷ ${beta} = ${u2n(a)} mA.`, 'For a solid switch, designers give about 10× more base current.']); },
+  RCN(id, V, n) { const pct = [0, 63, 86, 95, 98, 99][n], a = V * pct / 100; return u3x([id, `A cap charges from 0 toward <b>${V} V</b> through a resistor. About what voltage after <b>${n} τ</b>?`], a, [V, V * (n * 20) / 100], 'V',
+    `After ${n} τ it’s about ${pct}% full: ${u2n(a)} V.`, ['1 τ ≈ 63%, 2 τ ≈ 86%, 3 τ ≈ 95%, 5 τ ≈ full.', `${n} τ ≈ ${pct}%.`, `${pct}% of ${V} V ≈ ${u2n(a)} V.`]); },
+});
+Object.assign(U2BANK, { TAU: [[10, 47], [100, 10], [1, 1000], [22, 100]], CAPQ: [[470, 9], [100, 5], [10, 12]], F555: [[1, 10, 47], [1, 10, 10], [10, 10, 10]], IB: [[20, 200], [100, 100], [50, 250]], RCN: [[9, 1], [10, 3], [5, 2]] });
+{ const Q = U2Q;
+Object.assign(LESSONS, {
+  K1: reLesson('L33', 'Capacitors: storing charge', 'A capacitor is a tiny charge tank: Q = C × V.', [Q.CAPQ('k1q1', 470, 9), Q.CAPQ('k1q2', 100, 5),
+    tfk('k1t1', 'An electrolytic capacitor has a + and − leg and must go the right way round.', true, 'Yes: the stripe marks −.', ['Electrolytics are polarised, like LEDs.', 'The stripe on the can marks the − leg.', 'Backwards can damage it.']),
+    Q.CAPQ('k1q3', 10, 12), Q.CAPQ('k1q4', 1000, 6),
+    Object.assign(mcq('k1q5', '1000 µF is the same as…', ['1 mF (0.001 F)', '1 F', '1 nF'], ''), u2w('1000 µF = 1 mF = 0.001 F.', ['µ = millionth, m = thousandth.', '1000 millionths = 1 thousandth.', 'So 1000 µF = 1 mF.'])),
+    Q.CAPQ('k1q6', 22, 10), Q.CAPQ('k1q7', 47, 9)], 'k1', ['LDRV', 'LEDR', 'POTR', 'MI'], 4),
+  K2: reLesson('L34', 'RC charging & discharging', 'τ = R × C; about 63% after 1 τ, full after 5 τ.', [Q.TAU('k2q1', 10, 47), Q.TAU('k2q2', 100, 10), Q.RCN('k2q3', 9, 1), Q.TAU('k2q4', 1, 1000), Q.RCN('k2q5', 10, 3), Q.TAU('k2q6', 22, 100), Q.RCN('k2q7', 5, 2),
+    tfk('k2t1', 'After about 5 τ a capacitor is basically full.', true, 'Yes: about 99%.', ['Each τ closes most of the remaining gap.', '1 τ 63%, 2 τ 86%, 3 τ 95%…', 'By 5 τ it’s ~99%: call it full.']), Q.TAU('k2q8', 47, 20)], 'k2', ['CAPQ', 'LDRV', 'CAPQ', 'LEDR'], 4),
+  K3: reLesson('L35', 'Transistors as switches', 'A small base current switches a bigger collector current.', [Q.IB('k3q1', 20, 200), Q.IB('k3q2', 100, 100),
+    tfk('k3t1', 'An NPN transistor needs a resistor on its base.', true, 'Yes: it limits the base current.', ['The base–emitter acts like a diode (~0.7 V).', 'Without a resistor the base current would be huge.', 'About 1 kΩ–10 kΩ is typical.']),
+    Q.IB('k3q3', 50, 250), Q.IB('k3q4', 30, 150),
+    Object.assign(mcq('k3q5', 'An NPN’s three legs are…', ['Collector, base, emitter', 'Anode, cathode, gate', 'Plus, minus, ground'], ''), u2w('C, B, E: collector, base, emitter.', ['The base is the control pin.', 'Current flows collector → emitter when it’s on.', 'The arrow on the symbol is on the emitter.'])),
+    Q.IB('k3q6', 200, 100), Q.LEDR('k3q7', 9, 2, 20)], 'k3', ['TAU', 'CAPQ', 'RCN', 'LDRV'], 4),
+  K4: reLesson('L36', 'The 555 timer blinker', 'f ≈ 1.44 ÷ ((R1 + 2·R2) × C).', [Q.F555('k4q1', 1, 10, 47), Q.F555('k4q2', 1, 10, 10), Q.F555('k4q3', 10, 10, 10),
+    tfk('k4t1', 'A bigger capacitor makes a 555 blink slower.', true, 'Yes: it takes longer to fill and empty.', ['The 555 waits for the cap to charge and discharge.', 'Bigger C = longer wait.', 'Longer wait = slower blinking.']),
+    Q.F555('k4q4', 1, 47, 10), Q.F555('k4q5', 2, 22, 22), Q.TAU('k4q6', 10, 100), Q.F555('k4q7', 1, 100, 10)], 'k4', ['IB', 'TAU', 'RCN', 'CAPQ'], 4),
+  K5: reLesson('L37', 'Capstone: auto night light', 'Light sensor divider + transistor switch = night light.', [Q.LDRV('k5q1', 9, 10, 100), Q.LDRV('k5q2', 9, 10, 1), Q.IB('k5q3', 20, 200),
+    tfk('k5t1', 'The night light turns on when the divider voltage at the base rises above about 0.7 V.', true, 'Yes: that’s the transistor’s turn-on point.', ['Dark → LDR resistance goes up.', 'The divider’s middle voltage rises.', 'Above ~0.7 V the transistor switches on.']),
+    Q.LDRV('k5q4', 9, 100, 100), Q.LEDR('k5q5', 9, 2, 15), Q.LDRV('k5q6', 5, 10, 50)], 'k5', ['IB', 'F555', 'TAU', 'LDRV', 'CAPQ'], 5),
+}); }
+reUnit('U7', { L33: 'K1', L34: 'K2', L35: 'K3', L36: 'K4', L37: 'K5' }, 'T7', [Object.assign(U2Q.TAU('t7t1', 10, 100), { tag: 'K2' }), Object.assign(U2Q.IB('t7b1', 50, 100), { tag: 'K3' }), Object.assign(U2Q.F555('t7f1', 1, 10, 47), { tag: 'K4' }), Object.assign(U2Q.CAPQ('t7q1', 100, 9), { tag: 'K1' })]);
 /* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
@@ -5518,7 +5554,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.13 (2026-10-07)';
+const APP_VERSION = '7.14 (2026-10-07)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
