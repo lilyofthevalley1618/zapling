@@ -4345,6 +4345,15 @@ Object.assign(LESSONS, {
   ['heat', 'prate', 'margin'].forEach(k => { if (CARDS[k]) CARDS[k].lesson = 'O6'; });
   Object.values(TESTS).forEach(T => (T.steps || []).forEach(s => { if (MAPT[s.tag]) s.tag = MAPT[s.tag]; }));
 })();
+/* v7.10: T2 = O1–O8 only; divider/combo items move to T3 (test id kept → no re-pay) */
+(() => {
+  const T2 = TESTS.T2, T3 = TESTS.T3, isD = s => s.tag === 'D1' || s.tag === 'D2';
+  const moved = T2.steps.filter(isD); T2.steps = T2.steps.filter(s => !isD(s));
+  T3.steps = [...moved, ...T3.steps];
+  const TAG = { I: 'O1', V: 'O2', R: 'O3', which: 'O4', P: 'O5', PIR: 'O6', PVR: 'O6', SER: 'O7', PAR: 'O8' };
+  const add = u2Review('t2x', ['I', 'P', 'SER', 'V', 'PIR', 'PAR', 'R', 'PVR', 'I'], Math.max(moved.length, 9)).map(q => { const t = TAG[q.review]; delete q.review; return Object.assign(q, { tag: t }); });
+  T2.steps.push(...add);
+})();
 /* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
@@ -5279,7 +5288,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.9 (2026-10-07)';
+const APP_VERSION = '7.9.1 (2026-10-07)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
