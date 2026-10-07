@@ -4236,6 +4236,116 @@ Object.assign(LESSONS, {
   Object.values(TESTS).forEach(T => (T.steps || []).forEach(s => { if (s.tag === 'L6') s.tag = 'O4'; }));
 })();
 /* =========================================================
+   v7.9: new Unit 2 lessons 5-8 (power, power with I²R / V²÷R, series, parallel) replace old L7-L9.
+   Old L10 (dividers) and L11 (combo) become gentle Unit 3 lessons D1, D2. Old lesson objects stay off-path.
+   ========================================================= */
+Object.assign(U2Q, {
+  P(id, V, I, story) { const a = V * I; return Object.assign(mcq(id, story || `<b>${V} V</b> pushes <b>${I} A</b> through a part. How much power does it use?`, u2opts(a, [V / I, V + I], 'W'), ''),
+    u2w(`P = V × I = ${V} × ${I} = ${u2n(a)} W.`, ['P = power, how much energy is used each second (watts, W). V = voltage (volts). I = current (amps).', `Power = push × flow: ${V} × ${I}.`, `${V} × ${I} = ${u2n(a)}, so P = ${u2n(a)} W.`])); },
+  PIR(id, I, R, story) { const a = I * I * R; return Object.assign(mcq(id, story || `<b>${I} A</b> flows through a <b>${R} Ω</b> resistor. How much power turns into heat?`, u2opts(a, [I * R, I * I], 'W'), ''),
+    u2w(`P = I²R = ${I} × ${I} × ${R} = ${u2n(a)} W.`, ['I² means I × I.', 'Where it comes from: P = V × I, and V = I × R, so P = (I × R) × I = I × I × R.', `${I} × ${I} = ${u2n(I * I)}, then × ${R} = ${u2n(a)} W.`])); },
+  PVR(id, V, R, story) { const a = V * V / R; return Object.assign(mcq(id, story || `<b>${V} V</b> across a <b>${R} Ω</b> resistor. How much power does it use?`, u2opts(a, [V / R, V * V], 'W'), ''),
+    u2w(`P = V² ÷ R = ${V} × ${V} ÷ ${R} = ${u2n(a)} W.`, ['V² means V × V.', 'Where it comes from: P = V × I, and I = V ÷ R, so P = V × (V ÷ R) = V² ÷ R.', `${V} × ${V} = ${V * V}, then ÷ ${R} = ${u2n(a)} W.`])); },
+  SER(id, R1, R2, story) { const a = R1 + R2; return Object.assign(mcq(id, story || `<b>${R1} Ω</b> and <b>${R2} Ω</b> in <b>series</b> (one after the other). Total resistance?`, u2opts(a, [R1 * R2 / (R1 + R2), Math.abs(R1 - R2)], 'Ω'), ''),
+    u2w(`In series, just add: ${R1} + ${R2} = ${u2n(a)} Ω.`, ['Series = one path, parts one after another.', 'The current has to push through BOTH, so the slowdowns add up.', `R_total = R1 + R2 = ${R1} + ${R2} = ${u2n(a)} Ω.`])); },
+  SERI(id, V, R1, R2) { const a = V / (R1 + R2); return Object.assign(mcq(id, `<b>${V} V</b> across <b>${R1} Ω</b> and <b>${R2} Ω</b> in series. What current flows?`, u2opts(a, [V / R1, V / R2], 'A'), ''),
+    u2w(`Add first: ${R1} + ${R2} = ${R1 + R2} Ω. Then I = ${V} ÷ ${R1 + R2} = ${u2n(a)} A.`, ['Series: the same current goes through every part.', `Total resistance = ${R1} + ${R2} = ${R1 + R2} Ω.`, `I = V ÷ R = ${V} ÷ ${R1 + R2} = ${u2n(a)} A.`])); },
+  PAR(id, R1, R2, story) { const a = R1 * R2 / (R1 + R2); return Object.assign(mcq(id, story || `<b>${R1} Ω</b> and <b>${R2} Ω</b> in <b>parallel</b> (side by side). Total resistance?`, u2opts(a, [R1 + R2, (R1 + R2) / 2], 'Ω'), ''),
+    u2w(`Product over sum: (${R1} × ${R2}) ÷ (${R1} + ${R2}) = ${u2n(a)} Ω.`, ['Parallel = side by side, so current gets extra paths.', 'Extra paths make it EASIER to flow, so the total is smaller than either one.', `For two: (R1 × R2) ÷ (R1 + R2) = ${R1 * R2} ÷ ${R1 + R2} = ${u2n(a)} Ω.`])); },
+  PARI(id, V, R1, R2) { const a = V / R1 + V / R2; return Object.assign(mcq(id, `<b>${V} V</b> across <b>${R1} Ω</b> and <b>${R2} Ω</b> in parallel. Total current from the battery?`, u2opts(a, [V / (R1 + R2), V / R1], 'A'), ''),
+    u2w(`Each branch: ${V} ÷ ${R1} = ${u2n(V / R1)} A and ${V} ÷ ${R2} = ${u2n(V / R2)} A. Add them: ${u2n(a)} A.`, ['Parallel: every branch gets the full battery voltage.', 'Find each branch current with I = V ÷ R.', `The battery supplies the sum: ${u2n(V / R1)} + ${u2n(V / R2)} = ${u2n(a)} A.`])); },
+  DIV(id, Vin, R1, R2) { const a = Vin * R2 / (R1 + R2); return Object.assign(mcq(id, `Divider: <b>${Vin} V</b> in, R1 = <b>${R1} kΩ</b> on top, R2 = <b>${R2} kΩ</b> on the bottom. V_out (across R2)?`, u2opts(a, [Vin * R1 / (R1 + R2), Vin / 2], 'V'), ''),
+    u2w(`V_out = ${Vin} × ${R2} ÷ (${R1} + ${R2}) = ${u2n(a)} V.`, ['V_out = the voltage across the bottom resistor R2.', 'In series the voltage is shared by size: R2 gets its share of the total.', `Share = R2 ÷ (R1 + R2) = ${R2} ÷ ${R1 + R2}, so V_out = ${Vin} × ${R2} ÷ ${R1 + R2} = ${u2n(a)} V.`])); },
+  COMBO(id, Rs, Ra, Rb) { const p = Ra * Rb / (Ra + Rb), a = Rs + p; return Object.assign(mcq(id, `<b>${Rs} Ω</b> in series with (<b>${Ra} Ω</b> ∥ <b>${Rb} Ω</b>). Total resistance?`, u2opts(a, [Rs + Ra + Rb, p], 'Ω'), ''),
+    u2w(`Parallel pair first: ${Ra} ∥ ${Rb} = ${u2n(p)} Ω. Then add ${Rs}: ${u2n(a)} Ω.`, ['∥ means "in parallel with".', `Step 1, the side-by-side pair: (${Ra} × ${Rb}) ÷ (${Ra} + ${Rb}) = ${u2n(p)} Ω.`, `Step 2, it's now in a line with ${Rs} Ω, so add: ${Rs} + ${u2n(p)} = ${u2n(a)} Ω.`])); },
+});
+Object.assign(U2BANK, { P: [[12, 2], [9, 0.5], [6, 3], [5, 0.2]], PIR: [[2, 3], [0.5, 8], [3, 2], [1, 10]], PVR: [[6, 12], [10, 5], [12, 24], [4, 2]], SER: [[10, 20], [4, 6], [100, 220], [3, 9]], PAR: [[6, 3], [10, 10], [4, 12], [20, 20]] });
+const tfk = (id, q, a, short, steps) => Object.assign(tfq(id, q, a, ''), u2w(short, steps));
+const cptk = (title, html, art, tip) => Object.assign({ type: 'concept', kicker: 'New idea', title, html, art }, tip ? { tip } : {});
+const rev = (p, forms, n) => u2Review(p, forms, n).map(q => u2Tag(q, 'Review'));
+const ohmP = (id, V, R, target, q, ans, short, steps) => Object.assign({ type: 'sim', kind: 'ohm', id, graded: true, V, R, target: { q: 'P', val: target, tol: 0.01 }, showP: true, q, answer: ans }, u2w(short, steps));
+Object.assign(LESSONS, {
+  O5: { title: 'Power: P = V × I', goal: 'Find power (watts) with P = V × I.', cards: ['power', 'watt'], steps: [
+    cptk('Power is how fast energy is used', `<p class="body">A brighter bulb or a hotter heater uses more <b>power</b>.</p><div class="def" style="font-size:18px;text-align:center"><b>P = V × I</b></div><div class="def"><b>P</b> = power, energy used each second (watts, W).<br><b>V</b> = voltage, the push (volts).<br><b>I</b> = current, the flow (amps).<br>Bigger push or bigger flow → more power.</div>`, ART.power, 'Power = push × flow. Just multiply!'),
+    Object.assign(mcq('o5q1', 'In <b>P = V × I</b>, <b>P</b> stands for…', ['Power (energy each second)', 'Push', 'Pressure'], ''), u2w('P = power: how much energy is used every second, in watts (W).', ['1 watt = 1 joule of energy every second.', 'V is the push, I is the flow.', 'P = V × I.'])),
+    U2Q.P('o5q2', 2, 1), U2Q.P('o5q3', 5, 2), U2Q.P('o5q4', 10, 1),
+    tfk('o5q5', 'If you double the current (same voltage), the power doubles.', true, 'True: P = V × I, so twice the flow is twice the power.', ['P = V × I.', 'V stays the same.', 'Double I → double P.']),
+    U2Q.P('o5q6', 6, 2), U2Q.P('o5q7', 12, 0.5), U2Q.P('o5q8', 9, 2),
+    ohmP('o5q9', 6, { min: 2, max: 24, step: 2, start: 4 }, 3, 'Supply fixed at <b>6 V</b>. Pick a resistance so the resistor uses exactly <b>3 W</b>, then press Check.', '12 Ω', 'With 12 Ω: I = 6 ÷ 12 = 0.5 A, and P = 6 × 0.5 = 3 W.', ['You need P = 3 W at V = 6 V.', 'P = V × I, so I must be 3 ÷ 6 = 0.5 A.', 'I = V ÷ R → R = 6 ÷ 0.5 = 12 Ω.']),
+    U2Q.P('o5q10', 3, 0.2), U2Q.P('o5q11', 120, 0.5, 'A lamp on <b>120 V</b> draws <b>0.5 A</b>. Its power?'),
+    tfk('o5q12', 'The unit of power is the volt.', false, 'False: power is in watts (W). Volts measure the push.', ['Volts (V) = push.', 'Amps (A) = flow.', 'Watts (W) = power.']),
+    U2Q.P('o5q13', 5, 0.1, 'A phone charger gives <b>5 V</b> at <b>0.1 A</b>. Power?'), U2Q.P('o5q14', 12, 3), U2Q.P('o5q15', 1.5, 0.2),
+    ohmP('o5q16', 12, { min: 4, max: 48, step: 4, start: 8 }, 6, 'Supply fixed at <b>12 V</b>. Pick R so it uses exactly <b>6 W</b>, then press Check.', '24 Ω', 'With 24 Ω: I = 12 ÷ 24 = 0.5 A, P = 12 × 0.5 = 6 W.', ['P = 6 W at 12 V means I = 6 ÷ 12 = 0.5 A.', 'R = V ÷ I = 12 ÷ 0.5 = 24 Ω.', 'Check: 12 × 0.5 = 6 W ✓']),
+    U2Q.P('o5q17', 230, 2, 'A kettle on <b>230 V</b> draws <b>2 A</b>. Power?'),
+    ...rev('o5', ['I', 'V', 'R'], 5)] },
+  O6: { title: 'Power: P = I²R and V²÷R', goal: 'Find power without knowing both V and I.', cards: ['heat', 'prate'], steps: [
+    cptk('Two shortcuts for power', `<p class="body">Sometimes you only know two of V, I and R. Mix <b>P = V × I</b> with Ohm's law:</p><div class="def"><b>Know I and R?</b> V = I × R, so P = (I × R) × I = <b>I²R</b><br><b>Know V and R?</b> I = V ÷ R, so P = V × (V ÷ R) = <b>V² ÷ R</b></div><div class="def">² means "times itself": I² = I × I, V² = V × V.</div>`, ART.power, 'Twice the current → FOUR times the heat (2 × 2 = 4).'),
+    U2Q.PIR('o6q1', 1, 5), U2Q.PIR('o6q2', 2, 2), U2Q.PIR('o6q3', 2, 5), U2Q.PIR('o6q4', 3, 1),
+    tfk('o6q5', 'P = I²R comes from P = V × I with V = I × R put in.', true, 'True: P = (I × R) × I = I²R.', ['Start with P = V × I.', 'Swap V for I × R.', 'P = I × R × I = I²R.']),
+    U2Q.PIR('o6q6', 0.5, 20), U2Q.PIR('o6q7', 0.1, 100),
+    tfk('o6q8', 'Doubling the current through a resistor doubles its heat.', false, 'False: it makes FOUR times the heat, because I is squared.', ['P = I²R.', '(2I)² = 4I².', 'So double the current → 4× the power.']),
+    U2Q.PVR('o6q9', 6, 6), U2Q.PVR('o6q10', 10, 10), U2Q.PVR('o6q11', 12, 6), U2Q.PVR('o6q12', 4, 8),
+    tfk('o6q13', 'P = V² ÷ R comes from P = V × I with I = V ÷ R put in.', true, 'True: P = V × (V ÷ R) = V² ÷ R.', ['Start with P = V × I.', 'Swap I for V ÷ R.', 'P = V × V ÷ R = V² ÷ R.']),
+    U2Q.PVR('o6q14', 9, 3), U2Q.PVR('o6q15', 5, 100), U2Q.PIR('o6q16', 0.02, 220, '<b>20 mA</b> (0.02 A) flows through a <b>220 Ω</b> resistor. Power?'),
+    ohmP('o6q17', 6, { min: 2, max: 24, step: 2, start: 4 }, 6, 'Supply fixed at <b>6 V</b>. Pick R so it makes exactly <b>6 W</b> of heat, then press Check.', '6 Ω', 'P = V² ÷ R = 36 ÷ 6 = 6 W.', ['Know V and R → use P = V² ÷ R.', 'V² = 6 × 6 = 36.', '36 ÷ 6 = 6 W, so R = 6 Ω.']),
+    ...rev('o6', ['P', 'I', 'V', 'R'], 5)] },
+  O7: { title: 'Series circuits', goal: 'Parts in one line: add the resistances.', cards: ['series', 'vadd', 'rser'], steps: [
+    cptk('One path, one after another', `<p class="body">In <b>series</b>, parts sit in one line, like beads on a string. There is only <b>one path</b>.</p><div class="def">① The <b>same current</b> flows through every part.<br>② Resistances <b>add</b>: R_total = R1 + R2 + …<br>③ The battery's voltage is <b>shared</b>: the drops add up to the battery.</div>`, ART.seriesArt, 'Series = add them up.'),
+    U2Q.SER('o7q1', 2, 3), U2Q.SER('o7q2', 10, 10), U2Q.SER('o7q3', 5, 15),
+    tfk('o7q4', 'In series, the same current flows through every part.', true, 'True: there is only one path, so all the charge goes through each part.', ['Series = one path.', 'Nothing can go around a part.', 'So the current is the same everywhere.']),
+    U2Q.SER('o7q5', 100, 220), U2Q.SER('o7q6', 4, 6),
+    { type: 'sim', kind: 'req', id: 'o7q7', graded: true, r1: 10, r2: [10, 20, 30], target: 30, q: 'R1 is 10 Ω. Pick R2 and wire them so the meter reads <b>30 Ω</b>, then press Check.', answer: '20 Ω in series', ...u2w('10 + 20 = 30 Ω in series.', ['You need 30 Ω total.', 'Series adds: 10 + R2 = 30.', 'So R2 = 20 Ω, wired in series.']) },
+    U2Q.SERI('o7q8', 6, 1, 2), U2Q.SERI('o7q9', 12, 2, 4), U2Q.SERI('o7q10', 9, 10, 20),
+    tfk('o7q11', 'Adding another resistor in series makes the total resistance bigger.', true, 'True: one more slowdown in the same path.', ['Series resistances add.', 'Adding one makes the sum bigger.', 'So less current flows.']),
+    Object.assign(mcq('o7q12', 'Two equal bulbs in series on a <b>6 V</b> battery. Voltage across each?', ['3 V', '6 V', '12 V'], ''), u2w('They share it equally: 6 ÷ 2 = 3 V each.', ['Series shares the voltage.', 'Equal parts get equal shares.', '3 V + 3 V = 6 V ✓'])),
+    U2Q.SER('o7q13', 1000, 470, '<b>1 kΩ</b> (1000 Ω) and <b>470 Ω</b> in series. Total?'), U2Q.SERI('o7q14', 10, 3, 2),
+    Object.assign(mcq('o7q15', 'A 9 V battery, two parts in series. One drops <b>4 V</b>. The other drops…', ['5 V', '4 V', '9 V'], ''), u2w('The drops add up to the battery: 9 − 4 = 5 V.', ['Series voltages add up to the battery voltage.', '4 + ? = 9.', '? = 5 V.'])),
+    U2Q.SER('o7q16', 3, 9),
+    ...rev('o7', ['I', 'V', 'P', 'PIR'], 5)] },
+  O8: { title: 'Parallel circuits', goal: 'Parts side by side: more paths, less resistance.', cards: ['parallel', 'isum', 'rpar'], steps: [
+    cptk('Side by side, each its own path', `<p class="body">In <b>parallel</b>, each part sits on its own <b>branch</b>, straight across the battery.</p><div class="def">① Every branch gets the <b>full voltage</b>.<br>② Branch currents <b>add up</b> to the battery's current.<br>③ More paths → <b>less</b> total resistance. For two: <b>(R1 × R2) ÷ (R1 + R2)</b>.</div>`, ART.parallelArt, 'Two equal resistors in parallel = half of one.'),
+    tfk('o8q1', 'In parallel, every branch gets the full battery voltage.', true, 'True: each branch connects straight across the battery.', ['Each branch touches + and − directly.', 'So each one feels the whole push.', 'That\'s why house lights are in parallel.']),
+    U2Q.PAR('o8q2', 10, 10), U2Q.PAR('o8q3', 6, 6), U2Q.PAR('o8q4', 4, 4),
+    Object.assign(mcq('o8q5', 'Two branches carry <b>0.2 A</b> and <b>0.3 A</b>. Total from the battery?', ['0.5 A', '0.3 A', '0.1 A'], ''), u2w('Branch currents add: 0.2 + 0.3 = 0.5 A.', ['Current splits at the junction.', 'It joins back up after.', 'Total = sum of branches.'])),
+    U2Q.PAR('o8q6', 6, 3), U2Q.PAR('o8q7', 12, 4),
+    tfk('o8q8', 'Adding another branch in parallel makes the total resistance smaller.', true, 'True: one more path makes flowing easier.', ['More paths = easier flow.', 'Easier flow = less resistance.', 'The total is always below the smallest branch.']),
+    { type: 'sim', kind: 'req', id: 'o8q9', graded: true, r1: 10, r2: [10, 20, 30], target: 5, q: 'R1 is 10 Ω. Pick R2 and wire them so the meter reads <b>5 Ω</b>, then press Check.', answer: '10 Ω in parallel', ...u2w('10 ∥ 10 = 100 ÷ 20 = 5 Ω.', ['5 Ω is LESS than 10 Ω, so it must be parallel.', 'Two equal resistors in parallel give half.', 'So R2 = 10 Ω in parallel.']) },
+    U2Q.PARI('o8q10', 6, 6, 3), U2Q.PARI('o8q11', 12, 12, 4), U2Q.PAR('o8q12', 20, 20),
+    { type: 'sim', kind: 'branch', id: 'o8q13', graded: true, v: 6, r1: 6, r2: { min: 2, max: 24, step: 2, start: 4 }, target: 1.5, q: 'R1 is fixed at 6 Ω. Slide R2 until the battery supplies exactly <b>1.5 A</b> in total, then press Check.', answer: 'R2 = 12 Ω', ...u2w('R1 takes 6 ÷ 6 = 1 A, so R2 needs 0.5 A: R2 = 6 ÷ 0.5 = 12 Ω.', ['Each branch gets the full 6 V.', 'R1: 6 ÷ 6 = 1 A.', 'You need 0.5 A more → R2 = 6 ÷ 0.5 = 12 Ω.']) },
+    Object.assign(mcq('o8q14', '12 V across <b>4 Ω</b> and <b>12 Ω</b> in parallel. Which branch carries MORE current?', ['The 4 Ω branch', 'The 12 Ω branch', 'They carry the same'], ''), u2w('4 Ω: 12 ÷ 4 = 3 A. 12 Ω: 12 ÷ 12 = 1 A. The smaller resistor carries more.', ['Both branches get 12 V.', 'I = V ÷ R for each.', 'Smaller R → bigger I.'])),
+    U2Q.PAR('o8q15', 100, 100), U2Q.PARI('o8q16', 9, 3, 9),
+    ...rev('o8', ['SER', 'P', 'I', 'PVR'], 5)] },
+  D1: { title: 'Voltage dividers', goal: 'Two series resistors share the voltage.', cards: ['divider', 'vdiv'], steps: [
+    cptk('Sharing the push', `<p class="body">Two resistors in series <b>share</b> the battery's voltage. The bigger one gets the bigger share. The middle point is <b>V_out</b>.</p><div class="def" style="text-align:center"><b>V_out = V_in × R2 ÷ (R1 + R2)</b></div><div class="def">V_in = battery voltage · R1 = top · R2 = bottom (V_out is across R2).</div>`, () => ART.dividerArt(9, 10, 5), 'Equal resistors split it exactly in half.'),
+    U2Q.DIV('d1q1', 10, 5, 5), U2Q.DIV('d1q2', 12, 6, 6), U2Q.DIV('d1q3', 9, 10, 5),
+    tfk('d1q4', 'In a divider, the bigger resistor gets the bigger share of the voltage.', true, 'True: series voltage is shared by size.', ['Series parts share the battery voltage.', 'Each gets a share matching its resistance.', 'Bigger R → bigger share.']),
+    U2Q.DIV('d1q5', 9, 6, 3), U2Q.DIV('d1q6', 10, 1, 4), U2Q.DIV('d1q7', 5, 2, 3),
+    { type: 'sim', kind: 'divider', id: 'd1q8', graded: true, vin: 9, r1: 10, r2: { min: 1, max: 20, step: 1, start: 10 }, target: 3, q: 'Supply 9 V, R1 = 10 kΩ. Slide R2 until V_out is exactly <b>3 V</b>, then press Check.', answer: 'R2 = 5 kΩ', ...u2w('With R2 = 5 kΩ: 9 × 5 ÷ 15 = 3 V.', ['V_out should be a third of 9 V.', 'So R2 must be a third of the total.', '5 ÷ (10 + 5) = 1/3 → 3 V ✓']) },
+    U2Q.DIV('d1q9', 12, 3, 1), U2Q.DIV('d1q10', 20, 10, 30),
+    tfk('d1q11', 'Connecting a load to V_out can pull its voltage down.', true, 'True: the load sits in parallel with R2 and lowers the bottom resistance.', ['The load is a new branch across R2.', 'Parallel makes the bottom resistance smaller.', 'Smaller bottom share → lower V_out.']),
+    U2Q.DIV('d1q12', 6, 2, 1), U2Q.DIV('d1q13', 15, 5, 10), U2Q.DIV('d1q14', 3.3, 1, 1),
+    ...rev('d1', ['SER', 'PAR', 'I', 'V'], 5)] },
+  D2: { title: 'Combination circuits', goal: 'Series and parallel together, one step at a time.', cards: ['combo'], steps: [
+    cptk('Shrink the parallel part first', `<p class="body">Some circuits mix <b>series</b> and <b>parallel</b>. Squash them one step at a time:</p><div class="def">① Turn each parallel group into one resistor (product over sum).<br>② Now everything is in a line: <b>add</b>.<br>③ Use Ohm's law for the current.</div>`, ART.comboArt, '∥ means "in parallel with".'),
+    U2Q.COMBO('d2q1', 2, 4, 4), U2Q.COMBO('d2q2', 5, 10, 10), U2Q.COMBO('d2q3', 1, 6, 3),
+    tfk('d2q4', 'In a mixed circuit, you usually squash the parallel group first.', true, 'True: once it\'s one resistor, everything is in a simple line.', ['Find the side-by-side group.', 'Replace it with one equal resistor.', 'Then just add the series parts.']),
+    U2Q.COMBO('d2q5', 4, 12, 6), U2Q.COMBO('d2q6', 10, 20, 20), U2Q.COMBO('d2q7', 3, 2, 2),
+    Object.assign(mcq('d2q8', '12 V across 2 Ω in series with (4 Ω ∥ 4 Ω). Current from the battery?', ['3 A', '1.2 A', '6 A'], ''), u2w('4 ∥ 4 = 2 Ω; total 2 + 2 = 4 Ω; I = 12 ÷ 4 = 3 A.', ['Parallel pair: 4 ∥ 4 = 2 Ω.', 'Add the series 2 Ω: total 4 Ω.', 'I = V ÷ R = 12 ÷ 4 = 3 A.'])),
+    U2Q.COMBO('d2q9', 6, 6, 3), U2Q.COMBO('d2q10', 8, 8, 8),
+    Object.assign(mcq('d2q11', '9 V across 1 Ω in series with (4 Ω ∥ 4 Ω). Current?', ['3 A', '1 A', '9 A'], ''), u2w('4 ∥ 4 = 2 Ω; total 3 Ω; I = 9 ÷ 3 = 3 A.', ['Squash: 4 ∥ 4 = 2 Ω.', 'Add: 1 + 2 = 3 Ω.', 'I = 9 ÷ 3 = 3 A.'])),
+    U2Q.COMBO('d2q12', 2, 3, 6), U2Q.COMBO('d2q13', 100, 200, 200), U2Q.COMBO('d2q14', 5, 20, 5),
+    ...rev('d2', ['PAR', 'SER', 'P', 'I'], 5)] },
+});
+(() => {
+  const U2 = UNITS.find(u => u.id === 'U2'), U3 = UNITS.find(u => u.id === 'U3');
+  U2.lessons = ['O1', 'O2', 'O3', 'O4', 'O5', 'O6', 'O7', 'O8'];
+  U3.lessons = ['D1', 'D2', ...U3.lessons.filter(l => l !== 'D1' && l !== 'D2')];
+  const MAPT = { L7: 'O5', L8: 'O7', L9: 'O8', L10: 'D1', L11: 'D2' };
+  Object.values(CARDS).forEach(c => { if (MAPT[c.lesson]) c.lesson = MAPT[c.lesson]; });
+  ['heat', 'prate', 'margin'].forEach(k => { if (CARDS[k]) CARDS[k].lesson = 'O6'; });
+  Object.values(TESTS).forEach(T => (T.steps || []).forEach(s => { if (MAPT[s.tag]) s.tag = MAPT[s.tag]; }));
+})();
+/* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
 const KEY = 'zapling.v1';
@@ -5169,7 +5279,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.8 (2026-10-07)';
+const APP_VERSION = '7.9 (2026-10-07)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -6469,6 +6579,24 @@ ensureShop = function () {
   }
   if (S.done) S.u2mig1 = 1;
   return _ensureShopU2.apply(this, arguments);
+};
+
+/* v7.9: old L7-L11 → new O5-O8 / D1-D2. Credit = what the old lesson paid (paid-diff: only a higher new tier tops up). */
+const U2_MAP2 = { O5: ['L7'], O6: ['L7', 'L8'], O7: ['L8'], O8: ['L9'], D1: ['L10'], D2: ['L11'] };
+const _ensureShopU2b = ensureShop;
+ensureShop = function () {
+  if (!S.u2mig2 && S.done) {
+    S.tokPaid = S.tokPaid && typeof S.tokPaid === 'object' ? S.tokPaid : {}; S.tokGranted = S.tokGranted && typeof S.tokGranted === 'object' ? S.tokGranted : {};
+    Object.entries(U2_MAP2).forEach(([id, src]) => {
+      const done = src.filter(l => S.done[l]); if (!done.length || id === 'O6' && done.length < 2 && !S.done.L7) return;
+      if (!S.done[id]) S.done[id] = Object.assign({}, typeof S.done[done[0]] === 'object' ? S.done[done[0]] : { at: today() }, { mig: done[0] });
+      const paid = Math.max(...done.map(l => S.tokPaid[l] != null ? S.tokPaid[l] : (S.tokGranted[l] ? TOK_UNIT.U2 : 0)));
+      S.tokPaid[id] = Math.max(S.tokPaid[id] || 0, Math.min(tokTier(id), paid)); S.tokGranted[id] = 1;
+      if (S.mastered && done.every(l => S.mastered[l])) S.mastered[id] = 1;
+    });
+    S.u2mig2 = 1;
+  }
+  return _ensureShopU2b.apply(this, arguments);
 };
 /* =========================================================
    AVATAR v2: cuter bodies, expressions, layered accessories, shop, idle animation
