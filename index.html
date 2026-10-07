@@ -4128,7 +4128,7 @@ const U2Q = {
 const U2BANK = { I: [[12, 4], [9, 3], [6, 12], [20, 5], [8, 4], [15, 3]], V: [[2, 6], [0.5, 10], [3, 4], [1.5, 2], [0.2, 50], [4, 5]], R: [[12, 2], [9, 0.5], [6, 3], [10, 0.5], [24, 4], [5, 0.25]] };
 function u2Review(prefix, forms, n) {
   const out = []; let k = 0;
-  for (let i = 0; out.length < n; i++) { const f = forms[i % forms.length], p = U2BANK[f][(i * 7 + prefix.length) % U2BANK[f].length]; out.push(Object.assign(U2Q[f](`${prefix}r${++k}`, p[0], p[1]), { review: f })); }
+  for (let i = 0; out.length < n; i++) { const f = forms[i % forms.length], p = U2BANK[f][(i * 7 + prefix.length) % U2BANK[f].length]; out.push(Object.assign(U2Q[f](`${prefix}r${++k}`, ...p), { review: f })); }
   return out;
 }
 const u2Tag = (q, t) => Object.assign(q, { q: `<span style="display:inline-block;background:#FFE9A8;color:#8A5A00;border-radius:999px;padding:1px 8px;font-size:12px;margin-right:6px">🔁 ${t}</span>` + q.q });
@@ -4353,6 +4353,97 @@ Object.assign(LESSONS, {
   const TAG = { I: 'O1', V: 'O2', R: 'O3', which: 'O4', P: 'O5', PIR: 'O6', PVR: 'O6', SER: 'O7', PAR: 'O8' };
   const add = u2Review('t2x', ['I', 'P', 'SER', 'V', 'PIR', 'PAR', 'R', 'PVR', 'I'], Math.max(moved.length, 9)).map(q => { const t = TAG[q.review]; delete q.review; return Object.assign(q, { tag: t }); });
   T2.steps.push(...add);
+})();
+/* =========================================================
+   v7.10: Unit 3 rewrite, one idea per lesson. D1, D2 (from v7.9), then
+   S1 symbols · S2 more symbols · S3 ground & junctions · S4 labels & breadboards · S5 KVL · S6 KCL · S7 node voltages.
+   SX = optional Challenge (superposition + Thevenin): after the test, never blocks it, not in it.
+   Reuses the polished old L12-L17 steps and adds lots of solo practice + mixed review.
+   ========================================================= */
+const SYMNM3 = { bat: 'Battery', res: 'Resistor', lamp: 'Lamp (bulb)', sw: 'Switch', cap: 'Capacitor', diode: 'Diode', led: 'LED', npn: 'Transistor (NPN)', ic: 'Chip (IC)', gnd: 'Ground', meterV: 'Voltmeter', meterA: 'Ammeter', ind: 'Inductor (coil)' };
+const SYMWHY = { bat: 'Two plates: long line +, short line −.', res: 'The zig-zag: current has to wiggle through, so it slows down.', lamp: 'A circle with an X: the glowing filament.', sw: 'A line with a gap and a lever that can close it.', cap: 'Two flat plates facing each other with a gap: it stores charge.', diode: 'A triangle pointing at a bar: current only goes the arrow’s way.', led: 'A diode with little arrows shooting out: it gives off light.', npn: 'A circle with three legs: base, collector and emitter. The arrow points out on the emitter.', ic: 'A box with pins: a whole tiny circuit inside.', gnd: 'Lines getting shorter, like an arrow into the ground: 0 V.', meterV: 'A circle with a V: it measures volts.', meterA: 'A circle with an A: it measures amps.', ind: 'Bumpy loops: a coil of wire.' };
+const symArt = k => svgBox(`<g transform="translate(160,64) scale(2.6)">${SYMS[k]()}</g>`, 'A schematic symbol', 128);
+const pick2 = (k, pool) => pool.filter(x => x !== k).sort((a, b) => ((a.charCodeAt(0) * 7 + k.length) % 5) - ((b.charCodeAt(0) * 7 + k.length) % 5)).slice(0, 2);
+Object.assign(U2Q, {
+  SYM(id, k) { return Object.assign(mcq(id, 'What is this symbol?', [SYMNM3[k], ...pick2(k, Object.keys(SYMNM3)).map(x => SYMNM3[x])], '', () => symArt(k)), u2w(`It’s a ${SYMNM3[k].toLowerCase()}. ${SYMWHY[k]}`, [SYMWHY[k], 'Schematics use the same symbols all over the world, so anyone can read them.', `Tip: say the name out loud when you see it: “${SYMNM3[k]}!”`])); },
+  KVL(id, V, d1, d2) { const k = d2 == null ? [d1] : [d1, d2], s = k.reduce((a, b) => a + b, 0), a = V - s; return Object.assign(mcq(id, `A <b>${V} V</b> battery runs a loop. ${k.length === 1 ? `One part drops <b>${d1} V</b>.` : `Two parts drop <b>${d1} V</b> and <b>${d2} V</b>.`} What does the last part drop?`, u2opts(a, [s, V], 'V'), ''),
+    u2w(`The drops must add up to the battery: ${V} − ${k.join(' − ')} = ${u2n(a)} V.`, ['KVL: going around a loop, all the voltage drops add up to the battery’s voltage.', `Used so far: ${k.join(' + ')} = ${u2n(s)} V.`, `Left over for the last part: ${V} − ${u2n(s)} = ${u2n(a)} V.`])); },
+  KCL(id, I, o1, o2) { const k = o2 == null ? [o1] : [o1, o2], s = k.reduce((a, b) => a + b, 0), a = I - s; return Object.assign(mcq(id, `<b>${I} mA</b> flows into a junction. ${k.length === 1 ? `One wire carries <b>${o1} mA</b> out.` : `Two wires carry <b>${o1} mA</b> and <b>${o2} mA</b> out.`} What does the last wire carry out?`, u2opts(a, [I + s, s], 'mA'), ''),
+    u2w(`In = out: ${I} − ${k.join(' − ')} = ${u2n(a)} mA.`, ['KCL: current can’t pile up or vanish at a junction, so what goes in must come out.', `Already leaving: ${k.join(' + ')} = ${u2n(s)} mA.`, `The last wire takes the rest: ${I} − ${u2n(s)} = ${u2n(a)} mA.`])); },
+  NODE(id, Va, Vb) { const a = Va - Vb; return Object.assign(mcq(id, `Node A is at <b>${Va} V</b> and node B is at <b>${Vb} V</b> (both measured from ground). What voltage is across the resistor between them?`, u2opts(a, [Va + Vb, Va], 'V'), ''),
+    u2w(`Across = the difference: ${Va} − ${Vb} = ${u2n(a)} V.`, ['A node voltage is measured from ground (0 V), like height measured from the floor.', 'The voltage across a part is the difference between its two ends, like how far one step is above the next.', `${Va} − ${Vb} = ${u2n(a)} V.`])); },
+  NODEI(id, Va, Vb, R) { const a = (Va - Vb) / R; return Object.assign(mcq(id, `A <b>${R} kΩ</b> resistor joins a <b>${Va} V</b> node to a <b>${Vb} V</b> node. What current flows through it?`, u2opts(a, [Va / R, (Va + Vb) / R], 'mA'), ''),
+    u2w(`Voltage across = ${Va} − ${Vb} = ${Va - Vb} V. I = ${Va - Vb} ÷ ${R} kΩ = ${u2n(a)} mA.`, ['Step 1: find the voltage ACROSS the resistor (the difference).', `${Va} − ${Vb} = ${Va - Vb} V.`, `Step 2: Ohm’s law with kΩ gives mA: ${Va - Vb} ÷ ${R} = ${u2n(a)} mA.`])); },
+  NODEM(id, Vin, R1, R2) { const a = Vin * R2 / (R1 + R2); return Object.assign(mcq(id, `<b>${Vin} V</b> → R1 = <b>${R1} kΩ</b> → node M → R2 = <b>${R2} kΩ</b> → ground. What is the voltage at node M?`, u2opts(a, [Vin * R1 / (R1 + R2), Vin], 'V'), ''),
+    u2w(`Node M is a divider output: ${Vin} × ${R2} ÷ ${R1 + R2} = ${u2n(a)} V.`, ['Node M measured from ground = the voltage across R2 (the bottom part).', `R2’s share of the total: ${R2} ÷ (${R1} + ${R2}) = ${R2}/${R1 + R2}.`, `${Vin} × ${R2}/${R1 + R2} = ${u2n(a)} V.`])); },
+});
+Object.assign(U2BANK, { SYM: [['bat'], ['res'], ['led'], ['sw'], ['cap'], ['gnd'], ['diode'], ['lamp']], KVL: [[9, 4], [12, 5, 3], [6, 2], [10, 4, 4]], KCL: [[10, 4], [30, 12, 8], [6, 2], [20, 5, 5]], NODE: [[9, 4], [5, 2], [12, 3], [7, 7]],
+  DIV: [[12, 1, 1], [9, 2, 1], [10, 3, 2], [6, 1, 2]], COMBO: [[2, 4, 4], [5, 6, 3], [10, 10, 10], [1, 2, 2]], NODEM: [[12, 2, 1], [10, 1, 4], [9, 1, 2], [6, 1, 1]] });
+const OS = (id, ix) => ix.map(i => LESSONS[id].steps[i]);
+const Q3 = U2Q, symq3 = (p, ks) => ks.map((k, i) => Q3.SYM(`${p}y${i}`, k));
+Object.assign(LESSONS, {
+  S1: { title: 'Schematic symbols: the basic four', goal: 'Read the battery, resistor, lamp and switch symbols.', cards: ['schematic', 'batsym', 'ressym'], steps: [
+    ...OS('L12', [0, 1]), ...symq3('s1a', ['bat', 'res']), ...OS('L12', [2]), ...symq3('s1b', ['lamp', 'sw']),
+    ...OS('L12', [4]), tfk('s1t1', 'In a battery symbol, the <b>long</b> line is the + side.', true, 'Yes! Long line = +, short line = −.', ['A battery symbol has two lines of different lengths.', 'Long = + (positive).', 'Short = − (negative).']),
+    ...OS('L12', [3, 5]), ...symq3('s1c', ['res', 'bat', 'sw', 'lamp']),
+    tfk('s1t2', 'A zig-zag line in a schematic means a resistor.', true, 'Yes: the zig-zag is the resistor.', ['Current has to wiggle through the zig-zag.', 'That’s a picture of “slowing down the flow”.', 'Zig-zag = resistor.']),
+    tfk('s1t3', 'A switch symbol with a gap means the switch is open (off).', true, 'Yes: a gap means the path is broken, so no current.', ['Gap = open = off.', 'Closed (no gap) = on.', 'Current needs a complete loop.']),
+    ...rev('s1', ['DIV', 'COMBO', 'SER', 'PAR'], 4)] },
+  S2: { title: 'More symbols: LEDs, diodes & friends', goal: 'Spot capacitors, diodes, LEDs, transistors, chips and meters.', cards: ['capsym', 'indsym', 'diodesym', 'ledsym', 'npnsym', 'icsym'], steps: [
+    ...OS('L12', [6]), ...symq3('s2a', ['cap', 'diode', 'led']), ...OS('L12', [7, 9]), ...OS('L12', [8]), ...symq3('s2b', ['npn', 'ic']),
+    ...OS('L12', [10, 11, 12]), ...symq3('s2c', ['meterV', 'meterA', 'led', 'cap', 'diode', 'ind']),
+    tfk('s2t1', 'A diode lets current flow both ways.', false, 'No: a diode is a one-way valve.', ['The triangle is an arrow.', 'Current can only go the way the arrow points.', 'The bar blocks the other way.']),
+    ...rev('s2', ['SYM', 'DIV', 'SYM', 'COMBO', 'SYM'], 5)] },
+  S3: { title: 'Ground, rails & junctions', goal: 'Ground is 0 V. A dot means connected.', cards: ['gnd', 'rail', 'junction', 'crossing'], steps: [
+    ...OS('L13', [0, 1]), ...symq3('s3a', ['gnd']), ...OS('L13', [2, 3, 4]),
+    tfk('s3t1', 'Ground means 0 V, the starting point for measuring.', true, 'Yes: ground is the “floor”, 0 V.', ['We measure every voltage from somewhere.', 'Ground is that somewhere: 0 V.', 'Like measuring height from the floor.']),
+    ...OS('L13', [5, 6, 7]),
+    tfk('s3t2', 'A dot where two lines meet means they ARE connected.', true, 'Yes: dot = joined.', ['Dot = connected.', 'No dot where lines cross = just passing over.', 'Designers use dots so there’s no confusion.']),
+    tfk('s3t3', 'Lines that cross with no dot are like a bridge over a road: not connected.', true, 'Right: no dot, no connection.', ['Crossing lines without a dot don’t touch.', 'Think bridge over a road.', 'Only a dot joins them.']),
+    ...OS('L13', [8, 9]), ...symq3('s3b', ['gnd', 'bat', 'sw']),
+    ...rev('s3', ['SYM', 'DIV', 'PAR', 'SYM'], 4)] },
+  S4: { title: 'Labels & breadboard layouts', goal: 'R1, U2, net labels, and building a schematic on a breadboard.', cards: ['refdes', 'netlabel', 'bb', 'strip'], steps: [
+    ...OS('L14', [0, 1]),
+    Object.assign(mcq('s4q1', 'On a schematic, what does <b>R2</b> name?', ['The second resistor', 'A 2 Ω part', 'Row 2 of the breadboard'], ''), u2w('R = resistor, 2 = the second one.', ['Every part gets a letter and a number.', 'R = resistor, C = capacitor, D = diode, U = chip, Q = transistor.', 'R2 is just “resistor number 2”.'])),
+    Object.assign(mcq('s4q2', 'What does <b>C1</b> name?', ['A capacitor', 'A current', 'A chip'], ''), u2w('C = capacitor.', ['C is for capacitor.', 'Chips are U.', 'Currents aren’t parts, so they don’t get names like this.'])),
+    Object.assign(mcq('s4q3', 'What does <b>Q1</b> name?', ['A transistor', 'A quick switch', 'A battery'], ''), u2w('Q = transistor.', ['Transistors use Q (an old tradition).', 'Q1 = transistor number 1.', 'Batteries usually use B or BT.'])),
+    ...OS('L14', [2, 3, 4]),
+    tfk('s4t1', 'Two wires ending in the same net label (like SENSE) are connected, even with no line between them.', true, 'Yes: same label = same wire.', ['A net label is a name tag for a wire.', 'Every spot with that name is connected.', 'It saves drawing long lines.']),
+    ...OS('L14', [5, 6, 7, 8, 9]),
+    tfk('s4t2', 'On a breadboard, holes a–e in the same numbered column are connected.', true, 'Yes: that’s one metal strip.', ['Each numbered column’s a–e holes share a hidden metal strip.', 'f–j is a separate strip.', 'The middle gap splits them.']),
+    ...rev('s4', ['SYM', 'COMBO', 'DIV', 'SYM'], 4)] },
+  S5: { title: 'KVL: loops add up', goal: 'Around a loop, the drops add up to the battery.', cards: ['kvl', 'drop'], steps: [
+    ...OS('L15', [0]), Q3.KVL('s5q1', 9, 4), Q3.KVL('s5q2', 6, 2), Q3.KVL('s5q3', 12, 7), ...OS('L15', [1]),
+    Q3.KVL('s5q4', 10, 3), Q3.KVL('s5q5', 5, 1.5), ...OS('L15', [2, 3]), Q3.KVL('s5q6', 12, 4, 5), Q3.KVL('s5q7', 9, 2, 3),
+    ...OS('L15', [8]), Q3.KVL('s5q8', 6, 1, 2), Q3.KVL('s5q9', 15, 5, 5),
+    tfk('s5t1', 'In a loop, the drops can add up to MORE than the battery.', false, 'No: they add up to exactly the battery voltage.', ['The battery gives the push.', 'Each part uses up some of it.', 'Together they use it all, no more, no less.']),
+    Q3.KVL('s5q10', 4.5, 2, 1.5), Q3.KVL('s5q11', 20, 8),
+    ...rev('s5', ['DIV', 'SYM', 'SER', 'COMBO'], 4)] },
+  S6: { title: 'KCL: junctions balance', goal: 'Current in = current out at every junction.', cards: ['kcl', 'node'], steps: [
+    ...OS('L15', [4]), Q3.KCL('s6q1', 10, 4), Q3.KCL('s6q2', 6, 1), Q3.KCL('s6q3', 20, 15), ...OS('L15', [5]),
+    Q3.KCL('s6q4', 8, 3), Q3.KCL('s6q5', 2, 0.5), ...OS('L15', [6, 7]), Q3.KCL('s6q6', 30, 12, 8), Q3.KCL('s6q7', 12, 4, 4),
+    ...OS('L15', [9]), Q3.KCL('s6q8', 25, 10, 5), Q3.KCL('s6q9', 9, 3, 3),
+    tfk('s6t1', 'At a junction, current can disappear.', false, 'No: what goes in must come out.', ['Charge can’t vanish or pile up in a wire.', 'So in = out at every junction.', 'That’s KCL.']),
+    Q3.KCL('s6q10', 50, 20), Q3.KCL('s6q11', 1, 0.25),
+    ...rev('s6', ['KVL', 'DIV', 'KVL', 'PAR', 'KVL'], 5)] },
+  S7: { title: 'Node voltages', goal: 'Measure nodes from ground and find the voltage between them.', cards: ['nodev', 'vdiff'], steps: [
+    ...OS('L16', [0]), Q3.NODE('s7q1', 9, 4), Q3.NODE('s7q2', 5, 2), Q3.NODE('s7q3', 12, 0), ...OS('L16', [2]),
+    Q3.NODE('s7q4', 7, 3), Q3.NODE('s7q5', 6, 1.5), ...OS('L16', [3, 1]),
+    Q3.NODEM('s7q6', 12, 1, 1), Q3.NODEM('s7q7', 9, 2, 1), Q3.NODEM('s7q8', 10, 1, 4),
+    Q3.NODEI('s7q9', 9, 3, 2), Q3.NODEI('s7q10', 10, 4, 3), ...OS('L16', [9]), Q3.NODEI('s7q11', 5, 1, 2),
+    tfk('s7t1', 'A node at 0 V is connected to ground (or acts like it).', true, 'Yes: ground is the 0 V reference.', ['Node voltages are measured from ground.', 'Ground itself is 0 V.', 'So a 0 V node is “at ground level”.']),
+    ...rev('s7', ['KVL', 'KCL', 'NODEM', 'SYM', 'DIV'], 5)] },
+  SX: { title: 'Challenge: superposition & Thevenin', goal: 'Optional: one source at a time, and squash a circuit into a source + one resistor.', cards: ['superpos', 'srcoff', 'thev', 'vth', 'rth'], optional: true, steps: [
+    ...OS('L16', [4, 5, 6, 7, 8]), ...OS('L17', [0, 1, 2, 3, 4, 5, 6, 7])] },
+});
+(() => {
+  const U3 = UNITS.find(u => u.id === 'U3');
+  U3.lessons = ['D1', 'D2', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7'];
+  const CM = { schematic: 'S1', batsym: 'S1', ressym: 'S1', capsym: 'S2', indsym: 'S2', diodesym: 'S2', ledsym: 'S2', npnsym: 'S2', icsym: 'S2', gnd: 'S3', rail: 'S3', junction: 'S3', crossing: 'S3', refdes: 'S4', netlabel: 'S4', bb: 'S4', strip: 'S4', kvl: 'S5', drop: 'S5', kcl: 'S6', node: 'S6', nodev: 'S7', vdiff: 'S7', superpos: 'SX', srcoff: 'SX', thev: 'SX', vth: 'SX', rth: 'SX' };
+  Object.entries(CM).forEach(([k, l]) => { if (CARDS[k]) CARDS[k].lesson = l; });
+  const T3 = TESTS.T3, TM = { L12: 'S1', L13: 'S3', L14: 'S4', L16: 'S7' };
+  T3.steps = T3.steps.filter(s => s.tag !== 'L17' && !/alone makes|superpos/i.test(s.q || '')).map(s => Object.assign({}, s, { tag: s.tag === 'L15' ? (s.kind === 'kcl' ? 'S6' : 'S5') : (TM[s.tag] || s.tag) }));
+  T3.steps.push(Object.assign(Q3.SYM('t3y1', 'led'), { tag: 'S2' }), Object.assign(Q3.KVL('t3k1', 9, 2, 4.5), { tag: 'S5' }), Object.assign(Q3.KCL('t3c1', 30, 12, 8), { tag: 'S6' }), Object.assign(Q3.NODEM('t3m1', 12, 2, 1), { tag: 'S7' }));
 })();
 /* =========================================================
    STATE, DATES, XP, STREAK
@@ -5288,7 +5379,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.9.1 (2026-10-07)';
+const APP_VERSION = '7.10 (2026-10-07)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -6607,6 +6698,39 @@ ensureShop = function () {
   }
   return _ensureShopU2b.apply(this, arguments);
 };
+
+/* v7.10: Unit 3 rewrite. Old L12-L17 → S1-S7 (+ optional SX). Credit = what the old lesson paid; never pays twice. */
+const U3_MAP = { S1: ['L12'], S2: ['L12'], S3: ['L13'], S4: ['L14'], S5: ['L15'], S6: ['L15'], S7: ['L16'], SX: ['L16', 'L17'] };
+LESSONS.SX.unit = 'U3'; LABEL.SX = '3.★';
+const _ensureShopU3 = ensureShop;
+ensureShop = function () {
+  if (!S.u3mig1 && S.done) {
+    S.tokPaid = S.tokPaid && typeof S.tokPaid === 'object' ? S.tokPaid : {}; S.tokGranted = S.tokGranted && typeof S.tokGranted === 'object' ? S.tokGranted : {};
+    Object.entries(U3_MAP).forEach(([id, src]) => {
+      if (!src.every(l => S.done[l])) return;
+      if (!S.done[id]) S.done[id] = Object.assign({}, typeof S.done[src[0]] === 'object' ? S.done[src[0]] : { at: today() }, { mig: src.join('+') });
+      const paid = Math.max(...src.map(l => S.tokPaid[l] != null ? S.tokPaid[l] : (S.tokGranted[l] ? TOK_UNIT.U3 : 0)));
+      S.tokPaid[id] = Math.max(S.tokPaid[id] || 0, Math.min(tokTier(id), paid)); S.tokGranted[id] = 1;
+      if (S.mastered && src.every(l => S.mastered[l])) S.mastered[id] = 1;
+    });
+    S.u3mig1 = 1;
+  }
+  return _ensureShopU3.apply(this, arguments);
+};
+/* optional Challenge lessons: shown after the unit test, never block it */
+const OPT_LESSONS = { U3: ['SX'] };
+const _unitNodesOpt = unitNodes;
+unitNodes = function (u) {
+  const list = _unitNodesOpt(u), prev = u.lessons[u.lessons.length - 1];
+  (OPT_LESSONS[u.id] || []).forEach(id => list.push({ id, title: LESSONS[id].title, goal: LESSONS[id].goal, kind: 'lesson', optional: true, state: S.done[id] ? 'done' : (unitUnlocked(u) && S.done[prev] ? 'opt' : 'locked') }));
+  return list;
+};
+const _renderPathOpt = renderPath;
+renderPath = function () {
+  _renderPathOpt();
+  Object.values(OPT_LESSONS).flat().forEach(id => { const b = $(`.node[data-id="${id}"]`); if (!b) return; b.classList.add('optnode'); b.insertAdjacentHTML('afterbegin', '<span class="startbubble optb">OPTIONAL</span>'); });
+};
+document.head.insertAdjacentHTML('beforeend', '<style>.node.opt .disc{background:#FFC94D;--sh:#C9831A}.startbubble.optb{background:#FFF3D6;color:#8A5A00;animation:none}</style>');
 /* =========================================================
    AVATAR v2: cuter bodies, expressions, layered accessories, shop, idle animation
    Bodies (v3): Cappy, Chiplet, Glowbie, Flippy, Lumi, Beep, Knobby, Boing, Volty, Stripes. Old bodies were refunded once (S.avatar.migBodies2, see ensureShop).
