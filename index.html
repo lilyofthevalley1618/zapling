@@ -5554,7 +5554,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.14 (2026-10-07)';
+const APP_VERSION = '7.15 (2026-10-08)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -8018,6 +8018,7 @@ function mergeSaves(a, b) {
   const av = ob(base.avatar), ov = ob(o.avatar); m.avatar = Object.assign({}, cl(ov), cl(av), { owned: uni(av.owned, ov.owned), eq: cl(av.eq || ov.eq) });
   Object.keys(ov).forEach(k => { if (/^mig/.test(k)) m.avatar[k] = Math.max(+av[k] || 0, +ov[k] || 0); });
   if (base.lab || o.lab) { m.lab = Object.assign({}, cl(ob(o.lab)), cl(ob(base.lab))); m.lab.done = Object.assign({}, ob(ob(o.lab).done), ob(ob(base.lab).done)); }
+  if (base.gateMig || o.gateMig) { m.gateMig = 1; m.gateSkip = Object.assign({}, ob(o.gateSkip), ob(base.gateSkip)); }
   m.deckRw = {}; uni(Object.keys(ob(base.deckRw)), Object.keys(ob(o.deckRw))).forEach(u => { const x = ob(base.deckRw)[u], y = ob(o.deckRw)[u];
     m.deckRw[u] = !x || !y ? cl(x || y) : { d: (x.d || '') > (y.d || '') ? x.d : y.d, seen: uni(x.seen, y.seen), days: uni(x.days, y.days), paid: Math.max(x.paid || 0, y.paid || 0) }; });
   m.fcTest = {}; uni(Object.keys(ob(base.fcTest)), Object.keys(ob(o.fcTest))).forEach(u => { const x = ob(base.fcTest)[u], y = ob(o.fcTest)[u]; m.fcTest[u] = !x || !y ? cl(x || y) : Object.assign({}, y, x, { best: Math.max(x.best || 0, y.best || 0) }); });
@@ -8040,6 +8041,201 @@ function renderCloud() {
 }
 // returning player who signed in before (or is coming back from a redirect): restore the session quietly
 if (syncInfo().uid || syncInfo().redirect) setTimeout(() => fbLoad().catch(() => { }), 800);
+/* =========================================================
+   v7.15: new Circuit Lab parts + Build-it gates.
+   Parts: active buzzer, potentiometer, LDR (+ light slider), NPN transistor (switch model).
+   Gates: one Lab challenge per unit; the next path node stays locked until it auto-completes.
+   ========================================================= */
+const NL = { light: null };
+const labLight = () => NL.light ?? (labS().light ?? 80);              // 0 = dark … 100 = bright
+const ldrOhms = l => Math.round(Math.pow(10, 5.3 - 3 * l / 100));     // 200 kΩ dark → 200 Ω bright (simplified log curve)
+const BUZ_R = 400, BUZ_ON = .004, NPN_ON = 5e-5, NPN_CE = 5;
+Object.assign(LAB_KIND, { buz: 'buzzer', pot: 'potentiometer', ldr: 'light sensor (LDR)', npn: 'NPN transistor' });
+LAB_PAL.push(['buz', 'Buzzer', '<circle cx="14" cy="15" r="8" fill="#2E2A5A"/><circle cx="14" cy="15" r="2.4" fill="#6B6899"/><path d="M22 8q3 3 0 6M24.5 6q5 5 0 10" fill="none" stroke="#FFC94D" stroke-width="1.8" stroke-linecap="round"/>'],
+  ['pot', 'Knob', '<rect x="3" y="10" width="22" height="12" rx="3" fill="#5AB8F0"/><circle cx="14" cy="13" r="6" fill="#fff" stroke="#2A7FB8" stroke-width="1.6"/><path d="M14 13l3-4" stroke="#2E2A5A" stroke-width="2" stroke-linecap="round"/>'],
+  ['ldr', 'Light sensor', '<circle cx="14" cy="15" r="8" fill="#F6E7C8" stroke="#C9831A" stroke-width="1.8"/><path d="M9 13h3v4h3v-4h3v4" fill="none" stroke="#E0604F" stroke-width="1.6"/><path d="M4 4l4 4M8 2l3 4" stroke="#FFC94D" stroke-width="1.8" stroke-linecap="round"/>'],
+  ['npn', 'Transistor', '<path d="M7 20V12a7 7 0 0 1 14 0V20Z" fill="#2E2A5A"/><path d="M9 20v6M14 20v6M19 20v6" stroke="#9AA3B5" stroke-width="1.8"/><text x="14" y="17" font-size="6" fill="#fff" text-anchor="middle" font-weight="800">NPN</text>']);
+Object.assign(LAB_OFF, { buz: [3, 0], ldr: [3, 0] });
+const LAB3 = k => k === 'pot' || k === 'npn';
+
+/* ---------- solver: map new parts onto parts the core solver already knows ---------- */
+const _bbSolve = bbSolve;
+const npnOn = {};
+bbSolve = function (parts, o = {}) {
+  const npns = parts.filter(p => p.kind === 'npn'); let on = {}, sol;
+  const map = () => parts.flatMap(p => p.kind === 'buz' ? [{ id: p.id, kind: 'res', a: p.a, b: p.b, ohms: BUZ_R }]
+    : p.kind === 'ldr' ? [Object.assign({}, p, { ohms: ldrOhms(labLight()) })]
+    : p.kind === 'pot' ? [Object.assign({}, p, { w: p.c, ohms: p.ohms || 10000, pos: p.pos ?? .5 })]
+    : p.kind === 'npn' ? [{ id: p.id + '_be', kind: 'led', a: p.c, b: p.b, vf: .7 }, ...(on[p.id] ? [{ id: p.id, kind: 'res', a: p.a, b: p.b, ohms: NPN_CE }] : [])]
+    : [p]);
+  for (let it = 0; it < 4; it++) {        // switch model: base current above ~50 µA closes C→E, else open
+    sol = _bbSolve(map(), o); if (!npns.length || sol.short || sol.nobat) break;
+    const nx = {}; npns.forEach(t => nx[t.id] = (sol.I[t.id + '_be'] || 0) > NPN_ON);
+    if (npns.every(t => !!nx[t.id] === !!on[t.id])) break; on = nx;
+  }
+  npns.forEach(t => { npnOn[t.id] = !!on[t.id]; if (sol.I && !on[t.id]) sol.I[t.id] = 0; });
+  return sol;
+};
+const buzOn = (sol, p) => !!sol && !sol.short && (sol.I[p.id] || 0) > BUZ_ON;
+labLinked = function (parts, sol, l) {  // also walk through buzzers, knobs and a switched-on transistor
+  const bat = parts.find(p => p.kind === 'bat'), E = [];
+  parts.forEach(p => { if (p.id === l.id) return; if (['res', 'led', 'ldr', 'buz'].includes(p.kind)) E.push([p.a, p.b]); if (p.kind === 'pot') E.push([p.a, p.c], [p.c, p.b]); if (p.kind === 'npn') { E.push([p.c, p.b]); if (npnOn[p.id]) E.push([p.a, p.b]); } });
+  const N = E.map(([a, b]) => [sol.net(a), sol.net(b)]);
+  const reach = (s, t) => { const seen = new Set([s]), q = [s]; while (q.length) { const n = q.shift(); if (n === t) return true; N.forEach(([x, y]) => { const m = n === x ? y : n === y ? x : null; if (m && !seen.has(m)) { seen.add(m); q.push(m); } }); } return false; };
+  return reach(sol.net(l.a), sol.net(bat.a)) && reach(sol.net(l.b), sol.net(bat.b));
+};
+const _labDiag = labDiag;
+labDiag = function (parts) {
+  const d = _labDiag(parts), sol = d.sol; if (sol.nobat || sol.short) return d;
+  const npns = parts.filter(p => p.kind === 'npn');
+  d.chips = d.chips.filter(c => !(/^Add an LED/.test(c.t) && parts.some(p => p.kind === 'buz')));
+  if (npns.some(t => !npnOn[t.id])) d.chips.forEach(c => { if (/^Not enough voltage|^Open circuit/.test(c.t)) { c.k = ''; c.t = 'Transistor is off: its base isn’t getting current' + (parts.some(p => p.kind === 'ldr') ? ' (try making it darker)' : ''); } });
+  npns.forEach(t => { if ((sol.I[t.id + '_be'] || 0) > .02) d.chips.push({ k: 'bad', t: 'Transistor base needs a resistor (about 1 kΩ), or it would burn out' }); });
+  parts.filter(p => p.kind === 'buz').forEach(b => {
+    if (buzOn(sol, b)) d.chips.push({ k: 'ok', t: `Buzzer beeping · ${fmtmA(sol.I[b.id])}` });
+    else if ((sol.I[b.id] || 0) < -BUZ_ON) d.chips.push({ k: 'bad', t: 'Buzzer is backwards: its + leg must face battery +' });
+    else if (!parts.some(p => (p.kind === 'btn' || p.kind === 'spst') && !p.on)) d.chips.push({ k: 'warn', t: 'Buzzer is silent: check its loop back to the battery' });
+  });
+  parts.filter(p => p.kind === 'ldr').forEach(() => d.chips.push({ k: '', t: `Light ${labLight()}% · sensor ${fmtOhm(ldrOhms(labLight()))}` }));
+  return d;
+};
+LAB_FIX.push([/^Buzzer is backwards/, 'Select the buzzer and tap Flip so its + leg faces battery +.'], [/^Transistor base needs/, 'Put a resistor (about 1 kΩ) between your signal and the transistor’s middle B leg.'], [/^Transistor is off/, 'The B (middle) leg needs a little current. Check the base resistor, or change the light.']);
+
+/* ---------- placing, moving, drawing ---------- */
+const _labNew = labNew;
+labNew = function (k, h, h2) {
+  if (!LAB3(k)) { const p = _labNew(k, h, h2); if (p && k === 'buz') p.on = undefined; return p; }
+  const L = labS(); let a = h, c = labShift(h, 1, 0), b = labShift(h, 2, 0); if (!b) { b = h; c = labShift(h, -1, 0); a = labShift(h, -2, 0); } if (!a || !c) return null;
+  const p = { id: 'p' + (L.n++), kind: k, a, c, b }; if (k === 'pot') { p.ohms = 10000; p.pos = LAB.opt.pos ?? .5; } return p;
+};
+const _labLeg = labLeg;
+labLeg = h => { if (LAB3(LAB.tool)) { LAB.legs = []; SFX.tap(); return labAdd(labNew(LAB.tool, h)); } _labLeg(h); };
+const _labRotate = labRotate;
+labRotate = () => { const p = labPart(LAB.sel); if (p && LAB3(p.kind)) return labHint('Three-leg parts move but don’t rotate.'); _labRotate(); };
+const _labFlip = labFlip;
+labFlip = () => { const p = labPart(LAB.sel); if (p && p.kind === 'buz') { labPush(); [p.a, p.b] = [p.b, p.a]; SFX.toggle(); return labCommit(); } _labFlip(); };
+const _labHandles = labHandles;
+labHandles = () => { _labHandles(); const p = labPart(LAB.sel), H = $('#labHandles'); if (!H || !p) return; if (LAB3(p.kind)) $('[data-act="rot"]', H).hidden = true; if (p.kind === 'buz') $('[data-act="flip"]', H).hidden = false; };
+const _bbPartSVG = bbPartSVG;
+bbPartSVG = function (p, sol, o) {
+  if (p.kind === 'pot') return _bbPartSVG(Object.assign({}, p, { w: p.c, pos: p.pos ?? .5 }), sol, o);
+  if (p.kind !== 'buz' && p.kind !== 'npn') return _bbPartSVG(p, sol, o);
+  const [x1, y1] = bbPos(p.a), [x2, y2] = bbPos(p.b), mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  const leg = (xa, ya, xb, yb) => `<path d="M${xa} ${ya}L${xb} ${yb}" stroke="#9AA3B5" stroke-width="2.4" stroke-linecap="round"/>`;
+  let g;
+  if (p.kind === 'buz') {
+    const on = !o.blind && buzOn(sol, p), cy = my - 14;
+    g = `${leg(x1, y1, mx - 5, cy + 6)}${leg(x2, y2, mx + 5, cy + 6)}<circle cx="${mx}" cy="${cy}" r="12" fill="#2E2A5A" stroke="#14112E" stroke-width="1.6"/><circle cx="${mx}" cy="${cy}" r="3.5" fill="#6B6899"/>${lbl(x1 + (x1 <= x2 ? -5 : 5), y1 - 6, '+', '#E0604F', 9)}
+      ${on ? `<g fill="none" stroke="#FFC94D" stroke-width="2.2" stroke-linecap="round"><path d="M${mx + 15} ${cy - 6}q4 6 0 12"/><path d="M${mx + 20} ${cy - 10}q7 10 0 20"/><path d="M${mx - 15} ${cy - 6}q-4 6 0 12"/></g>${lbl(mx, cy - 16, 'BEEP', '#C9831A', 8)}` : ''}`;
+  } else {
+    const [xb, yb] = bbPos(p.c), cy = my - 16, on = npnOn[p.id];
+    g = `${leg(x1, y1, x1 + 3, cy + 6)}${leg(xb, yb, xb, cy + 6)}${leg(x2, y2, x2 - 3, cy + 6)}<path d="M${x1 - 4} ${cy + 7}V${cy - 3}a${(x2 - x1) / 2 + 4} ${(x2 - x1) / 2 + 4} 0 0 1 ${x2 - x1 + 8} 0V${cy + 7}Z" fill="${on ? '#3B3570' : '#2E2A5A'}" stroke="${on ? '#2EC4A0' : '#14112E'}" stroke-width="1.8"/>${lbl(xb, cy + 1, 'NPN', '#fff', 7)}${lbl(x1, cy + 16, 'C', '#6B6899', 7)}${lbl(xb, cy + 16, 'B', '#6B6899', 7)}${lbl(x2, cy + 16, 'E', '#6B6899', 7)}`;
+  }
+  return g;
+};
+const _labDescribe = labDescribe;
+labDescribe = function (parts, sol) {
+  if (!parts.length) return _labDescribe(parts, sol);
+  return parts.map(p => p.kind === 'buz' ? `buzzer with its + leg in hole ${p.a} and − leg in hole ${p.b}, ${buzOn(sol, p) ? 'beeping' : 'silent'}`
+    : p.kind === 'pot' ? `10 kΩ knob (potentiometer) with ends in ${p.a} and ${p.b}, wiper (middle) in ${p.c}, turned ${Math.round((p.pos ?? .5) * 100)}%`
+    : p.kind === 'ldr' ? `light sensor (LDR) from ${p.a} to ${p.b}, ${fmtOhm(ldrOhms(labLight()))} at ${labLight()}% light`
+    : p.kind === 'npn' ? `NPN transistor: C in ${p.a}, B in ${p.c}, E in ${p.b}, ${npnOn[p.id] ? 'switched on' : 'off'}`
+    : _labDescribe([p], sol).replace(/\.$/, '')).join('; ') + '.';
+};
+
+/* ---------- light + knob sliders ---------- */
+const _renderLab = renderLab;
+renderLab = function (host) {
+  _renderLab(host); const op = $('.labopts', host); if (!op) return;
+  op.insertAdjacentHTML('beforeend', `<label>Light ☀ <input type="range" id="labLight" min="0" max="100" step="5" value="${labLight()}" aria-label="Room light level"></label><label>Knob <input type="range" id="labPos" min="0" max="100" step="5" value="${Math.round((LAB.opt.pos ?? .5) * 100)}" aria-label="Knob (potentiometer) position"></label>`);
+  $('#labLight', host).oninput = e => { labS().light = +e.target.value; labCommit(); };
+  $('#labPos', host).oninput = e => { LAB.opt.pos = +e.target.value / 100; const ps = labS().parts.filter(p => p.kind === 'pot'), sel = labPart(LAB.sel); (sel && sel.kind === 'pot' ? [sel] : ps).forEach(p => p.pos = LAB.opt.pos); labCommit(); };
+};
+
+/* ---------- checks for the new challenges ---------- */
+const withVar = (P, f) => { const s = bbSolve(P, LAB_O); return f(s); };
+const togglePress = (P, on) => P.map(p => p.kind === 'btn' ? Object.assign({}, p, { on }) : p);
+function labBellOk(P) {
+  if (!P.some(p => p.kind === 'btn')) return false;
+  return P.some(b => b.kind === 'buz' && withVar(togglePress(P, true), s => buzOn(s, b)) && withVar(togglePress(P, false), s => !buzOn(s, b)));
+}
+function labDimOk(P, sol) {
+  if (!P.some(p => p.kind === 'pot')) return false; const at = v => P.map(p => p.kind === 'pot' ? Object.assign({}, p, { pos: v }) : p);
+  return P.some(l => { if (l.kind !== 'led' || ledState(sol, l.id) !== 'lit') return false; const a = withVar(at(.1), s => s.I[l.id] || 0), b = withVar(at(.9), s => s.I[l.id] || 0); return Math.max(a, b) > 2 * Math.min(a, b) + 5e-4 && Math.max(a, b) < .05; });
+}
+function labNightOk(P) {
+  if (!P.some(p => p.kind === 'ldr') || !P.some(p => p.kind === 'npn')) return false;
+  const at = v => { NL.light = v; const s = bbSolve(P, LAB_O); NL.light = null; return s; }, dark = at(0), bright = at(100);
+  return P.some(l => l.kind === 'led' && ledState(dark, l.id) === 'lit' && ledState(bright, l.id) === 'dark');
+}
+LAB_CH.splice(LAB_CH.length - 1, 0,
+  { id: 'bell', name: 'Doorbell', goal: ['Make a buzzer beep only while a pushbutton is pressed.'], how: 'Battery + → pushbutton → buzzer + leg. Buzzer − leg → back to the − rail. (This buzzer has its own driver inside, so it needs no resistor.)', ok: P => labBellOk(P) },
+  { id: 'dim', name: 'Dimmer Knob', goal: ['Light an LED you can dim by turning a knob.'], how: 'Put the knob in the LED’s loop: + rail → one end of the knob, middle (wiper) leg → 220 Ω resistor → LED → − rail. Then slide the Knob control.', ok: labDimOk },
+  { id: 'night', name: 'Night-Light', goal: ['Build an LED that turns ON when it gets dark and OFF in bright light.'], how: '10 kΩ from + to a middle row, light sensor from that row to −. That row → 1 kΩ → transistor B. + → 330 Ω → LED → transistor C. Transistor E → −. Slide Light down to test.', ok: P => labNightOk(P) });
+
+/* ---------- Build-it gates (one per unit) ---------- */
+const GATES = [
+  { id: 'g1', unit: 'U1', after: 'L2', name: 'Build it: Close the Loop', goal: ['Light one LED in a complete loop.'], how: 'Battery on the rails → resistor → LED long leg (+). LED short leg (−) → back to the − rail. No gaps!', ok: (P, sol) => litLeds(P, sol).length > 0 },
+  { id: 'g2', unit: 'U2', after: 'O4', name: 'Build it: Ohm’s Law for Real', goal: ['Use I = V ÷ R to light a red LED at 12–18 mA.'], how: 'The resistor gets the battery volts minus about 2 V. Pick R so (V − 2) ÷ R ≈ 0.015 A. With 9 V, 470 Ω works.', ok: LAB_CH.find(c => c.id === 'size').ok },
+  { id: 'g3', unit: 'U3', after: 'D2', name: 'Build it: Side by Side', goal: ['Light two LEDs in parallel, each with its own resistor.'], how: 'Make two separate loops from + to −, each with its own resistor and LED.', ok: (P, sol) => labDoubleOk(P, sol, 1) },
+  { id: 'g4', unit: 'U4', after: 'B5', name: 'Build it: Your First Board', goal: ['Light an LED using the rails and at least one jumper wire.'], how: 'Battery on the top rails. Resistor from + rail into a row, LED across rows, then a jumper wire from the LED’s − row to the − rail.', ok: (P, sol) => litLeds(P, sol).length > 0 && P.some(p => p.kind === 'wire') },
+  { id: 'g5', unit: 'U5', after: 'C2', name: 'Build it: Switch It', goal: ['Light an LED that a switch turns on and off. Leave it switched ON.'], how: 'Put the switch in the loop, in series with the resistor and LED. Now flip the switch on!', ok: labFlipOk, strict: 1 },
+  { id: 'g6', unit: 'U6', after: 'F2', name: 'Build it: Dimmer', goal: ['Light an LED you can dim with a knob.'], how: LAB_CH.find(c => c.id === 'dim').how, ok: labDimOk },
+  { id: 'g7', unit: 'U7', after: 'K3', name: 'Build it: Night-Light', goal: ['Make an LED that turns on when it gets dark.'], how: LAB_CH.find(c => c.id === 'night').how, ok: P => labNightOk(P) }];
+GATES.forEach(g => LAB_CH.splice(LAB_CH.length - 1, 0, Object.assign({ gate: 1 }, g)));
+const gateOf = id => GATES.find(g => g.id === id);
+const gateMig = () => { if (!S.gateMig) { S.gateMig = 1; S.gateSkip = {}; GATES.forEach(g => { if (S.done[g.after]) S.gateSkip[g.id] = 1; }); save(); } }; // one-time: anyone already past a gate's lesson is never blocked
+const gateOpen = g => { gateMig(); if (S.gateSkip && S.gateSkip[g.id]) return true; const u = unitOf(g.unit), i = u.lessons.indexOf(g.after), nx = u.lessons[i + 1] || u.test; return !!(labS().done[g.id] || S.done[nx] || (S.tests[nx] && S.tests[nx].passed)); }; // finished = Lab done, or already past it (grandfathered)
+const _unitNodes = unitNodes;
+unitNodes = function (u) {
+  const list = _unitNodes(u), gs = GATES.filter(g => g.unit === u.id);
+  gs.forEach(g => {
+    const i = list.findIndex(n => n.id === g.after); if (i < 0) return;
+    const st = gateOpen(g) ? 'done' : list[i].state === 'done' ? 'current' : 'locked';
+    list.splice(i + 1, 0, { id: 'GATE_' + g.id, gate: g.id, kind: 'gate', title: g.name.replace('Build it: ', 'Build it! '), state: st });
+    if (st !== 'done') list.slice(i + 2).forEach(n => { if (n.state === 'current') { n.state = 'locked'; n.gated = g.id; } });
+  });
+  return list;
+};
+const _renderPath = renderPath;
+renderPath = function () {
+  _renderPath();
+  $$('.node[data-id^="GATE_"]').forEach(b => { b.classList.add('gatenode'); const sb = $('.startbubble', b); if (sb) sb.textContent = 'BUILD IT'; const d = $('.disc', b); if (d && !b.classList.contains('done')) d.innerHTML = '<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M14.5 3.5a5 5 0 0 0-6 6.2L3 15.2 5 19l3.8 2 5.5-5.5a5 5 0 0 0 6.2-6l-3 3-3-1-1-3z" fill="' + (b.classList.contains('locked') ? '#A9A3CF' : '#fff') + '"/></svg>'; });
+};
+function goBuild(gid) {
+  const L = labS(); L.ch = gid; L.stage = 0; save(); $$('.pop').forEach(p => p.remove());
+  showTab('games'); const g = $('#labGoal'); if (g) { g.classList.add('gatehi'); setTimeout(() => g.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60); }
+}
+const _openPop = openPop;
+openPop = function (pw, n, x, y, u) {
+  if (n.kind !== 'gate') { _openPop(pw, n, x, y, u); if (n.gated) { const b = $('.pop .btn[disabled]', pw); if (b) b.textContent = 'Finish the Build-it challenge first'; } return; }
+  $$('.pop').forEach(p => p.remove()); const g = gateOf(n.gate);
+  const body = n.state === 'locked' ? `<p>${esc(g.goal[0])}</p><button class="btn" disabled>Finish the lesson before this one</button>`
+    : `<p><b>Goal:</b> ${esc(g.goal[0])}</p><p class="small" style="margin-top:-6px">Build it in Practice › Circuit Lab. It checks itself the moment it works${n.state === 'done' ? ' · completed' : `, then the next lesson unlocks (+${LAB_TOK} tokens)`}.</p><button class="btn ${n.state === 'done' ? 'ghost' : 'primary'}" id="popbuild">${n.state === 'done' ? 'Build it again' : 'Go build it'}</button>`;
+  const p = el(`<div class="pop" style="top:${y + 58}px;left:${Math.max(150, Math.min(170, x))}px"><h3>${esc(n.title)}</h3>${body}</div>`);
+  p.onclick = e => e.stopPropagation(); pw.appendChild(p);
+  const b = $('#popbuild', p); if (b) b.onclick = () => goBuild(n.gate);
+};
+const _renderLabCh = renderLabCh;
+renderLabCh = function () {   // gate challenges only show once reached
+  const all = LAB_CH.slice(), L = labS();
+  LAB_CH.splice(0, LAB_CH.length, ...all.filter(c => !c.gate || L.done[c.id] || L.ch === c.id || unitNodes(unitOf(c.unit)).some(n => n.gate === c.id && n.state !== 'locked')));
+  try { _renderLabCh(); } finally { LAB_CH.splice(0, LAB_CH.length, ...all); }
+  const ch = all.find(c => c.id === L.ch), g = $('#labGoal');
+  if (ch && ch.gate && g && !L.done[ch.id]) g.insertAdjacentHTML('afterbegin', '<span class="gatetag">🔒 Unlocks your next lesson</span>');
+};
+const _labCheck = labCheck;
+labCheck = function (P, sol, d) {
+  const L = labS(), was = !!L.done[L.ch]; _labCheck(P, sol, d); const g = gateOf(L.ch);
+  if (g && !was && L.done[g.id]) setTimeout(() => toast('Next lesson unlocked! Head back to Learn.', ICON.check()), 1600);
+};
+
+/* ---------- Cookbook examples with the new parts ---------- */
+COOKBOOK.push(
+  { id: 'bell', name: 'Push-Button Doorbell', lvl: 1, blurb: 'Press and hold the button: the buzzer beeps. Let go: silence. The buzzer has its own driver inside, so no resistor.', parts: [CBB, { kind: 'btn', a: 'T+3', b: 'c5', on: false }, { kind: 'buz', a: 'd5', b: 'd8' }, cbW('a8', 'T-8')] },
+  { id: 'dimmer', name: 'Knob Dimmer', lvl: 1, lit: 1, blurb: 'A knob (potentiometer) used as a variable resistor. Slide the Knob control: less resistance → more current → brighter.', parts: [CBB, cbW('T+3', 'a3', '#FF7F6E'), { kind: 'pot', a: 'c3', c: 'c4', b: 'c5', ohms: 10000, pos: .3 }, cbR('d4', 'd8', 220), cbL('e8', 'e9'), cbW('a9', 'T-9')] },
+  { id: 'night', name: 'Night-Light', lvl: 2, lit: 0, blurb: 'The light sensor and 10 kΩ make a divider. When it’s dark the middle row rises above about 0.7 V, the transistor switches on and the LED lights. Slide Light down.', parts: [CBB, cbR('T+2', 'b3', 10000), { kind: 'ldr', a: 'd3', b: 'T-3' }, cbR('a3', 'a7', 1000), { kind: 'npn', a: 'e6', c: 'e7', b: 'e8' }, cbR('T+5', 'b5', 330), cbL('c5', 'c6'), cbW('a8', 'T-9')] });
+document.head.insertAdjacentHTML('beforeend', '<style>.node.gatenode .disc{border-radius:18px}.node.gatenode.current .disc{background:#F2A93B;--sh:#C9831A}.labgoal.gatehi{box-shadow:0 0 0 3px #F2A93B}.gatetag{display:inline-block;background:#FFE9A8;color:#8A5A00;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:800;margin:0 6px 4px 0}</style>');
 /* =========================================================
    INIT
    ========================================================= */
