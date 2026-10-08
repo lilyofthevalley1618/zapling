@@ -4644,6 +4644,35 @@ Object.assign(LESSONS, {
 UNITS.find(u => u.id === 'U5').lessons = ['C1', 'C2', 'C3', 'C6', 'C4', 'C7', 'C5'];
 if (CARDS.ledpar) CARDS.ledpar.lesson = 'C6'; if (CARDS.mah) CARDS.mah.lesson = 'C7';
 reTag('T5', [['C3', /parallel|branch/i, 'C6'], ['C4', /mAh|hours|runtime|last/i, 'C7']]);
+/* v7.17: Unit 6 one-idea split. F2 = knob as dimmer, F6 = knob as divider; F3 = what an LDR does, F7 = LDR dividers. */
+Object.assign(U2Q, {
+  POTDIV(id, Vin, pct) { const a = Vin * pct / 100; return u3x([id, `A knob has its ends on <b>${Vin} V</b> and ground (a divider). The wiper is <b>${pct}%</b> of the way up. Wiper voltage?`], a, [Vin - a, Vin], 'V',
+    `${pct}% of ${Vin} V = ${u2n(a)} V.`, ['With both ends connected, the knob is a voltage divider.', 'The wiper picks a point along the track.', `${pct}% of the way up = ${pct}% of ${Vin} V = ${u2n(a)} V.`]); },
+  LDRI(id, V, R) { const a = V / R; return u3x([id, `<b>${V} V</b> across a light sensor (LDR) reading <b>${R} kΩ</b>. What current flows?`], a, [V * R, R / V], 'mA',
+    `I = ${V} ÷ ${R} kΩ = ${u2n(a)} mA.`, ['An LDR is just a resistor whose value depends on light.', 'So Ohm’s law works: I = V ÷ R.', `Volts ÷ kΩ = mA: ${V} ÷ ${R} = ${u2n(a)} mA.`]); },
+});
+Object.assign(U2BANK, { POTDIV: [[9, 50], [5, 20], [10, 75]], LDRI: [[5, 1], [5, 100], [9, 10]] });
+{ const Q = U2Q;
+Object.assign(LESSONS, {
+  F2: splitL('L29', [0, 1, 2, 3, 5, 6], 'Knobs as dimmers', 'A knob (pot) is an adjustable resistor.', ['pot'], null, [Q.POTR('f2q1', 10, 30), Q.POTR('f2q2', 10, 75), Q.POTR('f2q3', 5, 40), Q.POTR('f2q4', 100, 10),
+    tfk('f2t1', 'Turning a dimmer to MORE resistance makes the LED dimmer.', true, 'Yes: more resistance, less current, dimmer.', ['Current = V ÷ R.', 'Bigger R → smaller current.', 'Smaller current → dimmer LED.']),
+    Q.LEDR('f2q5', 9, 2, 10), Q.POTR('f2q6', 10, 50), Q.POTR('f2q8', 1, 20), Q.POTR('f2q9', 50, 60)], 'f2', ['LEDR', 'HOLE', 'MI', 'PSUM'], 4),
+  F6: splitL('L29', [4], 'Knobs as voltage dividers', 'Ends on + and −, the wiper picks any voltage in between.', ['wiper'],
+    cptk('A knob that picks a voltage', '<p class="body">Connect a knob’s two ends to <b>+</b> and <b>ground</b>. Now the middle leg (the <b>wiper</b>) gives any voltage in between.</p><div class="def">Wiper at the bottom → 0 V.<br>Halfway → half the battery.<br>At the top → the full battery.</div>', LESSONS.L29.steps[0].art, 'It’s a divider you can turn.'),
+    [Q.POTDIV('f6q1', 9, 50), Q.POTDIV('f6q2', 5, 20), Q.POTDIV('f6q3', 10, 75), Q.DIV('f6q4', 10, 1, 1), Q.POTDIV('f6q5', 12, 25), Q.POTDIV('f6q6', 6, 100),
+    tfk('f6t1', 'With the wiper all the way at the ground end, the wiper reads 0 V.', true, 'Yes: it’s touching ground.', ['The wiper slides between the two ends.', 'At the ground end, it IS ground.', 'So 0 V.']), Q.DIV('f6q7', 9, 2, 1), Q.POTDIV('f6q8', 9, 10), Q.POTDIV('f6q9', 5, 60), Q.POTDIV('f6q10', 12, 50)], 'f6', ['POTR', 'DIV', 'LEDR', 'MI'], 4),
+  F3: splitL('L30', [0, 4], 'Light sensors (LDRs)', 'An LDR’s resistance goes up in the dark.', ['ldr'], null, [Q.LDRI('f3q1', 5, 1), Q.LDRI('f3q2', 5, 100), Q.LDRI('f3q3', 9, 10),
+    tfk('f3t1', 'In bright light, an LDR has LOW resistance.', true, 'Yes: light lets current through more easily.', ['LDR = light dependent resistor.', 'Bright → low resistance.', 'Dark → high resistance.']),
+    Object.assign(mcq('f3q4', 'You cover an LDR with your hand. Its resistance…', ['Goes up', 'Goes down', 'Stays the same'], ''), u2w('Darker → resistance goes up.', ['Covering it makes it dark.', 'Less light = more resistance.', 'That’s how a night-light “sees” the dark.'])),
+    Q.LDRI('f3q5', 6, 2), Q.LDRI('f3q6', 9, 90),
+    tfk('f3t2', 'An LDR has a + and − leg like an LED.', false, 'No: an LDR works either way round.', ['An LDR is a resistor.', 'Resistors don’t care about direction.', 'Plug it in either way.']), Q.LDRI('f3q7', 3, 1), Q.LDRI('f3q8', 12, 4), Q.LDRI('f3q9', 5, 50)], 'f3', ['POTR', 'POTDIV', 'MI', 'LEDR'], 4),
+  F7: splitL('L30', [1, 2, 3, 5, 6], 'LDR dividers', 'Pair an LDR with a resistor and its light becomes a voltage.', ['sdiv'],
+    cptk('Turning light into a voltage', '<p class="body">Put a fixed resistor and an LDR in series between + and ground. The middle point (V_out) changes with light.</p><div class="def">LDR on the bottom: darker → bigger LDR → <b>V_out rises</b>.<br>LDR on top: it works the other way round.</div>', LESSONS.L30.steps[0].art, 'Same divider rule: V_out = Vin × R_bottom ÷ (R_top + R_bottom).'),
+    [Q.LDRV('f7q1', 5, 10, 10), Q.LDRV('f7q2', 5, 10, 1), Q.LDRV('f7q3', 9, 10, 20), Q.LDRV('f7q4', 6, 2, 1), Q.LDRV('f7q5', 9, 10, 100), Q.LDRV('f7q6', 5, 10, 40), Q.LDRV('f7q7', 12, 10, 5)], 'f7', ['LDRI', 'POTDIV', 'DIV', 'POTR'], 4),
+}); }
+UNITS.find(u => u.id === 'U6').lessons = ['F1', 'F2', 'F6', 'F3', 'F7', 'F4', 'F5'];
+if (CARDS.wiper) CARDS.wiper.lesson = 'F6'; if (CARDS.sdiv) CARDS.sdiv.lesson = 'F7';
+reTag('T6', [['F2', /divider|wiper.*V\b|2\.5 V|Vout/i, 'F6'], ['F3', /Vout|divider|reads/i, 'F7']]);
 /* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
@@ -5578,7 +5607,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.16 (2026-10-08)';
+const APP_VERSION = '7.17 (2026-10-08)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -8109,6 +8138,7 @@ const LAB3 = k => k === 'pot' || k === 'npn';
 const _bbSolve = bbSolve;
 const npnOn = {};
 bbSolve = function (parts, o = {}) {
+  if (!o.lab) return _bbSolve(parts, o); // lessons keep their own LDR/pot values; Lab-only parts live in the Lab
   const npns = parts.filter(p => p.kind === 'npn'); let on = {}, sol;
   const map = () => parts.flatMap(p => p.kind === 'buz' ? [{ id: p.id, kind: 'res', a: p.a, b: p.b, ohms: BUZ_R }]
     : p.kind === 'ldr' ? [Object.assign({}, p, { ohms: ldrOhms(labLight()) })]
@@ -8165,7 +8195,7 @@ const _labHandles = labHandles;
 labHandles = () => { _labHandles(); const p = labPart(LAB.sel), H = $('#labHandles'); if (!H || !p) return; if (LAB3(p.kind)) $('[data-act="rot"]', H).hidden = true; if (p.kind === 'buz') $('[data-act="flip"]', H).hidden = false; };
 const _bbPartSVG = bbPartSVG;
 bbPartSVG = function (p, sol, o) {
-  if (p.kind === 'pot') return _bbPartSVG(Object.assign({}, p, { w: p.c, pos: p.pos ?? .5 }), sol, o);
+  if (p.kind === 'pot') return _bbPartSVG(p.w ? p : Object.assign({}, p, { w: p.c, pos: p.pos ?? .5 }), sol, o);
   if (p.kind !== 'buz' && p.kind !== 'npn') return _bbPartSVG(p, sol, o);
   const [x1, y1] = bbPos(p.a), [x2, y2] = bbPos(p.b), mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
   const leg = (xa, ya, xb, yb) => `<path d="M${xa} ${ya}L${xb} ${yb}" stroke="#9AA3B5" stroke-width="2.4" stroke-linecap="round"/>`;
