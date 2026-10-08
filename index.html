@@ -4673,6 +4673,56 @@ Object.assign(LESSONS, {
 UNITS.find(u => u.id === 'U6').lessons = ['F1', 'F2', 'F6', 'F3', 'F7', 'F4', 'F5'];
 if (CARDS.wiper) CARDS.wiper.lesson = 'F6'; if (CARDS.sdiv) CARDS.sdiv.lesson = 'F7';
 reTag('T6', [['F2', /divider|wiper.*V\b|2\.5 V|Vout/i, 'F6'], ['F3', /Vout|divider|reads/i, 'F7']]);
+/* v7.18: Unit 7 one-idea split. K1 charge / K6 types · K2 τ / K7 charge & discharge · K3 switch / K8 base resistor · K4 blink speed / K9 duty. */
+Object.assign(U2Q, {
+  CAPCODE(id, code) { const ab = +code.slice(0, 2), z = +code[2], pF = ab * 10 ** z, a = pF / 1000; return u3x([id, `A ceramic capacitor is marked <b>${code}</b>. What is its value?`], a, [pF, ab * z], 'nF',
+    `${code} = ${ab} with ${z} zeros = ${pF} pF = ${u2n(a)} nF.`, ['Cap codes: first two digits, then how many zeros, in picofarads (pF).', `${ab} + ${z} zeros = ${pF} pF.`, `1000 pF = 1 nF, so ${pF} pF = ${u2n(a)} nF.`]); },
+  RCD(id, V, n) { const pct = [100, 37, 14, 5][n], a = V * pct / 100; return u3x([id, `A cap charged to <b>${V} V</b> empties through a resistor. About what voltage is left after <b>${n} τ</b>?`], a, [V * (100 - pct) / 100, 0], 'V',
+    `After ${n} τ about ${pct}% is left: ${u2n(a)} V.`, ['Emptying is the mirror of filling.', '1 τ → 37% left, 2 τ → 14%, 3 τ → 5%.', `${pct}% of ${V} V ≈ ${u2n(a)} V.`]); },
+  TRON(id, Vb) { const on = Vb >= 0.7; return Object.assign(mcq(id, `An NPN’s base sits at <b>${Vb} V</b> (emitter on ground). Is it switched on?`, on ? ['On', 'Off'] : ['Off', 'On'], ''),
+    u2w(on ? `On: ${Vb} V is at or above about 0.7 V.` : `Off: ${Vb} V is below about 0.7 V.`, ['The base–emitter acts like a diode.', 'It needs about 0.7 V to let base current flow.', on ? 'Base current flows, so collector current can flow too.' : 'No base current, so the transistor stays off.'])); },
+  RB(id, Vin, IB) { const a = (Vin - 0.7) / IB; return u3x([id, `Input <b>${Vin} V</b>, you want <b>${IB} mA</b> into the base. Base resistor? (base drops 0.7 V)`], a, [Vin / IB, 0.7 / IB], 'kΩ',
+    `R = (${Vin} − 0.7) ÷ ${IB} mA = ${u2n(+a.toFixed(2))} kΩ.`, ['The base takes about 0.7 V; the resistor gets the rest.', `${Vin} − 0.7 = ${u2n(Vin - 0.7)} V.`, `V ÷ mA = kΩ: ${u2n(Vin - 0.7)} ÷ ${IB} ≈ ${u2n(+a.toFixed(2))} kΩ.`]); },
+  DUTY(id, R1, R2) { const a = Math.round((R1 + R2) / (R1 + 2 * R2) * 100); return u3x([id, `555 with R1 = <b>${R1} kΩ</b> and R2 = <b>${R2} kΩ</b>. About what duty cycle (percent of time ON)?`], a, [Math.round(R2 / (R1 + 2 * R2) * 100), 50 === a ? 75 : 50], '%',
+    `Duty = (R1 + R2) ÷ (R1 + 2·R2) = ${R1 + R2} ÷ ${R1 + 2 * R2} ≈ ${a}%.`, ['High time: the cap charges through R1 + R2.', 'Low time: it discharges through R2 only.', `Duty = high ÷ total = (${R1} + ${R2}) ÷ (${R1} + 2×${R2}) ≈ ${a}%.`]); },
+});
+Object.assign(U2BANK, { CAPCODE: [['104'], ['103'], ['473']], RCD: [[9, 1], [10, 2], [5, 3]], TRON: [[0], [5], [0.3], [0.7]], RB: [[5, 1], [9, 2], [3.3, 0.5]], DUTY: [[1, 10], [10, 10], [1, 100]] });
+{ const Q = U2Q;
+Object.assign(LESSONS, {
+  K1: splitL('L33', [0, 1, 6, 8], 'Capacitors: storing charge', 'A capacitor is a tiny charge tank: Q = C × V.', ['capc', 'farad'], null, [Q.CAPQ('k1q1', 470, 9), Q.CAPQ('k1q2', 100, 5), Q.CAPQ('k1q3', 10, 12), Q.CAPQ('k1q4', 1000, 6),
+    Object.assign(mcq('k1q5', '1000 µF is the same as…', ['1 mF (0.001 F)', '1 F', '1 nF'], ''), u2w('1000 µF = 1 mF = 0.001 F.', ['µ = millionth, m = thousandth.', '1000 millionths = 1 thousandth.', 'So 1000 µF = 1 mF.'])),
+    Q.CAPQ('k1q6', 22, 10), Q.CAPQ('k1q7', 47, 9), Q.CAPQ('k1q8', 220, 5),
+    tfk('k1t2', 'Charging a capacitor to a higher voltage stores more charge.', true, 'Yes: Q = C × V.', ['Bigger V…', '…bigger Q.', 'Same cap, double the volts, double the charge.'])], 'k1', ['LDRV', 'LEDR', 'POTR', 'MI'], 4),
+  K6: splitL('L33', [3, 4, 5, 7, 2], 'Capacitor types', 'Electrolytics have a stripe (−) and a voltage rating; ceramics use number codes.', ['electro', 'ceramic'], null, [Q.CAPCODE('k6q1', '104'), Q.CAPCODE('k6q2', '103'),
+    tfk('k6t1', 'An electrolytic capacitor has a + and − leg and must go the right way round.', true, 'Yes: the stripe marks −.', ['Electrolytics are polarised, like LEDs.', 'The stripe on the can marks the − leg.', 'Backwards can damage it.']),
+    Q.CAPCODE('k6q3', '473'), Q.CAPCODE('k6q4', '222'),
+    tfk('k6t2', 'A capacitor’s voltage rating should be higher than the circuit’s voltage.', true, 'Yes: give it headroom.', ['The rating is the most it can safely take.', 'For 9 V, pick 16 V or more.', 'Too low and it can fail.']),
+    Q.CAPCODE('k6q5', '105'), Q.CAPCODE('k6q6', '101'),
+    tfk('k6t3', 'Ceramic capacitors can go in either way round.', true, 'Yes: they aren’t polarised.', ['Small ceramic caps have no + or −.', 'Electrolytics do.', 'Check for a stripe!'])], 'k6', ['CAPQ', 'LDRV', 'MI', 'LEDR'], 4),
+  K2: splitL('L34', [0, 1, 2, 5], 'The time constant τ', 'τ = R × C sets how fast a cap fills.', ['tau'], null, [Q.TAU('k2q1', 10, 47), Q.TAU('k2q2', 100, 10), Q.TAU('k2q4', 1, 1000), Q.TAU('k2q6', 22, 100), Q.TAU('k2q8', 47, 20), Q.TAU('k2q9', 2.2, 470), Q.TAU('k2q10', 10, 100),
+    tfk('k2t2', 'A bigger capacitor makes τ longer.', true, 'Yes: τ = R × C.', ['Bigger C = bigger tank.', 'Takes longer to fill.', 'τ grows with both R and C.']), Q.TAU('k2q11', 4.7, 220)], 'k2', ['CAPQ', 'CAPCODE', 'LDRV', 'LEDR'], 4),
+  K7: splitL('L34', [3, 4, 6, 7], 'Charging & discharging curves', '63% after 1 τ, ~full after 5 τ; emptying mirrors it.', ['rc63', 'rc5'],
+    cptk('Fast at first, then slower', '<p class="body">A capacitor fills <b>fast at first</b>, then slower and slower as it gets full. Emptying works the same way, backwards.</p><div class="def">Filling: 1 τ → 63% · 2 τ → 86% · 3 τ → 95% · 5 τ → full.<br>Emptying: 1 τ → 37% left · 2 τ → 14% · 3 τ → 5%.</div>', LESSONS.L34.steps[0].art, 'Count in τ steps.'),
+    [Q.RCN('k7q1', 9, 1), Q.RCN('k7q2', 10, 3), Q.RCD('k7q3', 9, 1), Q.RCN('k7q4', 5, 2), Q.RCD('k7q5', 10, 2), Q.RCD('k7q6', 5, 3),
+    tfk('k7t1', 'After about 5 τ a capacitor is basically full.', true, 'Yes: about 99%.', ['Each τ closes most of the remaining gap.', '1 τ 63%, 2 τ 86%, 3 τ 95%…', 'By 5 τ it’s ~99%: call it full.']), Q.RCN('k7q7', 12, 1), Q.RCD('k7q8', 12, 1)], 'k7', ['TAU', 'CAPQ', 'CAPCODE', 'LDRV'], 4),
+  K3: splitL('L35', [0, 1, 2, 6, 7], 'Transistors as switches', 'A small base current turns a bigger current on.', ['npn', 'ebc'], null, [Q.TRON('k3q1', 0), Q.TRON('k3q2', 5),
+    Object.assign(mcq('k3q5', 'An NPN’s three legs are…', ['Collector, base, emitter', 'Anode, cathode, gate', 'Plus, minus, ground'], ''), u2w('C, B, E: collector, base, emitter.', ['The base is the control pin.', 'Current flows collector → emitter when it’s on.', 'The arrow on the symbol is on the emitter.'])),
+    Q.TRON('k3q3', 0.3), Q.TRON('k3q4', 3.3),
+    tfk('k3t2', 'A transistor switch lets a tiny current control a much bigger one.', true, 'Yes: that’s the whole point.', ['A trickle into the base…', '…lets a big current flow collector → emitter.', 'Like a tap controlling a fire hose.']), Q.TRON('k3q6', 9), Q.TRON('k3q7', 0.1),
+    tfk('k3t3', 'The LED in a transistor switch goes between + and the collector.', true, 'Yes: the transistor switches its − side to ground.', ['LED + resistor from + to the collector.', 'Emitter to ground.', 'Transistor on = path complete.'])], 'k3', ['TAU', 'RCN', 'CAPQ', 'LDRV'], 4),
+  K8: splitL('L35', [3, 4, 5], 'Sizing the base resistor', 'I_B = I_C ÷ β (×10 to be safe); R_B = (V_in − 0.7) ÷ I_B.', ['rbase', 'satur'], null, [Q.IB('k8q1', 20, 200), Q.RB('k8q2', 5, 1), Q.IB('k8q3', 100, 100), Q.RB('k8q4', 9, 2), Q.IB('k8q5', 50, 250), Q.RB('k8q6', 3.3, 0.5),
+    tfk('k8t1', 'An NPN transistor needs a resistor on its base.', true, 'Yes: it limits the base current.', ['The base–emitter acts like a diode (~0.7 V).', 'Without a resistor the base current would be huge.', 'About 1 kΩ–10 kΩ is typical.']), Q.RB('k8q7', 9, 1), Q.IB('k8q8', 30, 150), Q.RB('k8q9', 5, 0.5)], 'k8', ['TRON', 'TAU', 'RCN', 'LDRV'], 4),
+  K4: splitL('L36', [0, 1, 2, 5, 7], 'The 555 blinker: speed', 'f ≈ 1.44 ÷ ((R1 + 2·R2) × C).', ['c555', 'f555'], null, [Q.F555('k4q1', 1, 10, 47), Q.F555('k4q2', 1, 10, 10), Q.F555('k4q3', 10, 10, 10),
+    tfk('k4t1', 'A bigger capacitor makes a 555 blink slower.', true, 'Yes: it takes longer to fill and empty.', ['The 555 waits for the cap to charge and discharge.', 'Bigger C = longer wait.', 'Longer wait = slower blinking.']),
+    Q.F555('k4q4', 1, 47, 10), Q.F555('k4q5', 2, 22, 22), Q.F555('k4q7', 1, 100, 10), Q.F555('k4q8', 10, 47, 1)], 'k4', ['RB', 'TAU', 'RCN', 'CAPQ'], 4),
+  K9: splitL('L36', [3, 4, 6], 'The 555 blinker: on-time & duty', 'Duty = (R1 + R2) ÷ (R1 + 2·R2).', ['duty'], null, [Q.DUTY('k9q1', 1, 10), Q.DUTY('k9q2', 10, 10), Q.DUTY('k9q3', 1, 100), Q.DUTY('k9q4', 4.7, 10), Q.DUTY('k9q5', 22, 22),
+    tfk('k9t1', 'A 555 blinker is always ON a bit more than half the time.', true, 'Yes: R1 + R2 (on) is always more than R2 (off).', ['On: charging through R1 + R2.', 'Off: discharging through R2.', 'So duty is always above 50%.']),
+    Q.DUTY('k9q6', 2, 47), Q.DUTY('k9q7', 47, 10), Q.F555('k9q8', 1, 10, 22),
+    tfk('k9t2', 'Making R1 much smaller than R2 brings the duty close to 50%.', true, 'Yes: on and off times become almost equal.', ['On ≈ R1 + R2, off ≈ R2.', 'Tiny R1 → on ≈ off.', 'Duty ≈ 50%.'])], 'k9', ['F555', 'RB', 'TAU', 'CAPCODE'], 4),
+}); }
+UNITS.find(u => u.id === 'U7').lessons = ['K1', 'K6', 'K2', 'K7', 'K3', 'K8', 'K4', 'K9', 'K5'];
+[['electro', 'K6'], ['ceramic', 'K6'], ['rc63', 'K7'], ['rc5', 'K7'], ['rbase', 'K8'], ['satur', 'K8'], ['duty', 'K9']].forEach(([c, l]) => { if (CARDS[c]) CARDS[c].lesson = l; });
+reTag('T7', [['K1', /ceramic|electrolytic|rated|marked|code/i, 'K6'], ['K2', /after|discharg|fade|%/i, 'K7'], ['K3', /base resistor|β|beta|I_?B/i, 'K8'], ['K4', /duty|high time/i, 'K9']]);
 /* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
@@ -5607,7 +5657,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.17 (2026-10-08)';
+const APP_VERSION = '7.18 (2026-10-08)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -8258,7 +8308,7 @@ const GATES = [
   { id: 'g4', unit: 'U4', after: 'B5', name: 'Build it: Your First Board', goal: ['Light an LED using the rails and at least one jumper wire.'], how: 'Battery on the top rails. Resistor from + rail into a row, LED across rows, then a jumper wire from the LED’s − row to the − rail.', ok: (P, sol) => litLeds(P, sol).length > 0 && P.some(p => p.kind === 'wire') },
   { id: 'g5', unit: 'U5', after: 'C2', name: 'Build it: Switch It', goal: ['Light an LED that a switch turns on and off. Leave it switched ON.'], how: 'Put the switch in the loop, in series with the resistor and LED. Now flip the switch on!', ok: labFlipOk, strict: 1 },
   { id: 'g6', unit: 'U6', after: 'F2', name: 'Build it: Dimmer', goal: ['Light an LED you can dim with a knob.'], how: LAB_CH.find(c => c.id === 'dim').how, ok: labDimOk },
-  { id: 'g7', unit: 'U7', after: 'K3', name: 'Build it: Night-Light', goal: ['Make an LED that turns on when it gets dark.'], how: LAB_CH.find(c => c.id === 'night').how, ok: P => labNightOk(P) }];
+  { id: 'g7', unit: 'U7', after: 'K8', name: 'Build it: Night-Light', goal: ['Make an LED that turns on when it gets dark.'], how: LAB_CH.find(c => c.id === 'night').how, ok: P => labNightOk(P) }];
 GATES.forEach(g => LAB_CH.splice(LAB_CH.length - 1, 0, Object.assign({ gate: 1 }, g)));
 const gateOf = id => GATES.find(g => g.id === id);
 const gateMig = () => { if (!S.gateMig) { S.gateMig = 1; S.gateSkip = {}; GATES.forEach(g => { if (S.done[g.after]) S.gateSkip[g.id] = 1; }); save(); } }; // one-time: anyone already past a gate's lesson is never blocked
