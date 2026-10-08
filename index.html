@@ -4620,6 +4620,30 @@ Object.assign(LESSONS, {
     Q.LDRV('k5q4', 9, 100, 100), Q.LEDR('k5q5', 9, 2, 15), Q.LDRV('k5q6', 5, 10, 50)], 'k5', ['IB', 'F555', 'TAU', 'LDRV', 'CAPQ'], 5),
 }); }
 reUnit('U7', { L33: 'K1', L34: 'K2', L35: 'K3', L36: 'K4', L37: 'K5' }, 'T7', [Object.assign(U2Q.TAU('t7t1', 10, 100), { tag: 'K2' }), Object.assign(U2Q.IB('t7b1', 50, 100), { tag: 'K3' }), Object.assign(U2Q.F555('t7f1', 1, 10, 47), { tag: 'K4' }), Object.assign(U2Q.CAPQ('t7q1', 100, 9), { tag: 'K1' })]);
+/* v7.16: Unit 5 one-idea split. C3 = LEDs in series, C6 = LEDs in parallel; C4 = battery volts, C7 = battery life (mAh). */
+const splitL = (oldId, ix, title, goal, cards, lead, gens, p, forms, n) => ({ title, goal, cards, steps: [...mixSteps([...(lead ? [lead] : []), ...ix.map(i => LESSONS[oldId].steps[i])], gens), ...rev(p, forms, n)] });
+const reTag = (test, rules) => { TESTS[test].steps.forEach(s => { const r = rules.find(([from, re]) => s.tag === from && re.test((s.q || '') + ' ' + (s.title || ''))); if (r) s.tag = r[2]; }); };
+{ const Q = U2Q;
+Object.assign(LESSONS, {
+  C3: splitL('L25', [0, 1, 2, 6], 'LEDs in series', 'Series LEDs add up their volts and share one current.', ['ledser'], null, [Q.LEDS('c3q1', 9, 2, 2, 10), Q.LEDS('c3q3', 12, 3, 3, 20), Q.LEDS('c3q5', 6, 2, 2, 10), Q.LEDS('c3q7', 12, 4, 2, 20), Q.LEDS('c3q9', 9, 3, 2, 10), Q.LEDS('c3q10', 5, 1, 2, 15),
+    tfk('c3t1', 'Three blue LEDs (3 V each) in series need more than 9 V to light properly.', true, 'Yes: 3 × 3 = 9 V leaves nothing for the resistor.', ['Series LED voltages add up.', '3 × 3 V = 9 V.', 'You need extra voltage for the resistor too.']),
+    tfk('c3t2', 'In a series string, one LED burning out turns the others off.', true, 'Yes: one path, one break.', ['Series = one path.', 'A dead LED is a gap.', 'No path, no current, all dark.']), Q.LEDS('c3q11', 9, 2, 3, 10)], 'c3', ['LEDR', 'SER', 'FWD', 'CELLS'], 4),
+  C6: splitL('L25', [3, 4, 5], 'LEDs in parallel', 'Each parallel LED gets its own resistor; the battery supplies all the branches.', ['ledpar'],
+    cptk('Side-by-side LEDs', '<p class="body">In <b>parallel</b>, each LED gets its own branch from + to −, and each branch gets <b>its own resistor</b>.</p><div class="def">Every branch gets the full battery voltage.<br>The battery supplies <b>all</b> the branch currents added together.</div>', LESSONS.L25.steps[0].art, 'Own path, own resistor. Add up the currents.'),
+    [Q.PSUM('c6q1', 3, 15), Q.PSUM('c6q2', 2, 20), Q.LEDR('c6q3', 9, 2, 15), Q.PSUM('c6q4', 4, 10), Q.PSUM('c6q5', 5, 12), Q.LEDR('c6q6', 5, 3, 10),
+    tfk('c6t1', 'In parallel, one LED burning out leaves the others lit.', true, 'Yes: each has its own path.', ['Parallel = separate paths.', 'One broken branch doesn’t stop the others.', 'That’s why house lights are in parallel.']), Q.PSUM('c6q7', 6, 20), Q.PSUM('c6q8', 3, 8)], 'c6', ['LEDS', 'PAR', 'LEDR', 'HOLE'], 4),
+  C4: splitL('L26', [0, 1, 4, 6, 3], 'Battery packs: volts', 'Series cells add their volts.', ['cellpack'], null, [Q.CELLS('c4q1', 2), Q.CELLS('c4q3', 4), Q.CELLS('c4q5', 6), Q.CELLS('c4q9', 3), Q.LEDR('c4q8', 4.5, 2, 10), Q.CELLS('c4q10', 8),
+    tfk('c4t1', 'Cells in parallel give the same voltage as one cell.', true, 'Yes: parallel doesn’t add volts.', ['Parallel cells share the work.', 'Voltage stays at one cell’s.', 'Series is what adds volts.']),
+    tfk('c4t2', 'A 9 V battery is really six small 1.5 V cells in series inside.', true, 'Yes: 6 × 1.5 = 9 V.', ['Open one up (carefully, not at home) and you find small cells.', '6 × 1.5 V = 9 V.', 'Series stacks the volts.']), Q.LEDR('c4q11', 6, 2, 20)], 'c4', ['LEDS', 'PSUM', 'LEDR', 'MI'], 4),
+  C7: splitL('L26', [2, 5], 'Battery life: mAh', 'Hours ≈ mAh ÷ mA.', ['mah'],
+    cptk('How long will it last?', '<p class="body">Batteries are labelled in <b>mAh</b> (milliamp-hours): how many mA they can give for one hour.</p><div class="def" style="text-align:center"><b>Hours ≈ mAh ÷ mA</b></div><div class="def">Less current → longer life.</div>', LESSONS.L26.steps[0].art, 'Divide the mAh by the current.'),
+    [Q.MAH('c7q1', 2000, 25), Q.MAH('c7q2', 500, 50), Q.MAH('c7q3', 1000, 20), Q.MAH('c7q4', 300, 15), Q.MAH('c7q5', 2400, 100), Q.MAH('c7q6', 600, 12),
+    tfk('c7t1', 'Halving the current roughly doubles how long a battery lasts.', true, 'Yes: hours = mAh ÷ mA.', ['Smaller mA in the bottom of the fraction…', '…makes the answer bigger.', 'Half the current, about twice the hours.']), Q.MAH('c7q7', 1200, 40), Q.PSUM('c7q8', 3, 10)], 'c7', ['CELLS', 'LEDR', 'PSUM', 'LEDS'], 4),
+});
+}
+UNITS.find(u => u.id === 'U5').lessons = ['C1', 'C2', 'C3', 'C6', 'C4', 'C7', 'C5'];
+if (CARDS.ledpar) CARDS.ledpar.lesson = 'C6'; if (CARDS.mah) CARDS.mah.lesson = 'C7';
+reTag('T5', [['C3', /parallel|branch/i, 'C6'], ['C4', /mAh|hours|runtime|last/i, 'C7']]);
 /* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
@@ -5554,7 +5578,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.15 (2026-10-08)';
+const APP_VERSION = '7.16 (2026-10-08)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -6946,6 +6970,29 @@ function migUnit(flag, map, uid) {
 if (LESSONS.C1) migUnit('u5mig1', { L23: 'C1', L24: 'C2', L25: 'C3', L26: 'C4', L27: 'C5' }, 'U5');
 if (LESSONS.F1) migUnit('u6mig1', { L28: 'F1', L29: 'F2', L30: 'F3', L31: 'F4', L32: 'F5' }, 'U6');
 if (LESSONS.K1) migUnit('u7mig1', { L33: 'K1', L34: 'K2', L35: 'K3', L36: 'K4', L37: 'K5' }, 'U7');
+
+/* v7.16+: one-idea splits. A new half counts as done if the combined lesson it came from was done (credit = that lesson's pay). */
+function migSplit(flag, map) {
+  const prev = ensureShop;
+  ensureShop = function () {
+    const out = prev.apply(this, arguments); // run earlier migrations first (L→C/F/K), then credit the split halves
+    if (!S[flag] && S.done) {
+      S.tokPaid = S.tokPaid && typeof S.tokPaid === 'object' ? S.tokPaid : {}; S.tokGranted = S.tokGranted && typeof S.tokGranted === 'object' ? S.tokGranted : {};
+      Object.entries(map).forEach(([id, src]) => {
+        if (!LESSONS[id] || !S.done[src]) return;
+        if (!S.done[id]) S.done[id] = Object.assign({}, typeof S.done[src] === 'object' ? S.done[src] : { at: today() }, { mig: src });
+        const paid = S.tokPaid[src] != null ? S.tokPaid[src] : (S.tokGranted[src] ? tokTier(src) : 0);
+        S.tokPaid[id] = Math.max(S.tokPaid[id] || 0, Math.min(tokTier(id), paid)); S.tokGranted[id] = 1;
+        if (S.mastered && S.mastered[src]) S.mastered[id] = 1;
+      });
+      S[flag] = 1; save();
+    }
+    return out;
+  };
+}
+if (LESSONS.C6) migSplit('u5split', { C6: 'C3', C7: 'C4' });
+if (LESSONS.F6) migSplit('u6split', { F6: 'F2', F7: 'F3' });
+if (LESSONS.K6) migSplit('u7split', { K6: 'K1', K7: 'K2', K8: 'K3', K9: 'K4' });
 /* =========================================================
    AVATAR v2: cuter bodies, expressions, layered accessories, shop, idle animation
    Bodies (v3): Cappy, Chiplet, Glowbie, Flippy, Lumi, Beep, Knobby, Boing, Volty, Stripes. Old bodies were refunded once (S.avatar.migBodies2, see ensureShop).
