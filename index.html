@@ -5657,7 +5657,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.18 (2026-10-08)';
+const APP_VERSION = '7.19 (2026-10-11)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -8363,6 +8363,61 @@ COOKBOOK.push(
   { id: 'dimmer', name: 'Knob Dimmer', lvl: 1, lit: 1, blurb: 'A knob (potentiometer) used as a variable resistor. Slide the Knob control: less resistance → more current → brighter.', parts: [CBB, cbW('T+3', 'a3', '#FF7F6E'), { kind: 'pot', a: 'c3', c: 'c4', b: 'c5', ohms: 10000, pos: .3 }, cbR('d4', 'd8', 220), cbL('e8', 'e9'), cbW('a9', 'T-9')] },
   { id: 'night', name: 'Night-Light', lvl: 2, lit: 0, blurb: 'The light sensor and 10 kΩ make a divider. When it’s dark the middle row rises above about 0.7 V, the transistor switches on and the LED lights. Slide Light down.', parts: [CBB, cbR('T+2', 'b3', 10000), { kind: 'ldr', a: 'd3', b: 'T-3' }, cbR('a3', 'a7', 1000), { kind: 'npn', a: 'e6', c: 'e7', b: 'e8' }, cbR('T+5', 'b5', 330), cbL('c5', 'c6'), cbW('a8', 'T-9')] });
 document.head.insertAdjacentHTML('beforeend', '<style>.node.gatenode .disc{border-radius:18px}.node.gatenode.current .disc{background:#F2A93B;--sh:#C9831A}.labgoal.gatehi{box-shadow:0 0 0 3px #F2A93B}.gatetag{display:inline-block;background:#FFE9A8;color:#8A5A00;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:800;margin:0 6px 4px 0}</style>');
+/* v7.19: Circuit Cookbook "Show me how": builds an example in the Lab one part at a time, with kid-friendly notes. */
+const TUT_KID = {
+  bat: ['The battery: the pump', 'It pushes electric charge around the loop. Its <b>+</b> lead (red) goes on the red + rail and its <b>−</b> lead (black) on the blue − rail, so the whole rail carries power.'],
+  res: ['The resistor: the speed bump', 'It slows the current down so the LED doesn’t get too much and burn out. Bigger number of ohms (Ω) = bigger speed bump = less current.'],
+  led: ['The LED: the light', 'It glows when current flows through it, but only one way! The long <b>+</b> leg faces battery +, the short <b>−</b> leg faces −.'],
+  wire: ['A jumper wire: a bridge', 'It joins two strips of the breadboard that weren’t connected, like a little bridge for the current.'],
+  spst: ['The slide switch: a gate', 'Closed, the path is complete and current flows. Open, there’s a gap and everything in that loop stops. Tap it to flip it.'],
+  btn: ['The pushbutton: a press-to-go gate', 'It only connects while you hold it down. Let go and the gap opens again, just like a doorbell.'],
+  sw: ['The 2-way switch: a track changer', 'Its middle pin connects to one side or the other, like a railway switch sending a train down one of two tracks.'],
+  buz: ['The buzzer: the beeper', 'It makes a sound when current flows through it. It has a driver inside, so it needs no resistor, but its <b>+</b> leg must face battery +.'],
+  pot: ['The knob (potentiometer): a turnable speed bump', 'Inside is a track and a slider (the wiper, the middle leg). Turning it changes how much of the track the current goes through, so it changes the resistance.'],
+  ldr: ['The light sensor (LDR): an eye', 'Its resistance changes with light: low in bright light, very high in the dark. Slide the Light control to see.'],
+  npn: ['The transistor: a switch you control with a trickle', 'A tiny current into the middle leg (B, base) lets a much bigger current flow from C (collector) to E (emitter). No base current = switched off.'],
+};
+const TUT_END = { push: 'Now press and hold the button to light it!', bell: 'Press and hold the button: beep!', dimmer: 'Slide the Knob control and watch the brightness change.', night: 'Slide Light down to make it dark, and the LED turns on!', switch: 'Tap the switch to turn it on and off.', twoway: 'Tap the 2-way switch to choose which LED lights.' };
+const TUT = { r: null, i: 0, prev: null };
+function tutStart(r) {
+  const L = labS(); $('.modal.cookbook')?.remove();
+  TUT.r = r; TUT.i = 0; TUT.prev = { parts: JSON.parse(JSON.stringify(L.parts)), example: L.example, exSig: L.exSig, n: L.n };
+  LAB.tutor = 1; tutShow();
+}
+function tutParts(k) { return TUT.r.parts.slice(0, k).map((x, j) => Object.assign({ id: 'tut' + j }, JSON.parse(JSON.stringify(x)))); }
+function tutShow() {
+  const r = TUT.r, n = r.parts.length, i = TUT.i, L = labS(), done = i >= n;
+  L.parts = tutParts(Math.min(i + 1, n)); LAB.sel = done ? null : 'tut' + i; LAB.tool = null; LAB.legs = []; labRefresh(false);
+  const p = r.parts[Math.min(i, n - 1)], [nm, txt] = TUT_KID[p.kind] || [LAB_KIND[p.kind], ''];
+  const where = labDescribe([Object.assign({ id: 'x' }, p)], LAB.last.sol).replace(/\.$/, '');
+  const body = done ? `<b>It works! 🎉</b><p>${r.blurb} ${TUT_END[r.id] || ''}</p>`
+    : `<div class="tutk">Step ${i + 1} of ${n}</div><b>${nm}</b><p>${txt}</p><p class="small">Where it goes: ${esc(where)}.</p>`;
+  let el0 = $('#tutBox'); if (!el0) { el0 = el('<div class="tutbox" id="tutBox" role="dialog" aria-label="Show me how"></div>'); document.body.appendChild(el0); }
+  el0.innerHTML = `<div class="tuth">${BOOKICON}<span>Show me how: ${esc(r.name)}</span><button class="iconbtn" id="tutX" aria-label="Close tutorial">${ICON.close()}</button></div><div class="tutbar"><i style="width:${Math.round(Math.min(i + 1, n + 1) / (n + 1) * 100)}%"></i></div>${body}
+    <div class="tutact"><button class="btn ghost" id="tutB" ${i ? '' : 'disabled'}>Back</button>${done ? `<button class="btn primary" id="tutK">Keep it on my board</button>` : `<button class="btn primary" id="tutN">${i + 1 === n ? 'Finish' : 'Next part'}</button>`}</div>`;
+  $('#tutX').onclick = () => tutEnd(false); $('#tutB').onclick = () => { TUT.i--; SFX.tap(); tutShow(); };
+  if ($('#tutN')) $('#tutN').onclick = () => { TUT.i++; SFX.drop(); tutShow(); };
+  if ($('#tutK')) $('#tutK').onclick = () => tutEnd(true);
+  const bd = $('#labBoard'); if (bd) window.scrollTo({ top: bd.getBoundingClientRect().top + scrollY - 70 }); const H = $('#labHandles'); if (H) H.hidden = true;
+}
+function tutEnd(keep) {
+  const L = labS(); $('#tutBox')?.remove(); LAB.tutor = 0;
+  if (keep) { LAB.hist.push(JSON.stringify(TUT.prev.parts)); L.parts = tutParts(TUT.r.parts.length).map(p => Object.assign(p, { id: 'p' + (L.n++) })); L.example = TUT.r.id; L.exSig = labSig(L.parts); toast('Kept! Change something to make it yours. Undo brings back your old build.', ICON.check()); }
+  else Object.assign(L, TUT.prev);
+  LAB.sel = null; save(); labRefresh(false);
+}
+const _labHandlesTut = labHandles;
+labHandles = function () { _labHandlesTut(); if (LAB.tutor && $('#labHandles')) $('#labHandles').hidden = true; };
+const _labCheckTut = labCheck;
+labCheck = function () { if (LAB.tutor) return; return _labCheckTut.apply(this, arguments); }; // tutorials never complete or pay challenges
+const _openCookbookTut = openCookbook;
+openCookbook = function () {
+  _openCookbookTut(); const m = $('.modal.cookbook'); if (!m) return;
+  $$('.cbcard', m).forEach(cd => { const r = COOKBOOK.find(x => x.id === cd.dataset.r), b = el(`<button class="btn ghost cbhow">▶ Show me how</button>`); b.onclick = () => { SFX.tap(); tutStart(r); }; cd.querySelector('.cbact').before(b); });
+};
+document.head.insertAdjacentHTML('beforeend', `<style>.cbhow{width:100%;margin:2px 0 6px}.tutbox{position:fixed;left:50%;transform:translateX(-50%);bottom:84px;width:min(370px,94vw);background:#fff;border-radius:18px;box-shadow:0 8px 28px rgba(46,42,90,.28);padding:12px 14px;z-index:60;max-height:46vh;overflow:auto}
+.tuth{display:flex;align-items:center;gap:6px;font-weight:800;color:var(--ink)}.tuth svg{width:20px;height:20px;color:#F2A93B}.tuth span{flex:1}.tutbar{height:6px;background:#EEEBFA;border-radius:9px;margin:8px 0}.tutbar i{display:block;height:100%;background:#2EC4A0;border-radius:9px}
+.tutk{font-size:12px;font-weight:800;color:#8A84B8;text-transform:uppercase}.tutbox p{margin:4px 0}.tutact{display:flex;gap:8px;margin-top:8px}.tutact .btn{flex:1}</style>`);
 /* =========================================================
    INIT
    ========================================================= */
