@@ -4764,7 +4764,7 @@ const SOLDER = [
   mc('g6f', 'You heat the pad and pin, then feed in solder. Why heat first?', ['So the solder flows onto both and sticks', 'To make it smoke more', 'It doesn’t matter'], 'Hot metal makes solder flow.', ['Solder sticks to hot metal, not cold.', 'Melting it on the tip alone makes a weak “cold joint”.', 'Heat 1–2 s, feed solder, remove solder, remove iron.']),
   mc('g6g', 'You’re about to plug in the LiPo after soldering. First you…', ['Check for shorts with continuity between + and −', 'Lick the board', 'Plug it in and see'], 'Check for shorts first.', ['LiPos can push a huge current into a short.', 'That can make heat or fire.', 'A 5-second beep test prevents it.']),
 ];
-const G8ART = {
+var G8ART = {
   glider: svgBox(`<path d="M40 110 L280 90 L290 98 L60 122 Z" fill="#CFEFE9" stroke="#1D8073" stroke-width="3"/><path d="M150 60 L175 100 L165 104 L140 64 Z" fill="#9ADBD0" stroke="#1D8073" stroke-width="3"/><path d="M150 108 L190 150 L178 152 L140 112 Z" fill="#9ADBD0" stroke="#1D8073" stroke-width="3"/><rect x="120" y="96" width="34" height="16" rx="4" fill="#3B3486"/><circle cx="148" cy="104" r="3" fill="#FF6B6B"/><text x="160" y="185" text-anchor="middle" font-size="15" font-weight="800" fill="#3B3486">flight logger on board</text>`, 'A glider carrying a small logger board'),
   div: svgBox(`<line x1="80" y1="30" x2="80" y2="170" stroke="#3B3486" stroke-width="3"/><rect x="66" y="50" width="28" height="40" rx="5" fill="#FFD66B" stroke="#3B3486" stroke-width="3"/><rect x="66" y="110" width="28" height="40" rx="5" fill="#9ADBD0" stroke="#3B3486" stroke-width="3"/><line x1="80" y1="100" x2="190" y2="100" stroke="#3B3486" stroke-width="3"/><circle cx="190" cy="100" r="6" fill="#FF6B6B"/><text x="104" y="76" font-size="15" font-weight="800" fill="#3B3486">R1</text><text x="104" y="136" font-size="15" font-weight="800" fill="#3B3486">R2</text><text x="202" y="105" font-size="15" font-weight="800" fill="#3B3486">V_out</text><text x="92" y="26" font-size="14" fill="#3B3486">V_in</text><text x="92" y="186" font-size="14" fill="#3B3486">GND</text>`, 'A voltage divider: R1 on top, R2 below, V_out in the middle'),
   led: svgBox(`<rect x="40" y="80" width="60" height="26" rx="6" fill="#FFD66B" stroke="#3B3486" stroke-width="3"/><line x1="100" y1="93" x2="150" y2="93" stroke="#3B3486" stroke-width="3"/><path d="M150 73 L150 113 L185 93 Z" fill="#FF6B6B" stroke="#3B3486" stroke-width="3"/><line x1="187" y1="73" x2="187" y2="113" stroke="#3B3486" stroke-width="3"/><line x1="187" y1="93" x2="270" y2="93" stroke="#3B3486" stroke-width="3"/><text x="70" y="140" text-anchor="middle" font-size="14" font-weight="800" fill="#3B3486">V_s − V_led</text><text x="168" y="140" text-anchor="middle" font-size="14" font-weight="800" fill="#3B3486">V_led</text><text x="160" y="175" text-anchor="middle" font-size="16" font-weight="800" fill="#1D8073">R = (V_s − V_led) ÷ I</text>`, 'A resistor in series with an LED'),
@@ -4899,6 +4899,69 @@ glL('M6', '3.3 V vs 5 V', 'Never feed 5 V into a 3.3 V pin. Use a divider or lev
   [Q.LVL('m6q1', 5, 3.3), Q.DIV('m6q2', 5, 1, 2), Q.LVL('m6q3', 3.3, 5), Q.DIV('m6q4', 5, 2, 1), Q.LVL('m6q5', 4.2, 3.3), Q.ADC('m6q6', 775, 3.3), Q.LVL('m6q7', 3.3, 3.3), Q.DIV('m6q8', 4.2, 10, 10)], ['ADC', 'BATRAW', 'LEDR'], 5);
 glUnit('U9', 9, 'Glider Logger 2: Microcontrollers', '#5B8DEF', '#3A66C4', ['M1', 'M2', 'M3', 'M4', 'M5', 'M6'],
   [[Q.ADC('t9a', 512, 5), 'M4'], [Q.ADC('t9b', 310, 3.3), 'M4'], [Q.LVL('t9c', 5, 3.3), 'M6'], [Q.BATRAW('t9d', 620), 'M4'], [LESSONS.M2.steps[1], 'M2'], [LESSONS.M3.steps[1], 'M3'], [LESSONS.M5.steps[1], 'M5'], [LESSONS.M1.steps[1], 'M1'], [Q.DIV('t9e', 5, 1, 2), 'M6'], [Q.ADCR('t9f', 2.5, 5), 'M4']]);
+}
+/* Glider Unit 10 "Sensing Motion": I1 I2C · I2 accelerometer & g · I3 gyro deg/s · I4 pitch/roll/yaw · I5 gyro drift · I6 complementary filter. */
+Object.assign(U2Q, {
+  GMS(id, ms) { const a = +(ms / 9.8).toFixed(1); return u3x([id, `The accelerometer measures <b>${ms} m/s²</b>. How many g is that? (1 g = 9.8 m/s²)`], a, [+(ms * 9.8).toFixed(1), +(ms / 10 * 2).toFixed(1)], 'g',
+    `${ms} ÷ 9.8 ≈ ${a} g.`, ['1 g is Earth’s pull: 9.8 m/s².', 'To change m/s² into g, divide by 9.8.', `${ms} ÷ 9.8 ≈ ${a} g.`]); },
+  GYRO(id, rate, t) { const a = r2(rate * t); return u3x([id, `The gyro reads <b>${rate} °/s</b> for <b>${t} s</b>. How far did the glider turn?`], a, [r2(rate / t), r2(rate + t)], '°',
+    `Angle = rate × time = ${rate} × ${t} = ${a}°.`, ['°/s means degrees each second.', `For ${t} s, multiply.`, `${rate} × ${t} = ${a}°.`]); },
+  DRIFT(id, bias, t) { const a = r2(bias * t); return u3x([id, `A still gyro wrongly reads <b>${bias} °/s</b>. After <b>${t} s</b> of adding it up, how far off is the angle?`], a, [bias, r2(bias * t / 60)], '°',
+    `Error = ${bias} × ${t} = ${a}°.`, ['A tiny wrong reading (bias) gets added every second.', 'It builds up: that’s drift.', `${bias} × ${t} = ${a}°.`]); },
+  CF(id, ang, rate, dt, acc) { const a = +(0.98 * (ang + rate * dt) + 0.02 * acc).toFixed(1); return u3x([id, `Filter: angle = 0.98 × (angle + gyro × dt) + 0.02 × accel. Angle <b>${ang}°</b>, gyro <b>${rate} °/s</b>, dt <b>${dt} s</b>, accel says <b>${acc}°</b>. New angle?`], a, [+(ang + rate * dt).toFixed(1), acc], '°',
+    `0.98 × (${ang} + ${r2(rate * dt)}) + 0.02 × ${acc} ≈ ${a}°.`, [`Gyro part: ${ang} + ${rate} × ${dt} = ${r2(ang + rate * dt)}°.`, `Mix: 98% of that = ${r2(0.98 * (ang + rate * dt))}, plus 2% of ${acc} = ${r2(0.02 * acc)}.`, `Total ≈ ${a}°.`]); },
+});
+Object.assign(U2BANK, { GMS: [[19.6], [29.4], [4.9], [9.8]], GYRO: [[30, 2], [90, 0.5], [45, 4], [10, 3]], DRIFT: [[0.5, 60], [0.2, 100], [1, 30], [0.1, 300]], CF: [[10, 20, 0.1, 12], [0, 50, 0.1, 5], [20, -10, 0.1, 19], [5, 0, 0.1, 10]] });
+{ const Q = U2Q, A = glArt;
+glL('I1', 'I2C: two wires, many parts', 'I2C uses SDA + SCL. Each part has an address.', ['i1card', 'I2C', 'A 2-wire bus (SDA data, SCL clock) plus power and GND. Each device has its own address, like 0x68.'],
+  ['Two wires, lots of sensors', 'Your IMU talks to the board over <b>I2C</b>: just <b>SDA</b> (data) and <b>SCL</b> (clock), plus <b>3V3</b> and <b>GND</b>. Many parts can share the same two wires. Each has an <b>address</b> (like <b>0x68</b>), so the board knows who it’s talking to.', A('SDA · SCL', 'the I2C bus')],
+  [glMc('i1a', 'How many signal wires does I2C use?', ['2 (SDA and SCL)', '1', '8'], 'Two: SDA and SCL.', ['SDA carries data.', 'SCL carries the clock (timing).', 'Plus power and GND.']),
+    glMc('i1b', 'Two sensors share SDA and SCL. How does the board tell them apart?', ['Each has its own address', 'By colour', 'It can’t'], 'Addresses.', ['Every I2C device has an address.', 'The board calls out the address first.', 'Only that device answers.']),
+    tfk('i1c', 'The IMU also needs 3V3 and GND, not just SDA and SCL.', true, 'Yes: it needs power too.', ['Signal wires don’t power it.', '3V3 + GND power the chip.', 'So 4 wires total.']),
+    glMc('i1d', 'An I2C scanner sketch prints “Found 0x68”. That means…', ['A device at address 0x68 answered', 'There’s an error on pin 68', 'The battery is 68%'], 'Something answered at 0x68.', ['A scanner tries every address.', '0x68 is a common IMU address.', 'Your wiring works!']),
+    glMc('i1e', 'The scanner finds nothing. Check first…', ['SDA/SCL swapped, or missing GND/power', 'The glider’s wings', 'The SD card'], 'Wiring first.', ['Swapped SDA/SCL is very common.', 'No power → no answer.', 'Check with continuity!']),
+    tfk('i1f', 'Two devices on one bus must not have the same address.', true, 'Yes: they’d both answer at once.', ['Same address = confusion.', 'Many chips let you pick a second address.', 'Example: 0x68 or 0x69.']),
+    glMc('i1g', '“0x68” is written in…', ['Hexadecimal (base 16)', 'Volts', 'Degrees'], 'Hex numbers start with 0x.', ['0x means hexadecimal.', '0x68 = 104 in normal numbers.', 'Programmers like hex for addresses.'])],
+  [Q.ADC('i1q1', 512, 3.3), Q.LVL('i1q2', 5, 3.3), Q.BATRAW('i1q3', 600), Q.ADCR('i1q4', 1.65, 3.3), Q.LVL('i1q5', 3.3, 3.3), Q.ADC('i1q6', 1023, 3.3)], ['ADC', 'LVL', 'BATRAW']);
+glL('I2', 'Accelerometer & g', '1 g = 9.8 m/s². Sitting still, the accelerometer reads 1 g down.', ['i2card', 'g (gee)', '1 g = Earth’s pull = 9.8 m/s². A still accelerometer reads about 1 g pointing down.'],
+  ['Feeling pushes and gravity', 'An <b>accelerometer</b> measures pushes in <b>g</b>. <b>1 g = 9.8 m/s²</b>, Earth’s pull. Sitting still on a table it reads about <b>1 g</b> on the up/down axis (Z). A hard launch might show 3 g!', A('1 g', '9.8 m/s²')],
+  [glMc('i2a', 'Your logger sits flat and still. Z reads about…', ['1 g', '0 g', '9 g'], 'Gravity: 1 g.', ['Still doesn’t mean zero.', 'It feels gravity.', 'About 1 g on Z.']),
+    tfk('i2b', 'In free fall, an accelerometer reads about 0 g.', true, 'Yes: everything falls together.', ['Free fall feels weightless.', 'Nothing pushes on the sensor.', 'So it reads ~0 g.']),
+    glMc('i2c', 'Tilt the logger onto its side. Gravity now shows up on…', ['X or Y instead of Z', 'Only Z still', 'No axis'], 'Gravity moves to a different axis.', ['The sensor has X, Y, Z axes.', 'Turning it changes which axis points down.', 'That’s how it senses tilt!']),
+    glMc('i2d', 'A hand launch reads 3 g. In m/s² that’s about…', ['29.4', '3', '9.8'], '3 × 9.8 = 29.4 m/s².', ['1 g = 9.8 m/s².', 'Multiply by 3.', '29.4 m/s².']),
+    tfk('i2e', 'A bumpy landing can show big spikes on the accelerometer.', true, 'Yes: sudden stops = big g.', ['Stopping fast is a big push.', 'Spikes of 5 g+ are normal.', 'You’ll see them in your data later.'])],
+  [Q.GMS('i2q1', 19.6), Q.GMS('i2q2', 29.4), Q.GMS('i2q3', 4.9), Q.GMS('i2q4', 9.8), Q.GMS('i2q5', 49), Q.GMS('i2q6', 14.7), Q.GMS('i2q7', 39.2), Q.GMS('i2q8', 2.45)], ['ADC', 'LVL', 'DIV']);
+glL('I3', 'Gyroscope: °/s', 'A gyro measures how fast it turns. Angle = rate × time.', ['i3card', 'Gyro (°/s)', 'Measures turning speed in degrees per second. Angle turned = rate × time.'],
+  ['How fast are we turning?', 'A <b>gyroscope</b> measures <b>turning speed</b> in <b>degrees per second (°/s)</b>. To find how far it turned: <b>angle = rate × time</b>. 90 °/s for 1 s = a quarter turn.', A('°/s', 'turning speed')],
+  [glMc('i3a', 'The logger sits still. The gyro should read about…', ['0 °/s', '1 g', '90 °/s'], 'Not turning: 0 °/s.', ['The gyro measures turning, not gravity.', 'Still = no turning.', 'About 0 °/s.']),
+    glMc('i3b', '360 °/s means…', ['One full spin every second', 'One spin per minute', 'Not moving'], '360° = one full turn.', ['A full circle is 360°.', 'Per second.', 'That’s fast!']),
+    tfk('i3c', 'The gyro tells you speed of turning, not which way is down.', true, 'Yes: that’s the accelerometer’s job.', ['Gyro: how fast it turns.', 'Accel: which way gravity points.', 'We’ll combine them later.'])],
+  [Q.GYRO('i3q1', 30, 2), Q.GYRO('i3q2', 90, 0.5), Q.GYRO('i3q3', 45, 4), Q.GYRO('i3q4', 10, 3), Q.GYRO('i3q5', 120, 1.5), Q.GYRO('i3q6', 20, 0.1), Q.GYRO('i3q7', 15, 6), Q.GYRO('i3q8', 60, 0.25), Q.GMS('i3q9', 19.6), Q.GYRO('i3q10', 5, 10)], ['GMS', 'ADC', 'LVL']);
+glL('I4', 'Pitch, roll & yaw', 'Pitch = nose up/down. Roll = wings tip. Yaw = nose left/right.', ['i4card', 'Pitch, roll, yaw', 'Pitch: nose up/down. Roll: one wing up, one down. Yaw: nose turns left/right.'],
+  ['Three ways to turn', '<b>Pitch</b>: nose up or down. <b>Roll</b>: one wing up, the other down. <b>Yaw</b>: nose swings left or right, like shaking your head “no”.', G8ART.glider],
+  [glMc('i4a', 'The glider’s nose points down into a dive. That’s…', ['Pitch', 'Roll', 'Yaw'], 'Nose up/down = pitch.', ['Pitch is like nodding “yes”.', 'Nose down = negative pitch.', 'Nose up = positive pitch.']),
+    glMc('i4b', 'The left wing dips and the right wing rises. That’s…', ['Roll', 'Pitch', 'Yaw'], 'Wings tipping = roll.', ['Roll tips the wings.', 'Like tilting your head to a shoulder.', 'Gliders roll to turn.']),
+    glMc('i4c', 'The nose swings right, wings stay level. That’s…', ['Yaw', 'Roll', 'Pitch'], 'Nose left/right = yaw.', ['Yaw is like shaking your head “no”.', 'The rudder controls it.', 'It’s hardest to measure with an accelerometer.']),
+    tfk('i4d', 'An accelerometer can find pitch and roll from gravity, but not yaw.', true, 'Yes: yaw doesn’t change which way is down.', ['Tilting changes gravity’s direction on the axes.', 'Spinning flat doesn’t.', 'Yaw needs the gyro (or a compass).']),
+    glMc('i4e', 'Your graph shows pitch slowly going from 0° to −10°. The glider is…', ['Nosing down gently', 'Rolling', 'Stalling upward'], 'Negative pitch = nose down.', ['Pitch below 0 = nose down.', 'Gentle = slow change.', 'A good glide is a little nose-down.']),
+    glMc('i4f', 'A hard left turn mostly shows up as…', ['Roll (and some yaw)', 'Pitch only', 'Nothing'], 'Gliders roll to turn.', ['Tipping the wings tilts the lift.', 'That pulls the glider round.', 'Yaw follows.']),
+    tfk('i4g', 'Roll of 90° means the wings point straight up and down.', true, 'Yes: it’s on its side.', ['0° roll = wings level.', '90° = on its side.', '180° = upside down.'])],
+  [Q.GYRO('i4q1', 45, 2), Q.GMS('i4q2', 9.8), Q.GYRO('i4q3', 30, 3), Q.GMS('i4q4', 29.4), Q.GYRO('i4q5', 90, 1), Q.GYRO('i4q6', 12, 5)], ['GYRO', 'GMS', 'ADC']);
+glL('I5', 'Gyro drift', 'Tiny gyro errors add up over time: angle error = bias × time.', ['i5card', 'Gyro drift', 'A small wrong gyro reading (bias) adds up each second, so the angle slowly wanders. Error = bias × time.'],
+  ['Small errors grow', 'No gyro is perfect. Sitting still it might read <b>0.5 °/s</b> instead of 0. That <b>bias</b> gets added every second, so your angle slowly wanders: <b>error = bias × time</b>. That’s <b>drift</b>.', A('0.5°/s × 60 s', '= 30° wrong!', '#E5884A')],
+  [tfk('i5a', 'If you only add up the gyro, your angle slowly goes wrong.', true, 'Yes: that’s drift.', ['Each reading has a tiny error.', 'Adding them makes the error grow.', 'After a minute it can be way off.']),
+    glMc('i5b', 'How can you reduce drift at the start?', ['Measure the still reading and subtract it (calibrate)', 'Shake the logger', 'Add more glue'], 'Calibrate the bias.', ['Keep it still for a few seconds.', 'Average the gyro readings: that’s the bias.', 'Subtract it from every reading.']),
+    glMc('i5c', 'Which sensor doesn’t drift over time for pitch and roll?', ['The accelerometer', 'The gyro', 'Neither'], 'Gravity is always there.', ['The accel always knows which way is down.', 'But it’s noisy with every bump.', 'Gyro: smooth but drifts. Accel: noisy but steady.']),
+    tfk('i5d', 'A longer flight means more drift if you only use the gyro.', true, 'Yes: error = bias × time.', ['More seconds…', '…more error added.', 'That’s why we mix sensors.'])],
+  [Q.DRIFT('i5q1', 0.5, 60), Q.DRIFT('i5q2', 0.2, 100), Q.DRIFT('i5q3', 1, 30), Q.DRIFT('i5q4', 0.1, 300), Q.GYRO('i5q5', 30, 2), Q.DRIFT('i5q6', 0.3, 20), Q.DRIFT('i5q7', 2, 10), Q.GYRO('i5q8', 45, 0.5), Q.DRIFT('i5q9', 0.05, 600), Q.DRIFT('i5q10', 0.4, 50)], ['GYRO', 'GMS', 'LVL']);
+glL('I6', 'The complementary filter', 'Mix: 98% gyro (smooth) + 2% accel (no drift).', ['i6card', 'Complementary filter', 'angle = 0.98 × (angle + gyro × dt) + 0.02 × accel angle. Smooth like the gyro, steady like the accelerometer.'],
+  ['Best of both sensors', 'The gyro is smooth but drifts. The accelerometer is steady but jumpy. Mix them! Each loop: <b>angle = 0.98 × (angle + gyro × dt) + 0.02 × accel</b>. Mostly gyro, with a tiny pull back to the accel’s truth.', A('98% + 2%', 'gyro + accel')],
+  [glMc('i6a', 'Why use mostly gyro (0.98)?', ['It’s smooth and fast over short times', 'It never drifts', 'It’s cheaper'], 'Smooth short-term.', ['The gyro ignores bumps.', 'Great over a split second.', 'The 2% accel fixes its drift slowly.']),
+    glMc('i6b', 'What does the small 0.02 × accel part do?', ['Slowly pulls the angle back to the truth, stopping drift', 'Makes it jumpy', 'Nothing'], 'It cancels drift.', ['The accel knows real “down”.', 'A tiny bit each loop…', '…keeps the angle from wandering.']),
+    tfk('i6c', 'dt is the time between loops, in seconds.', true, 'Yes: e.g. 0.01 s at 100 Hz.', ['dt = time step.', 'Measure it with millis().', 'gyro × dt = degrees turned this loop.'])],
+  [Q.CF('i6q1', 10, 20, 0.1, 12), Q.CF('i6q2', 0, 50, 0.1, 5), Q.CF('i6q3', 20, -10, 0.1, 19), Q.CF('i6q4', 5, 0, 0.1, 10), Q.DRIFT('i6q5', 0.5, 60), Q.CF('i6q6', 0, 0, 0.01, 10), Q.GYRO('i6q7', 50, 0.1), Q.CF('i6q8', 30, 10, 0.1, 30), Q.GYRO('i6q9', 100, 0.01), Q.CF('i6q10', -5, 20, 0.05, 0)], ['DRIFT', 'GYRO', 'GMS'], 5);
+glUnit('U10', 10, 'Glider Logger 3: Sensing Motion', '#9B6BE0', '#7246B8', ['I1', 'I2', 'I3', 'I4', 'I5', 'I6'],
+  [[LESSONS.I1.steps[1], 'I1'], [Q.GMS('t10a', 29.4), 'I2'], [LESSONS.I2.steps[1], 'I2'], [Q.GYRO('t10b', 45, 2), 'I3'], [LESSONS.I4.steps[1], 'I4'], [LESSONS.I4.steps[4], 'I4'], [Q.DRIFT('t10c', 0.5, 60), 'I5'], [LESSONS.I5.steps[1], 'I5'], [Q.CF('t10d', 10, 20, 0.1, 12), 'I6'], [Q.GYRO('t10e', 90, 0.5), 'I3']]);
 }
 /* =========================================================
    STATE, DATES, XP, STREAK
@@ -5834,7 +5897,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.23 (2026-10-11)';
+const APP_VERSION = '7.24 (2026-10-11)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
