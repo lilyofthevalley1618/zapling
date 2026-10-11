@@ -5024,6 +5024,67 @@ glL('P6', 'Battery life & weight budget', 'Life ≈ mAh ÷ mA. Every gram counts
 glUnit('U11', 11, 'Glider Logger 4: Logging & Power', '#E5884A', '#B9632A', ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'],
   [[LESSONS.P1.steps[1], 'P1'], [Q.ROWS('t11a', 50, 20), 'P1'], [LESSONS.P2.steps[1], 'P2'], [Q.FSIZE('t11b', 10, 60, 40), 'P2'], [Q.DT('t11c', 50), 'P3'], [Q.DUR('t11d', 2000, 47000), 'P4'], [LESSONS.P5.steps[1], 'P5'], [Q.MAH('t11e', 500, 50), 'P5'], [Q.WT('t11f', 30, 3, 2, 4, 9), 'P6'], [LESSONS.P5.steps[4], 'P5']]);
 }
+/* Glider Unit 12 "Flight & Data": W1 lift · W2 drag · W3 centre of gravity · W4 glide ratio · W5 graphs & averages · W6 one variable at a time. */
+Object.assign(U2Q, {
+  LIFT(id, v, S, CL) { const a = r2(0.5 * 1.2 * v * v * S * CL); return u3x([id, `Lift L = ½ × ρ × v² × S × C_L. Air ρ = 1.2, speed <b>${v} m/s</b>, wing area <b>${S} m²</b>, C_L = <b>${CL}</b>. Lift in newtons?`], a, [r2(0.5 * 1.2 * v * S * CL), r2(1.2 * v * v * S * CL)], 'N',
+    `½ × 1.2 × ${v}² × ${S} × ${CL} = ${a} N.`, [`v² = ${v} × ${v} = ${v * v}.`, `½ × 1.2 = 0.6, so 0.6 × ${v * v} = ${r2(0.6 * v * v)}.`, `× ${S} × ${CL} = ${a} N.`]); },
+  LIFTX(id, k) { const a = k * k; return u3x([id, `If the glider flies <b>${k}×</b> faster (everything else the same), lift becomes how many times bigger?`], a, [k, 2 * k], '×', `Lift grows with v²: ${k}² = ${a}×.`, ['Lift has v² in it.', `${k}× the speed → ${k} × ${k}.`, `= ${a}× the lift.`]); },
+  GLIDE(id, h, g) { const a = h * g; return u3x([id, `A glider with glide ratio <b>${g}:1</b> is launched from <b>${h} m</b> high. How far can it glide?`], a, [r2(h / g), h + g], 'm', `${g}:1 means ${g} m forward per 1 m down: ${h} × ${g} = ${a} m.`, [`Glide ratio ${g}:1 = ${g} m forward for each 1 m drop.`, `It drops ${h} m.`, `${h} × ${g} = ${a} m.`]); },
+  GR(id, d, h) { const a = r2(d / h); return u3x([id, `Your glider flew <b>${d} m</b> forward while dropping <b>${h} m</b>. Glide ratio? (answer : 1)`], a, [r2(h / d), d - h], ':1', `${d} ÷ ${h} = ${a}:1.`, ['Glide ratio = distance ÷ height lost.', `${d} ÷ ${h}.`, `= ${a}:1.`]); },
+  CG(id, m1, d1, m2) { const a = r2(m1 * d1 / m2); return u3x([id, `Balance the glider: a <b>${m1} g</b> battery sits <b>${d1} cm</b> in front of the balance point. How far behind should a <b>${m2} g</b> weight go?`], a, [r2(m2 * d1 / m1), d1], 'cm',
+    `${m1} × ${d1} = ${m2} × d → d = ${a} cm.`, ['To balance, weight × distance must match on both sides.', `Front: ${m1} × ${d1} = ${m1 * d1}.`, `Back: ${m2} × d = ${m1 * d1}, so d = ${a} cm.`]); },
+  AVG(id, ...v) { const a = r2(v.reduce((x, y) => x + y, 0) / v.length); return u3x([id, `Flight distances: <b>${v.join(', ')} m</b>. What’s the average?`], a, [Math.max(...v), r2(v.reduce((x, y) => x + y, 0))], 'm', `(${v.join(' + ')}) ÷ ${v.length} = ${a} m.`, ['Add them all up.', `Total = ${v.reduce((x, y) => x + y, 0)}.`, `Divide by how many: ÷ ${v.length} = ${a} m.`]); },
+});
+Object.assign(U2BANK, { LIFT: [[10, 0.1, 0.5], [8, 0.05, 0.6], [5, 0.2, 0.5]], LIFTX: [[2], [3], [4]], GLIDE: [[2, 8], [3, 10], [1.5, 6]], GR: [[24, 3], [40, 5], [18, 2]], CG: [[10, 3, 5], [6, 4, 12], [8, 2, 4]], AVG: [[12, 14, 16], [20, 18, 22, 24], [9, 11, 10]] });
+{ const Q = U2Q, A = glArt;
+glL('W1', 'Lift', 'L = ½ρv²SC_L. Faster, bigger wings, more angle → more lift.', ['w1card', 'Lift', 'L = ½ × ρ × v² × S × C_L. Doubling speed gives 4× lift.'],
+  ['What holds a glider up?', 'Wings push air down, and the air pushes the wing <b>up</b>: that’s <b>lift</b>. <b>L = ½ × ρ × v² × S × C_L</b>. ρ (“rho”) is air density (~1.2), <b>v</b> speed, <b>S</b> wing area, <b>C_L</b> how well the wing’s shape and angle make lift.', G8ART.glider],
+  [glMc('w1a', 'Which change gives the biggest boost to lift?', ['Double the speed (4× lift)', 'Double the wing area (2× lift)', 'Double C_L (2× lift)'], 'Speed is squared.', ['Lift has v², not just v.', 'Double v → 4× lift.', 'S and C_L only double it.']),
+    tfk('w1b', 'A bigger wing area makes more lift at the same speed.', true, 'Yes: S is in the formula.', ['More wing pushes more air.', 'Lift ∝ S.', 'Double area → double lift.']),
+    glMc('w1c', 'For steady flight, lift must about equal…', ['The glider’s weight', 'Zero', 'The drag'], 'Lift balances weight.', ['Weight pulls down.', 'Lift holds up.', 'Equal → steady glide.']),
+    tfk('w1d', 'Thinner air (high mountains) gives less lift at the same speed.', true, 'Yes: ρ is smaller.', ['ρ = air density.', 'Less dense air = less push.', 'Gliders fly faster up high.']),
+    glMc('w1e', 'Tilting the wing up a bit (more angle) mostly changes…', ['C_L (more lift, until it stalls)', 'ρ', 'S'], 'Angle changes C_L.', ['More angle → more C_L.', 'Too much → the flow breaks: a stall.', 'Stalls lose lift suddenly.'])],
+  [Q.LIFT('w1q1', 10, 0.1, 0.5), Q.LIFTX('w1q2', 2), Q.LIFT('w1q3', 8, 0.05, 0.6), Q.LIFTX('w1q4', 3), Q.LIFT('w1q5', 5, 0.2, 0.5), Q.LIFT('w1q6', 6, 0.1, 1), Q.LIFTX('w1q7', 4), Q.LIFT('w1q8', 12, 0.05, 0.4), Q.LIFT('w1q9', 10, 0.02, 0.5)], ['MAH', 'WT', 'DT']);
+glL('W2', 'Drag', 'Drag pushes back against motion. It grows with speed too.', ['w2card', 'Drag', 'Air pushing back on the glider. Grows roughly with v². Smooth, thin shapes have less drag.'],
+  ['Air pushes back', '<b>Drag</b> is the air pushing <b>backwards</b> on the glider. Like lift, it grows roughly with <b>v²</b>. Bumpy, blunt or messy shapes (dangling wires!) add drag. Less drag = longer glides.', A('← drag', 'air pushes back')],
+  [glMc('w2a', 'Which adds the most drag to your glider?', ['A dangling loose wire', 'A smooth taped-down board', 'A thin wing'], 'Loose wires flap and drag.', ['Anything sticking out catches air.', 'Tape wires flat.', 'Smooth = less drag.']),
+    tfk('w2b', 'Drag gets bigger when you fly faster.', true, 'Yes: roughly with v².', ['More speed, more air hits.', 'About v², like lift.', 'Double speed ≈ 4× drag.']),
+    glMc('w2c', 'Where should the logger go to add the least drag?', ['Tucked inside or flat along the body', 'Hanging under a wing', 'Sticking out the top'], 'Hide it from the airflow.', ['Air flows around the body.', 'Bulges catch air.', 'Flat and inside is best.']),
+    tfk('w2d', 'Less drag means a better glide ratio.', true, 'Yes: it loses less height per metre.', ['Drag steals energy.', 'Less drag → glides further.', 'Glide ratio ≈ lift ÷ drag.']),
+    glMc('w2e', 'Lift 2 N, drag 0.25 N. Lift ÷ drag is…', ['8', '0.125', '2.25'], '2 ÷ 0.25 = 8.', ['Divide lift by drag.', '2 ÷ 0.25 = 8.', 'That’s close to the glide ratio!']),
+    glMc('w2f', 'Drag at 5 m/s is 0.1 N. At 10 m/s it’s about…', ['0.4 N', '0.2 N', '0.1 N'], 'Double speed ≈ 4× drag.', ['Drag ∝ v².', '2× speed → 4×.', '0.1 × 4 = 0.4 N.'])],
+  [Q.LIFTX('w2q1', 2), Q.LIFT('w2q2', 10, 0.1, 0.5), Q.LIFTX('w2q3', 3), Q.WT('w2q4', 30, 3, 2, 4, 9), Q.LIFT('w2q5', 8, 0.05, 0.6), Q.LIFTX('w2q6', 2), Q.MAH('w2q7', 300, 50)], ['LIFT', 'LIFTX', 'WT']);
+glL('W3', 'Centre of gravity', 'Balance near the front third of the wing. Weight × distance must match.', ['w3card', 'Centre of gravity (CG)', 'The balance point. Gliders fly best with CG about ¼–⅓ back from the wing’s front edge.'],
+  ['Where does it balance?', 'The <b>centre of gravity (CG)</b> is the balance point. A glider flies best when it balances about <b>¼ to ⅓</b> back from the wing’s front edge. Too far back: it swoops and stalls. Too far forward: it dives. Balance with <b>weight × distance</b>.', A('⚖', 'balance point')],
+  [glMc('w3a', 'Your glider keeps pitching up and stalling. The CG is probably…', ['Too far back: add nose weight', 'Too far forward', 'Perfect'], 'Tail-heavy → stalls.', ['CG behind the sweet spot makes it nose up.', 'It stalls and drops.', 'Add a little nose weight.']),
+    glMc('w3b', 'It dives straight into the ground. The CG is probably…', ['Too far forward: move weight back', 'Too far back', 'Perfect'], 'Nose-heavy → dives.', ['Too much weight up front.', 'It can’t hold the nose up.', 'Move the battery back a bit.']),
+    tfk('w3c', 'Adding the logger can move the CG, so check balance again.', true, 'Yes: any new weight shifts it.', ['New weight changes the balance.', 'Re-check with two fingers under the wings.', 'Adjust before flying.']),
+    glMc('w3d', 'Easiest way to fine-tune CG with your logger?', ['Slide the LiPo forward or back', 'Cut the wing', 'Add a second glider'], 'Move the heaviest movable part.', ['The battery is heavy and easy to move.', 'Small slides change balance a lot.', 'Velcro makes it easy.'])],
+  [Q.CG('w3q1', 10, 3, 5), Q.CG('w3q2', 6, 4, 12), Q.LIFT('w3q3', 10, 0.1, 0.5), Q.CG('w3q4', 8, 2, 4), Q.CG('w3q5', 9, 2, 3), Q.WT('w3q6', 25, 7, 2, 4, 6), Q.CG('w3q7', 5, 6, 10), Q.CG('w3q8', 12, 1, 4), Q.LIFTX('w3q9', 2), Q.CG('w3q10', 4, 5, 2)], ['LIFT', 'WT', 'MAH']);
+glL('W4', 'Glide ratio', 'Glide ratio = distance forward ÷ height lost.', ['w4card', 'Glide ratio', 'Metres forward for each metre down. 8:1 from 2 m high → about 16 m.'],
+  ['How far for each metre down?', '<b>Glide ratio</b> = <b>distance forward ÷ height lost</b>. A paper plane might be 5:1; your foam glider 8:1; real sailplanes 50:1! Your logger can measure it.', A('8 : 1', 'forward : down')],
+  [tfk('w4a', 'A higher glide ratio means the glider flies further from the same height.', true, 'Yes: more metres per metre down.', ['10:1 beats 5:1.', 'From 2 m: 20 m vs 10 m.', 'Less drag helps.']),
+    glMc('w4b', 'Launching from higher (same glider) mostly changes…', ['How far it goes, not the glide ratio', 'The glide ratio', 'The wing area'], 'Ratio stays; distance grows.', ['The ratio is the glider’s property.', 'More height → more distance.', 'Same ratio.']),
+    glMc('w4c', 'Which helps glide ratio most?', ['Reducing drag (smooth, tape wires flat)', 'Making it heavier', 'Bending a wing'], 'Less drag = better ratio.', ['Glide ratio ≈ lift ÷ drag.', 'Cut drag.', 'Keep it balanced too.'])],
+  [Q.GLIDE('w4q1', 2, 8), Q.GR('w4q2', 24, 3), Q.GLIDE('w4q3', 3, 10), Q.GR('w4q4', 40, 5), Q.GLIDE('w4q5', 1.5, 6), Q.GR('w4q6', 18, 2), Q.CG('w4q7', 10, 3, 5), Q.GLIDE('w4q8', 2.5, 4), Q.GR('w4q9', 30, 4), Q.GLIDE('w4q10', 4, 7), Q.LIFTX('w4q11', 2)], ['CG', 'LIFT', 'WT']);
+glL('W5', 'Graphs & averages', 'Plot time on x. Average several flights; one flight can be luck.', ['w5card', 'Average', 'Add the results, divide by how many. Several flights averaged are more trustworthy than one.'],
+  ['Reading your flight data', 'Open your CSV in a spreadsheet and make a <b>line graph</b>: <b>time</b> on the <b>x-axis</b> (across), pitch or g on the <b>y-axis</b> (up). Every flight is a bit different, so fly several times and take the <b>average</b>.', A('📈', 'time → across, value ↑')],
+  [glMc('w5a', 'On a flight graph, time usually goes on…', ['The x-axis (across)', 'The y-axis (up)', 'Neither'], 'Time across.', ['x = across = time.', 'y = up = what you measured.', 'Read left to right like a story.']),
+    glMc('w5b', 'A tall spike in az at the end of the graph is probably…', ['The landing bump', 'The launch', 'Nothing'], 'End of flight = landing.', ['Spikes = sudden pushes.', 'At the end, it hits the ground.', 'Launch spikes are at the start.']),
+    tfk('w5c', 'One great flight proves your change worked.', false, 'No: it might be luck. Average several.', ['Wind and throws vary.', 'One flight can be a fluke.', 'Average 3–5 flights.']),
+    glMc('w5d', 'Distances 10, 11, 30, 10 m. The 30 is…', ['An outlier: check what happened', 'The true value', 'The average'], 'Way off from the rest.', ['It doesn’t match the others.', 'A gust? A big throw?', 'Note it and investigate.'])],
+  [Q.AVG('w5q1', 12, 14, 16), Q.AVG('w5q2', 20, 18, 22, 24), Q.GR('w5q3', 24, 3), Q.AVG('w5q4', 9, 11, 10), Q.AVG('w5q5', 15, 17, 16, 20), Q.GLIDE('w5q6', 2, 8), Q.AVG('w5q7', 3.2, 3.6, 3.4), Q.AVG('w5q8', 8, 10, 12, 10), Q.DUR('w5q9', 2000, 7000), Q.AVG('w5q10', 25, 30, 35)], ['GR', 'GLIDE', 'CG']);
+glL('W6', 'One variable at a time', 'Change ONE thing, keep the rest the same, fly several times, compare averages.', ['w6card', 'Fair test', 'Change one thing (the variable), keep everything else the same, repeat and compare averages.'],
+  ['Be a real scientist', 'To find out if a change helps, do a <b>fair test</b>: change <b>one thing</b> (like nose weight), keep <b>everything else the same</b> (same launch height, same thrower, same place), fly <b>several times</b> and compare the <b>averages</b>.', A('1 change', 'everything else the same')],
+  [glMc('w6a', 'You add nose weight AND bigger wings, and it flies further. What made the difference?', ['You can’t tell: you changed two things', 'The nose weight', 'The wings'], 'Two changes = can’t tell.', ['Either could be the cause.', 'Or both.', 'Change one at a time.']),
+    glMc('w6b', 'Testing nose weight, what should stay the same?', ['Launch height, thrower, place, glider', 'Nothing', 'Only the weather'], 'Keep all else equal.', ['Same launch height.', 'Same thrower and spot.', 'Only the nose weight changes.']),
+    tfk('w6c', 'Flying each version 3–5 times makes your result more trustworthy.', true, 'Yes: averages beat single tries.', ['Random wobbles cancel out.', 'Average each version.', 'Compare the averages.']),
+    glMc('w6d', 'With 0 g nose weight the average glide is 12 m; with 2 g it’s 16 m; with 4 g it’s 13 m. Best?', ['2 g', '4 g', '0 g'], 'Highest average: 2 g.', ['Compare the averages.', '16 m is biggest.', 'Too much weight made it worse.']),
+    tfk('w6e', 'Writing down each test (what you changed, the results) is part of the experiment.', true, 'Yes: your logbook.', ['You’ll forget otherwise.', 'Name each CSV file by test.', 'Notes + data = science.'])],
+  [Q.AVG('w6q1', 12, 14, 16), Q.GR('w6q2', 40, 5), Q.AVG('w6q3', 9, 11, 10), Q.CG('w6q4', 6, 4, 12), Q.AVG('w6q5', 20, 18, 22, 24), Q.GLIDE('w6q6', 3, 10), Q.AVG('w6q7', 14, 18, 16)], ['AVG', 'GR', 'LIFT'], 5);
+glUnit('U12', 12, 'Glider Logger 5: Flight & Data', '#3FB0E0', '#1E86B5', ['W1', 'W2', 'W3', 'W4', 'W5', 'W6'],
+  [[Q.LIFT('t12a', 10, 0.1, 0.5), 'W1'], [Q.LIFTX('t12b', 2), 'W1'], [LESSONS.W2.steps[1], 'W2'], [LESSONS.W3.steps[1], 'W3'], [Q.CG('t12c', 10, 3, 5), 'W3'], [Q.GLIDE('t12d', 2, 8), 'W4'], [Q.GR('t12e', 24, 3), 'W4'], [Q.AVG('t12f', 12, 14, 16), 'W5'], [LESSONS.W6.steps[1], 'W6'], [LESSONS.W5.steps[3], 'W5']]);
+}
 /* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
@@ -5958,7 +6019,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.25 (2026-10-11)';
+const APP_VERSION = '7.26 (2026-10-11)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
