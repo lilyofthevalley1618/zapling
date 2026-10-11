@@ -4824,6 +4824,82 @@ Object.assign(CARDS, {
 UNITS.push({ id: 'U8', n: 8, title: 'Glider Logger 1: Meter & Solder', color: '#2EAD9C', dark: '#1D8073', lessons: ['G1', 'G2', 'G3', 'G4', 'G5', 'G6'], test: 'T8' });
 TESTS.T8 = { id: 'T8', unit: 'U8', title: 'Unit 8 test: Meter & Solder', pass: 0.8, steps: [Q.DIV('t8a', 9, 20, 10), Q.LEDR('t8b', 5, 2, 15), VOLT[1], AMPS[0], AMPS[2], OHMS[0], OHMS[6], SOLDER[1], SOLDER[6], Q.LEDR('t8c', 3.3, 2, 10)].map((s, i) => Object.assign({}, s, { tag: ['G1', 'G2', 'G3', 'G4', 'G4', 'G5', 'G5', 'G6', 'G6', 'G2'][i] })) };
 }
+/* Glider track helpers + Unit 9 "Meet the Microcontroller": M1 boards & pins · M2 digital vs analog · M3 digitalRead · M4 analogRead · M5 serial monitor · M6 3.3 V vs 5 V. */
+const glMc = (id, q, opts, short, steps) => Object.assign(mcq(id, q, opts, ''), u2w(short, steps));
+const glArt = (big, sub, col = '#2EAD9C') => svgBox(`<rect x="70" y="40" width="180" height="100" rx="16" fill="#fff" stroke="${col}" stroke-width="4"/><text x="160" y="102" text-anchor="middle" font-size="34" font-weight="900" fill="#3B3486">${big}</text><text x="160" y="175" text-anchor="middle" font-size="15" font-weight="800" fill="${col}">${sub}</text>`, sub);
+const glL = (id, title, goal, card, [ct, ch, art], hand, gens, forms, n = 4) => { LESSONS[id] = { title, goal, cards: [card[0]], steps: [cptk(ct, `<p class="body">${ch}</p>`, art), ...mixSteps(hand, gens), ...rev(id.toLowerCase() + 'r', forms, n)] }; CARDS[card[0]] = { term: card[1], def: card[2], lesson: id }; };
+const glUnit = (id, n, title, color, dark, lessons, test) => { UNITS.push({ id, n, title, color, dark, lessons, test: 'T' + n }); TESTS['T' + n] = { id: 'T' + n, unit: id, title: `Unit ${n} test: ${title.replace(/^Glider Logger \d: /, '')}`, pass: 0.8, steps: test.map(([s, t]) => Object.assign({}, s, { tag: t })) }; };
+const r2 = x => +x.toFixed(2);
+Object.assign(U2Q, {
+  ADC(id, raw, vref) { const a = r2(raw / 1023 * vref); return u3x([id, `analogRead() gives <b>${raw}</b> on a <b>${vref} V</b> board. What voltage is on the pin?`], a, [r2(raw / 1023), r2(raw * vref / 100)], 'V',
+    `${raw} ÷ 1023 × ${vref} ≈ ${a} V.`, ['analogRead gives 0 for 0 V and 1023 for the top voltage.', `So each step is ${vref} ÷ 1023 V.`, `${raw} ÷ 1023 × ${vref} ≈ ${a} V.`]); },
+  ADCR(id, V, vref) { const a = Math.round(V / vref * 1023); return u3x([id, `A pin sees <b>${V} V</b> on a <b>${vref} V</b> board. About what will analogRead() give?`], a, [Math.round(V * 100), Math.round(V / vref * 255)], '',
+    `${V} ÷ ${vref} × 1023 ≈ ${a}.`, ['analogRead maps 0 V → 0 and the top voltage → 1023.', `${V} V is ${Math.round(V / vref * 100)}% of ${vref} V.`, `${Math.round(V / vref * 100)}% of 1023 ≈ ${a}.`]); },
+  LVL(id, V, board) { const ok = V <= board; return Object.assign(mcq(id, `Is it safe to connect a <b>${V} V</b> signal to a pin on a <b>${board} V</b> board?`, ok ? ['Safe', 'Too high: it can damage the pin'] : ['Too high: it can damage the pin', 'Safe'], ''),
+    u2w(ok ? `Safe: ${V} V is not above ${board} V.` : `Too high: ${V} V is above ${board} V.`, ['A pin can only take up to its board’s voltage.', '3.3 V boards (like the XIAO) can be damaged by 5 V.', ok ? 'This one is fine.' : 'Use a divider or a level shifter.'])); },
+  BATRAW(id, raw) { const a = r2(raw / 1023 * 3.3 * 2); return u3x([id, `Your LiPo goes through a ½ divider into a 3.3 V board. analogRead() = <b>${raw}</b>. Battery voltage?`], a, [r2(raw / 1023 * 3.3), r2(raw / 1023 * 5)], 'V',
+    `Pin = ${raw} ÷ 1023 × 3.3 ≈ ${r2(raw / 1023 * 3.3)} V; ×2 for the divider = ${a} V.`, ['First find the pin voltage.', `${raw} ÷ 1023 × 3.3 ≈ ${r2(raw / 1023 * 3.3)} V.`, 'The divider halved it, so double it back.']); },
+});
+Object.assign(U2BANK, { ADC: [[512, 5], [1023, 3.3], [310, 3.3], [205, 5], [775, 3.3]], ADCR: [[2.5, 5], [1.65, 3.3], [1, 3.3], [4, 5]], LVL: [[5, 3.3], [3.3, 3.3], [3.3, 5], [4.2, 3.3]], BATRAW: [[620, ], [580], [650], [530]] });
+{ const Q = U2Q, A = glArt;
+glL('M1', 'Boards & pins', 'A microcontroller is a tiny computer; pins are its hands.', ['m1card', 'Microcontroller', 'A tiny computer on a chip that runs your code and talks to the world through pins.'],
+  ['Meet your logger’s brain', 'A <b>microcontroller</b> board (like an <b>Arduino Nano</b> or a thumb-sized <b>Seeed XIAO</b>) is a tiny computer. You write code on a laptop, upload it over USB, and it runs by itself. Its <b>pins</b> are numbered: D0, D1… (digital) and A0, A1… (analog).', A('XIAO', 'a tiny computer for your glider')],
+  [glMc('m1a', 'Why use a XIAO instead of a laptop on the glider?', ['It’s tiny and light', 'It’s faster than a laptop', 'It has a screen'], 'Weight matters on a glider.', ['A XIAO weighs about 3 g.', 'A laptop weighs over 1 kg.', 'Gliders need every gram saved.']),
+    tfk('m1b', 'Code you upload stays on the board and runs every time it gets power.', true, 'Yes: it’s stored in flash memory.', ['Upload once over USB.', 'Unplug, plug a battery in…', '…and it runs your code again.']),
+    glMc('m1c', 'Pin “A0” is…', ['An analog input pin', 'A power pin', 'A ground pin'], 'A = analog.', ['A0, A1, A2… can read voltages.', 'D pins are digital.', 'GND is ground, 3V3/5V are power.']),
+    glMc('m1d', 'Every circuit on the board needs a connection to…', ['GND (ground)', 'A0', 'The USB plug only'], 'GND is the shared “−”.', ['Current needs a way back.', 'All parts share GND.', 'Forgetting GND is the #1 bug.']),
+    tfk('m1e', 'setup() runs once, then loop() runs over and over.', true, 'Yes: that’s every Arduino sketch.', ['setup: get ready (pins, serial).', 'loop: repeat forever.', 'Your logger reads + saves in loop().']),
+    glMc('m1f', 'pinMode(13, OUTPUT) tells the board…', ['Pin 13 will drive something, like an LED', 'Pin 13 will read a button', 'Turn pin 13 off forever'], 'OUTPUT = the pin pushes out a voltage.', ['OUTPUT pins drive LEDs, buzzers.', 'INPUT pins read buttons and sensors.', 'Set this in setup().']),
+    glMc('m1g', 'digitalWrite(13, HIGH) on a 5 V Nano puts about … on pin 13.', ['5 V', '0 V', '13 V'], 'HIGH = the board’s voltage.', ['HIGH = on = board voltage.', 'LOW = off = 0 V.', 'Nano: 5 V. XIAO: 3.3 V.'])],
+  [Q.LEDR('m1q1', 5, 2, 10), Q.LEDR('m1q2', 3.3, 2, 10), Q.DIV('m1q3', 5, 10, 10), Q.LEDR('m1q4', 5, 2, 20), Q.LEDR('m1q5', 3.3, 1.8, 5), Q.DIV('m1q6', 4.2, 10, 10)], ['LEDR', 'DIV', 'MAH']);
+glL('M2', 'Digital vs analog', 'Digital = just on/off. Analog = any value in between.', ['m2card', 'Digital vs analog', 'Digital is HIGH or LOW only. Analog can be any level, like a dimmer.'],
+  ['On/off or anything between?', 'A <b>digital</b> signal is only <b>HIGH</b> or <b>LOW</b>, like a light switch. An <b>analog</b> signal can be <b>any level</b>, like a dimmer knob. Buttons are digital; light sensors and battery voltage are analog.', A('0 / 1 vs ∿', 'digital vs analog')],
+  [glMc('m2a', 'A pushbutton gives a…', ['Digital signal', 'Analog signal'], 'Pressed or not: digital.', ['Only two states.', 'HIGH or LOW.', 'That’s digital.']),
+    glMc('m2b', 'A light sensor (LDR) in a divider gives a…', ['Analog signal', 'Digital signal'], 'It can be any voltage: analog.', ['Brighter or darker changes the voltage smoothly.', 'Lots of possible values.', 'That’s analog.']),
+    glMc('m2c', 'Your LiPo’s voltage is…', ['Analog: it slowly drops from 4.2 V', 'Digital: it’s either full or empty'], 'Analog.', ['It slides gradually.', '4.2 → 3.7 → 3.3 V.', 'Read it on an A pin.']),
+    tfk('m2d', 'A digital pin can tell 2.0 V from 2.5 V.', false, 'No: it only sees HIGH or LOW.', ['Digital pins round to HIGH or LOW.', 'To see the exact level, use analogRead.', 'Analog pins measure in small steps.']),
+    glMc('m2e', 'Which needs an analog pin?', ['Reading how bright it is', 'Reading a switch', 'Turning an LED on'], 'Brightness is a range of values.', ['A switch is on/off → digital.', 'Turning an LED on → digital output.', 'Brightness varies → analog.']),
+    glMc('m2f', 'The tilt-switch on your glider (closed when nose-down) is…', ['Digital', 'Analog'], 'Closed or open: digital.', ['A switch has two states.', 'Nose-down or not.', 'digitalRead handles it.']),
+    tfk('m2g', 'An IMU’s tilt angle is analog-style data: it can be any number.', true, 'Yes: 12.3°, 12.4°, …', ['Angles come in tiny steps.', 'That’s a range, not on/off.', 'The IMU sends these as numbers over I2C.'])],
+  [Q.ADC('m2q1', 512, 5), Q.LVL('m2q2', 5, 3.3), Q.ADC('m2q3', 1023, 3.3), Q.LVL('m2q4', 3.3, 3.3), Q.DIV('m2q5', 5, 10, 10), Q.LEDR('m2q6', 3.3, 2, 10)], ['LEDR', 'DIV', 'LVL']);
+glL('M3', 'digitalRead: buttons', 'digitalRead(pin) gives HIGH or LOW. Use INPUT_PULLUP for buttons.', ['m3card', 'digitalRead', 'Reads a pin as HIGH (1) or LOW (0). With INPUT_PULLUP, a pressed button reads LOW.'],
+  ['Reading a button', '<b>digitalRead(pin)</b> returns <b>HIGH</b> or <b>LOW</b>. Wire a button from the pin to GND and use <b>pinMode(pin, INPUT_PULLUP)</b>: the pin reads HIGH normally and <b>LOW when pressed</b>.', A('HIGH / LOW', 'digitalRead(2)')],
+  [glMc('m3a', 'With INPUT_PULLUP and the button to GND, pressing the button reads…', ['LOW', 'HIGH', '1023'], 'Pressed connects the pin to GND: LOW.', ['The pull-up holds the pin HIGH.', 'Pressing joins it to GND.', 'So pressed = LOW (it feels backwards!).']),
+    tfk('m3b', 'An input pin with nothing connected can read random HIGHs and LOWs.', true, 'Yes: it’s “floating”.', ['An unconnected input picks up noise.', 'It flickers randomly.', 'A pull-up resistor fixes it.']),
+    glMc('m3c', 'if (digitalRead(2) == LOW) startLogging(); means logging starts when…', ['The button on pin 2 is pressed', 'Pin 2 is unplugged', 'The battery is low'], 'LOW = pressed (with pull-up).', ['The pull-up makes released = HIGH.', 'Pressed = LOW.', 'So the button starts the logger.']),
+    glMc('m3d', 'HIGH is the same as…', ['1 (true)', '0 (false)', '1023'], 'HIGH = 1.', ['HIGH = 1 = true.', 'LOW = 0 = false.', '1023 is an analogRead value.']),
+    tfk('m3e', 'INPUT_PULLUP uses a resistor built into the chip.', true, 'Yes: no extra part needed.', ['The chip has a pull-up inside.', 'INPUT_PULLUP turns it on.', 'Fewer parts = lighter glider.']),
+    glMc('m3f', 'A button press often reads as several quick presses. That’s called…', ['Bounce', 'Drift', 'Lift'], 'Switch bounce.', ['Metal contacts wobble for a few ms.', 'The code sees on-off-on-off.', 'Fix: wait ~20 ms and read again (debounce).']),
+    glMc('m3g', 'Which line goes in setup() for a start button on pin 2?', ['pinMode(2, INPUT_PULLUP);', 'digitalWrite(2, HIGH);', 'analogRead(2);'], 'Set the mode once in setup().', ['pinMode configures the pin.', 'INPUT_PULLUP for buttons to GND.', 'Then digitalRead it in loop().'])],
+  [Q.LVL('m3q1', 3.3, 5), Q.ADC('m3q2', 310, 3.3), Q.LVL('m3q3', 4.2, 3.3), Q.LEDR('m3q4', 5, 2, 15), Q.ADC('m3q5', 205, 5), Q.DIV('m3q6', 3.3, 10, 20)], ['ADC', 'LVL', 'LEDR']);
+glL('M4', 'analogRead: measuring voltage', 'analogRead gives 0–1023. Volts = reading ÷ 1023 × board voltage.', ['m4card', 'analogRead', '0 for 0 V up to 1023 for the board voltage. V = raw ÷ 1023 × Vref.'],
+  ['Turning volts into numbers', '<b>analogRead(A0)</b> returns a number from <b>0</b> (0 V) to <b>1023</b> (the board voltage). To get volts: <b>V = reading ÷ 1023 × V_board</b>. Your logger uses this to watch its battery.', A('0 … 1023', 'analogRead(A0)')],
+  [glMc('m4a', 'analogRead() returns 0. The pin is at…', ['0 V', 'The board voltage', 'Half the board voltage'], '0 → 0 V.', ['0 is the bottom of the range.', '1023 is the top.', 'So 0 means 0 V.']),
+    glMc('m4b', 'analogRead() returns about 512 on a 5 V Nano. The pin is at about…', ['2.5 V', '5 V', '512 V'], 'Halfway: 2.5 V.', ['512 is about half of 1023.', 'Half of 5 V is 2.5 V.', 'Simple!']),
+    tfk('m4c', 'You can connect a 4.2 V LiPo straight to an analog pin on a 3.3 V XIAO.', false, 'No: use a divider first.', ['4.2 V is above 3.3 V.', 'That can damage the pin.', 'A ½ divider makes it 2.1 V.']),
+    glMc('m4d', 'In code, float v = analogRead(A0) * 3.3 / 1023; computes…', ['The pin voltage on a 3.3 V board', 'The battery’s mAh', 'The current'], 'Reading → volts.', ['Multiply by the board voltage.', 'Divide by 1023.', 'That gives volts.'])],
+  [Q.ADC('m4q1', 512, 5), Q.ADC('m4q2', 310, 3.3), Q.ADCR('m4q3', 2.5, 5), Q.ADC('m4q4', 775, 3.3), Q.ADCR('m4q5', 1.65, 3.3), Q.BATRAW('m4q6', 620), Q.ADCR('m4q7', 1, 3.3), Q.BATRAW('m4q8', 580), Q.ADC('m4q9', 205, 5), Q.BATRAW('m4q10', 530)], ['DIV', 'LVL', 'LEDR']);
+glL('M5', 'The serial monitor', 'Serial.println() sends text to your laptop so you can see what the board sees.', ['m5card', 'Serial monitor', 'A window that shows text the board sends with Serial.println(). Both sides must use the same baud rate.'],
+  ['Make the board talk', '<b>Serial.begin(115200)</b> in setup() opens a chat line to your laptop. <b>Serial.println(x)</b> sends a line. Open the <b>Serial Monitor</b> to read it. It’s how you debug: print your readings and look!', A('Serial', 'Serial.println(v);')],
+  [glMc('m5a', 'The serial monitor shows garbage like “ÿ⸮⸮”. Most likely?', ['The baud rates don’t match', 'The battery is empty', 'The LED is backwards'], 'Match the baud rate.', ['Both sides must agree on speed.', 'Serial.begin(115200) in code…', '…and 115200 in the monitor.']),
+    tfk('m5b', 'Serial.println() works only while the board is plugged into the computer by USB.', true, 'Yes: in flight, save to SD instead.', ['The monitor is on the laptop.', 'On the glider there’s no cable.', 'That’s why we log to microSD later.']),
+    glMc('m5c', 'Serial.print(“V=”); Serial.println(v); prints…', ['V=3.71 on one line', 'Two separate lines', 'Nothing'], 'print stays on the line, println ends it.', ['print → no new line.', 'println → ends the line.', 'Together: “V=3.71”.']),
+    glMc('m5d', 'Which line goes in setup()?', ['Serial.begin(115200);', 'Serial.println(v);', 'loop();'], 'Begin once in setup().', ['Start the serial line once.', 'Print in loop.', 'Then open the monitor.']),
+    glMc('m5e', 'You print analogRead(A0) and it always shows 1023. Likely?', ['The pin is connected straight to 3.3 V/5 V', 'The code is perfect and the pin is at 0 V', 'Serial is broken'], '1023 = top voltage.', ['1023 is the maximum reading.', 'Check the wiring: maybe it’s on the power rail.', 'Printing reveals bugs fast!']),
+    tfk('m5f', 'Printing values is a great way to find bugs.', true, 'Yes: see what the board sees.', ['Guessing is slow.', 'Printing shows real numbers.', 'Then fix what’s wrong.'])],
+  [Q.ADC('m5q1', 1023, 3.3), Q.ADCR('m5q2', 4, 5), Q.BATRAW('m5q3', 650), Q.LVL('m5q4', 5, 3.3), Q.ADC('m5q5', 512, 5), Q.ADCR('m5q6', 2.5, 5), Q.BATRAW('m5q7', 600), Q.LEDR('m5q8', 3.3, 2, 10)], ['ADC', 'ADCR', 'LVL']);
+glL('M6', '3.3 V vs 5 V', 'Never feed 5 V into a 3.3 V pin. Use a divider or level shifter.', ['m6card', '3.3 V vs 5 V', 'XIAO pins are 3.3 V; Nano pins are 5 V. A 5 V signal into a 3.3 V pin can damage it.'],
+  ['Two voltage worlds', 'A <b>Nano</b> works at <b>5 V</b>. A <b>XIAO</b> and most sensors work at <b>3.3 V</b>. A <b>5 V</b> signal into a <b>3.3 V</b> pin can damage it. Fix it with a <b>divider</b> or a <b>level shifter</b>.', A('3.3 | 5', 'check before you connect', '#E5884A')],
+  [glMc('m6a', 'Your IMU says “3.3 V only”. Which board pin powers it?', ['3V3', '5V', 'A0'], 'Use the 3V3 pin.', ['Match the part’s voltage.', '3V3 gives 3.3 V.', '5 V could damage it.']),
+    glMc('m6b', 'A 2 kΩ / 1 kΩ divider (2k on top) turns a 5 V signal into about…', ['1.7 V', '3.3 V', '5 V'], 'V_out = 5 × 1 ÷ 3 ≈ 1.7 V.', ['V_out = V_in × R2 ÷ (R1 + R2).', '5 × 1 ÷ 3.', '≈ 1.7 V: safe, but low.']),
+    glMc('m6c', 'A 1 kΩ / 2 kΩ divider (1k on top) turns 5 V into about…', ['3.3 V', '1.7 V', '2.5 V'], '5 × 2 ÷ 3 ≈ 3.3 V.', ['R2 = 2k is the bigger share.', '5 × 2 ÷ 3.', '≈ 3.3 V: perfect for a XIAO.']),
+    tfk('m6d', 'A 3.3 V HIGH from a XIAO is usually read as HIGH by a 5 V Nano.', true, 'Yes, usually: 3.3 V is above the HIGH threshold.', ['5 V chips often call >3 V HIGH.', 'So 3.3 → 5 usually works.', '5 → 3.3 is the dangerous direction.']),
+    glMc('m6e', 'Which is the dangerous direction?', ['5 V output into a 3.3 V input', '3.3 V output into a 5 V input'], '5 → 3.3 can damage.', ['Too much voltage hurts the pin.', '3.3 into 5 V just may read weakly.', 'Always check 5 → 3.3!']),
+    tfk('m6f', 'A full LiPo (4.2 V) is safe to put on a XIAO’s 3.3 V pin.', false, 'No: 4.2 V is too high for 3.3 V.', ['The 3V3 pin expects 3.3 V.', 'Use the BAT pads or 5V/VIN input with a regulator.', 'The regulator brings it down.'])],
+  [Q.LVL('m6q1', 5, 3.3), Q.DIV('m6q2', 5, 1, 2), Q.LVL('m6q3', 3.3, 5), Q.DIV('m6q4', 5, 2, 1), Q.LVL('m6q5', 4.2, 3.3), Q.ADC('m6q6', 775, 3.3), Q.LVL('m6q7', 3.3, 3.3), Q.DIV('m6q8', 4.2, 10, 10)], ['ADC', 'BATRAW', 'LEDR'], 5);
+glUnit('U9', 9, 'Glider Logger 2: Microcontrollers', '#5B8DEF', '#3A66C4', ['M1', 'M2', 'M3', 'M4', 'M5', 'M6'],
+  [[Q.ADC('t9a', 512, 5), 'M4'], [Q.ADC('t9b', 310, 3.3), 'M4'], [Q.LVL('t9c', 5, 3.3), 'M6'], [Q.BATRAW('t9d', 620), 'M4'], [LESSONS.M2.steps[1], 'M2'], [LESSONS.M3.steps[1], 'M3'], [LESSONS.M5.steps[1], 'M5'], [LESSONS.M1.steps[1], 'M1'], [Q.DIV('t9e', 5, 1, 2), 'M6'], [Q.ADCR('t9f', 2.5, 5), 'M4']]);
+}
 /* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
@@ -5758,7 +5834,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.22 (2026-10-11)';
+const APP_VERSION = '7.23 (2026-10-11)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -7173,7 +7249,7 @@ function migSplit(flag, map) {
 if (LESSONS.C6) migSplit('u5split', { C6: 'C3', C7: 'C4' });
 if (LESSONS.F6) migSplit('u6split', { F6: 'F2', F7: 'F3' });
 if (LESSONS.K6) migSplit('u7split', { K6: 'K1', K7: 'K2', K8: 'K3', K9: 'K4' });
-/* PREVIEW: Glider Unit 8 rewards */ Object.assign(TOK_UNIT, { U8: 18 }); Object.assign(TOK_TESTU, { U8: 22 });
+/* PREVIEW: Glider Unit 8 rewards */ Object.assign(TOK_UNIT, { U8: 18, U9: 18, U10: 20, U11: 20, U12: 22, U13: 22 }); Object.assign(TOK_TESTU, { U8: 22, U9: 22, U10: 24, U11: 24, U12: 26, U13: 26 });
 /* =========================================================
    AVATAR v2: cuter bodies, expressions, layered accessories, shop, idle animation
    Bodies (v3): Cappy, Chiplet, Glowbie, Flippy, Lumi, Beep, Knobby, Boing, Volty, Stripes. Old bodies were refunded once (S.avatar.migBodies2, see ensureShop).
