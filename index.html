@@ -5657,7 +5657,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.19 (2026-10-11)';
+const APP_VERSION = '7.20 (2026-10-11)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -8418,6 +8418,52 @@ openCookbook = function () {
 document.head.insertAdjacentHTML('beforeend', `<style>.cbhow{width:100%;margin:2px 0 6px}.tutbox{position:fixed;left:50%;transform:translateX(-50%);bottom:84px;width:min(370px,94vw);background:#fff;border-radius:18px;box-shadow:0 8px 28px rgba(46,42,90,.28);padding:12px 14px;z-index:60;max-height:46vh;overflow:auto}
 .tuth{display:flex;align-items:center;gap:6px;font-weight:800;color:var(--ink)}.tuth svg{width:20px;height:20px;color:#F2A93B}.tuth span{flex:1}.tutbar{height:6px;background:#EEEBFA;border-radius:9px;margin:8px 0}.tutbar i{display:block;height:100%;background:#2EC4A0;border-radius:9px}
 .tutk{font-size:12px;font-weight:800;color:#8A84B8;text-transform:uppercase}.tutbox p{margin:4px 0}.tutact{display:flex;gap:8px;margin-top:8px}.tutact .btn{flex:1}</style>`);
+/* First-run welcome / sign-in screen, flush pending cloud saves on hide, and a sign-out that leaves a fresh guest save. */
+const welcomeDue = () => !S.prefs.welcomed && !S.prefs.onboarded && !syncInfo().uid && !syncInfo().redirect && progScore(S) === 0 && !Object.keys(S.done || {}).length;
+const _showOnboardingW = showOnboarding;
+showOnboarding = function () { if (welcomeDue()) return showWelcome(); return _showOnboardingW.apply(this, arguments); };
+function showWelcome() {
+  const W = el(`<div class="onb welcome" id="welcome" role="dialog" aria-modal="true" aria-label="Welcome to Zapling"><div class="box wbox">
+    <div class="wsprig">${mascot('cheer')}</div><h1>Welcome to Zapling!</h1>
+    <p class="body">Hi, I’m Sprig! Learn how electricity really works, one tiny lesson at a time.</p>
+    <button class="gbtn wg" id="wGoogle">${GLOGO}<span>Sign in with Google</span></button>
+    <p class="small" style="margin:6px 0 0">Saves your progress so you can keep going on any device.</p>
+    <p class="werr small" id="wErr" hidden></p>
+    <button class="linkbtn wguest" id="wGuest">Continue as guest</button></div></div>`);
+  document.body.appendChild(W);
+  const done = how => { S.prefs.welcomed = how; save(); W.remove(); if (!S.prefs.onboarded) _showOnboardingW(); };
+  $('#wGuest', W).onclick = () => { SFX.tap(); done('guest'); };
+  $('#wGoogle', W).onclick = async () => {
+    SFX.tap(); const b = $('#wGoogle', W); b.disabled = true; $('span', b).textContent = 'Opening Google…';
+    await cloudSignIn();
+    if (CLOUD.err) { const e = $('#wErr', W); e.hidden = false; e.textContent = CLOUD.err; b.disabled = false; $('span', b).textContent = 'Sign in with Google'; }
+    else if (!CLOUD.user) { b.disabled = false; $('span', b).textContent = 'Sign in with Google'; } // closed the popup
+  };
+  WELCOME.done = done;
+}
+const WELCOME = { done: null };
+const _onCloudUserW = onCloudUser;
+onCloudUser = async function (user) {
+  await _onCloudUserW(user);
+  if (user && $('#welcome')) { WELCOME.done('google'); toast(`Signed in. Your progress is backed up.`, ICON.check()); }
+};
+// a change made <4 s before closing/hiding the app would otherwise wait for the next session to reach the cloud
+const cloudFlush = () => { if (CLOUD.user && CLOUD.t) { clearTimeout(CLOUD.t); CLOUD.t = null; cloudPush().catch(cloudErr); } };
+document.addEventListener('visibilitychange', () => { if (document.hidden) cloudFlush(); });
+addEventListener('pagehide', cloudFlush);
+document.head.insertAdjacentHTML('beforeend', `<style>.welcome .wbox{text-align:center;padding:26px 22px 18px}.wsprig{width:120px;margin:0 auto 6px}.welcome h1{margin:4px 0 6px;font-size:26px;color:var(--ink)}
+.welcome .body{margin:0 0 18px}.wg{width:100%;justify-content:center}.wguest{display:block;margin:14px auto 0;font-weight:800;color:#6B6899;background:none;border:0;text-decoration:underline;font-size:15px;cursor:pointer}.werr{color:var(--corald)}</style>`);
+// sign-out: upload anything pending first, then reset this device to a fresh guest (keeps sound/goal prefs; no welcome or onboarding again)
+cloudSignOut = async function () {
+  clearTimeout(CLOUD.t); CLOUD.t = null;
+  if (CLOUD.user) { CLOUD.status = 'Saving…'; renderCloud(); try { await cloudPush(); } catch (e) { } }
+  try { const fb = await fbLoad(); await fb.Au.signOut(fb.auth); } catch (e) { }
+  CLOUD.user = null; CLOUD.status = ''; CLOUD.err = ''; setSyncInfo({});
+  const prefs = S.prefs; S = DEFAULT(); S.prefs = prefs; S.prefs.welcomed = 'signout';
+  try { localStorage.removeItem(AIKEY); } catch (e) { }
+  migrate(); ensurePrefs(); ensureShop(); regenHearts(); saveLocal();
+  renderTop(); showTab('profile'); toast('Signed out. Your progress is safe in your account.', ICON.check());
+};
 /* =========================================================
    INIT
    ========================================================= */
