@@ -4723,6 +4723,107 @@ Object.assign(LESSONS, {
 UNITS.find(u => u.id === 'U7').lessons = ['K1', 'K6', 'K2', 'K7', 'K3', 'K8', 'K4', 'K9', 'K5'];
 [['electro', 'K6'], ['ceramic', 'K6'], ['rc63', 'K7'], ['rc5', 'K7'], ['rbase', 'K8'], ['satur', 'K8'], ['duty', 'K9']].forEach(([c, l]) => { if (CARDS[c]) CARDS[c].lesson = l; });
 reTag('T7', [['K1', /ceramic|electrolytic|rated|marked|code/i, 'K6'], ['K2', /after|discharg|fade|%/i, 'K7'], ['K3', /base resistor|β|beta|I_?B/i, 'K8'], ['K4', /duty|high time/i, 'K9']]);
+/* PREVIEW: Glider Flight Logger track, Unit 8 "Meter & Solder": G1 dividers refresher · G2 LED resistor refresher · G3 measuring volts · G4 measuring current · G5 resistance & continuity · G6 soldering safety. */
+{ const Q = U2Q, mc = (id, q, opts, short, steps) => Object.assign(mcq(id, q, opts, ''), u2w(short, steps));
+Object.assign(U2Q, {
+  VMODE(id, what, ok, bad, short, steps) { return mc(id, what, [ok, ...bad], short, steps); },
+});
+const VOLT = [
+  mc('g3a', 'To measure a battery’s voltage, the red probe goes in which socket?', ['V Ω (the volts socket)', '10A', 'COM'], 'The V Ω socket.', ['Black always goes in COM.', 'Red goes in V Ω for volts and ohms.', 'The 10A/mA socket is only for current.']),
+  mc('g3b', 'To measure the voltage across an LED, you put the probes…', ['On both legs of the LED (across it)', 'In the wire, breaking the circuit', 'Only on the + leg'], 'Across it, side by side.', ['Voltage is a difference between two points.', 'So the probes touch both ends of the part.', 'That’s “in parallel” with the part.']),
+  tfk('g3c', 'You must break the circuit to measure voltage.', false, 'No: voltage is measured across, no breaking needed.', ['Volts = probes on two points.', 'The circuit stays as it is.', 'Breaking the circuit is for current.']),
+  mc('g3d', 'Your meter reads <b>−3.7 V</b> on a LiPo. What happened?', ['The probes are swapped', 'The battery is broken', 'The meter is in amps mode'], 'Swapped probes show a minus sign.', ['Red on +, black on −.', 'Swap them and the number goes negative.', 'Nothing is broken: just flip them.']),
+  mc('g3e', 'Your Arduino runs on 5 V. Which DC range should you pick on a manual meter?', ['20 V', '200 mV', '2 V'], 'Pick the first range above what you expect.', ['200 mV and 2 V are too small for 5 V.', '20 V fits 5 V comfortably.', 'Auto-ranging meters do this for you.']),
+  mc('g3f', 'Battery 9 V, two equal resistors in series. The meter across one resistor reads…', ['4.5 V', '9 V', '0 V'], 'Equal resistors split it evenly.', ['Series resistors share the voltage.', 'Equal values mean equal shares.', '9 ÷ 2 = 4.5 V.']),
+  tfk('g3g', 'The V with a straight line (⎓) means DC volts, used for batteries.', true, 'Yes: ⎓ is DC, ~ is AC.', ['Batteries give steady DC.', 'Wall sockets are AC (~).', 'For our projects, pick V⎓.']),
+];
+const AMPS = [
+  mc('g4a', 'To measure the current through an LED, the meter goes…', ['In the loop, so the current flows through it', 'Across the LED', 'Across the battery'], 'In series: current flows through the meter.', ['Current is what flows around the loop.', 'To count it, the meter must be part of the loop.', 'Break the circuit and put the meter in the gap.']),
+  mc('g4b', 'For current, the red probe moves to…', ['The mA (or 10A) socket', 'The V Ω socket', 'It stays in COM'], 'The mA / A socket.', ['Current uses its own socket.', 'Small currents: mA. Big currents: 10A.', 'Move it back to V Ω afterwards!']),
+  tfk('g4c', 'Putting the probes across a battery in amps mode is safe.', false, 'No: that’s a short circuit through the meter.', ['In amps mode the meter is almost a plain wire.', 'Across a battery that means a huge current.', 'It can blow the meter’s fuse.']),
+  mc('g4d', 'The meter shows <b>18 mA</b> in a 9 V LED circuit. What is that in amps?', ['0.018 A', '18 A', '1.8 A'], '18 mA = 0.018 A.', ['m means one thousandth.', '18 ÷ 1000 = 0.018.', 'So 18 mA = 0.018 A.']),
+  mc('g4e', 'Your sensor board draws about 40 mA. Which socket?', ['mA', '10A', 'V Ω'], '40 mA is small: use mA.', ['The mA socket is more precise for small currents.', 'The 10A socket is for big ones (motors).', '40 mA fits the mA range.']),
+  tfk('g4f', 'In a single loop, the current is the same everywhere.', true, 'Yes: there’s only one path.', ['Every electron goes all the way round.', 'So the meter reads the same anywhere in the loop.', 'Put it wherever is easiest to reach.']),
+  mc('g4g', 'Measuring current, the reading is 0 and nothing lights. Most likely?', ['The meter’s fuse is blown or the probe is in the wrong socket', 'The LED is too bright', 'The battery is too full'], 'Check the socket and fuse.', ['In series, the meter is part of the loop.', 'A blown fuse breaks the loop: no current.', 'Check the red probe is in mA, then the fuse.']),
+];
+const OHMS = [
+  tfk('g5a', 'You should measure resistance with the circuit powered off.', true, 'Yes: always power off for Ω.', ['The meter sends its own tiny current.', 'A battery in the circuit confuses the reading.', 'It can also damage the meter.']),
+  mc('g5b', 'Bands brown-black-orange (10 kΩ). The meter reads <b>9.87 kΩ</b>. Is the resistor OK?', ['Yes: it’s within tolerance', 'No: it must read exactly 10.00', 'No: it’s broken'], 'Close enough: resistors have a tolerance.', ['Most resistors are ±5% or ±1%.', '10 kΩ ± 5% = 9.5 to 10.5 kΩ.', '9.87 is inside that.']),
+  mc('g5c', 'Continuity mode beeps when…', ['There’s an (almost) zero-resistance path between the probes', 'The battery is full', 'The voltage is high'], 'Beep = connected.', ['Continuity is a quick “is this connected?” test.', 'Low resistance → beep.', 'Great for checking wires and solder joints.']),
+  mc('g5d', 'You test a jumper wire with continuity and hear <b>no beep</b>. The wire is…', ['Broken inside', 'Perfect', 'Too short'], 'No beep = no path.', ['A good wire beeps right away.', 'Silence means the path is broken.', 'Throw it out: broken jumpers cause weird bugs.']),
+  mc('g5e', 'Your meter shows <b>OL</b> on Ω. That means…', ['Open: resistance too high to measure (no connection)', 'Zero ohms', 'Low battery'], 'OL = over limit / open.', ['OL means the resistance is beyond the range.', 'With nothing connected it always shows OL.', 'Often it means a break.']),
+  tfk('g5f', 'Two holes in the same breadboard row of five should beep in continuity mode.', true, 'Yes: they’re joined by a metal clip.', ['Each row of five holes is one strip.', 'Same strip = connected.', 'Use this to check a mystery board.']),
+  mc('g5g', 'Continuity beeps between the + and − pads of your board. That’s…', ['A short circuit: find it before powering up', 'Good: it’s connected', 'Normal for every board'], 'Beep between + and − = a short.', ['+ and − should never be directly joined.', 'Often a solder blob bridges two pads.', 'Fix it before plugging in the battery.']),
+];
+const SOLDER = [
+  mc('g6a', 'A soldering iron tip is about…', ['350 °C: hot enough to burn instantly', '60 °C: warm', '100 °C: like boiling water'], 'Around 350 °C.', ['Solder melts at about 190–220 °C.', 'The tip runs hotter so it works fast.', 'Never touch the metal part.']),
+  tfk('g6b', 'Always put the iron back in its stand, even for a second.', true, 'Yes: a loose iron burns things (and you).', ['Rolling irons burn tables, cables and hands.', 'The stand keeps the hot tip safe.', 'Make it a habit every time.']),
+  mc('g6c', 'Which is the safest way to solder?', ['With an adult, safety glasses, a fan pulling fumes away', 'Alone, leaning close to see better', 'In bed on a pillow'], 'Adult nearby, glasses, ventilation.', ['Solder can spit tiny hot drops: glasses protect eyes.', 'Flux smoke shouldn’t be breathed in.', 'Work on a heat-proof mat at a table.']),
+  mc('g6d', 'A good solder joint looks…', ['Shiny, smooth, like a little volcano around the pin', 'A round blob not touching the pad', 'Dull, grey and lumpy'], 'Shiny little volcano.', ['Heat the pad and pin together first.', 'Then feed the solder in: it flows and wets both.', 'A ball means the pad wasn’t hot enough.']),
+  tfk('g6e', 'Wash your hands after soldering.', true, 'Yes: solder can contain lead and flux.', ['Even lead-free solder has flux residue.', 'Don’t eat while soldering.', 'Wash up when you finish.']),
+  mc('g6f', 'You heat the pad and pin, then feed in solder. Why heat first?', ['So the solder flows onto both and sticks', 'To make it smoke more', 'It doesn’t matter'], 'Hot metal makes solder flow.', ['Solder sticks to hot metal, not cold.', 'Melting it on the tip alone makes a weak “cold joint”.', 'Heat 1–2 s, feed solder, remove solder, remove iron.']),
+  mc('g6g', 'You’re about to plug in the LiPo after soldering. First you…', ['Check for shorts with continuity between + and −', 'Lick the board', 'Plug it in and see'], 'Check for shorts first.', ['LiPos can push a huge current into a short.', 'That can make heat or fire.', 'A 5-second beep test prevents it.']),
+];
+const G8ART = {
+  glider: svgBox(`<path d="M40 110 L280 90 L290 98 L60 122 Z" fill="#CFEFE9" stroke="#1D8073" stroke-width="3"/><path d="M150 60 L175 100 L165 104 L140 64 Z" fill="#9ADBD0" stroke="#1D8073" stroke-width="3"/><path d="M150 108 L190 150 L178 152 L140 112 Z" fill="#9ADBD0" stroke="#1D8073" stroke-width="3"/><rect x="120" y="96" width="34" height="16" rx="4" fill="#3B3486"/><circle cx="148" cy="104" r="3" fill="#FF6B6B"/><text x="160" y="185" text-anchor="middle" font-size="15" font-weight="800" fill="#3B3486">flight logger on board</text>`, 'A glider carrying a small logger board'),
+  div: svgBox(`<line x1="80" y1="30" x2="80" y2="170" stroke="#3B3486" stroke-width="3"/><rect x="66" y="50" width="28" height="40" rx="5" fill="#FFD66B" stroke="#3B3486" stroke-width="3"/><rect x="66" y="110" width="28" height="40" rx="5" fill="#9ADBD0" stroke="#3B3486" stroke-width="3"/><line x1="80" y1="100" x2="190" y2="100" stroke="#3B3486" stroke-width="3"/><circle cx="190" cy="100" r="6" fill="#FF6B6B"/><text x="104" y="76" font-size="15" font-weight="800" fill="#3B3486">R1</text><text x="104" y="136" font-size="15" font-weight="800" fill="#3B3486">R2</text><text x="202" y="105" font-size="15" font-weight="800" fill="#3B3486">V_out</text><text x="92" y="26" font-size="14" fill="#3B3486">V_in</text><text x="92" y="186" font-size="14" fill="#3B3486">GND</text>`, 'A voltage divider: R1 on top, R2 below, V_out in the middle'),
+  led: svgBox(`<rect x="40" y="80" width="60" height="26" rx="6" fill="#FFD66B" stroke="#3B3486" stroke-width="3"/><line x1="100" y1="93" x2="150" y2="93" stroke="#3B3486" stroke-width="3"/><path d="M150 73 L150 113 L185 93 Z" fill="#FF6B6B" stroke="#3B3486" stroke-width="3"/><line x1="187" y1="73" x2="187" y2="113" stroke="#3B3486" stroke-width="3"/><line x1="187" y1="93" x2="270" y2="93" stroke="#3B3486" stroke-width="3"/><text x="70" y="140" text-anchor="middle" font-size="14" font-weight="800" fill="#3B3486">V_s − V_led</text><text x="168" y="140" text-anchor="middle" font-size="14" font-weight="800" fill="#3B3486">V_led</text><text x="160" y="175" text-anchor="middle" font-size="16" font-weight="800" fill="#1D8073">R = (V_s − V_led) ÷ I</text>`, 'A resistor in series with an LED'),
+  meter: svgBox(`<rect x="110" y="20" width="100" height="160" rx="14" fill="#FFD66B" stroke="#3B3486" stroke-width="3"/><rect x="124" y="34" width="72" height="34" rx="5" fill="#E9F7EE" stroke="#3B3486" stroke-width="2"/><text x="160" y="58" text-anchor="middle" font-size="18" font-weight="800" fill="#3B3486">4.12</text><circle cx="160" cy="105" r="20" fill="#fff" stroke="#3B3486" stroke-width="3"/><line x1="160" y1="105" x2="172" y2="92" stroke="#3B3486" stroke-width="3"/><circle cx="130" cy="160" r="7" fill="#222"/><circle cx="160" cy="160" r="7" fill="#E53935"/><circle cx="190" cy="160" r="7" fill="#999"/><text x="130" y="196" text-anchor="middle" font-size="11" fill="#3B3486">COM</text><text x="160" y="196" text-anchor="middle" font-size="11" fill="#3B3486">VΩ</text><text x="190" y="196" text-anchor="middle" font-size="11" fill="#3B3486">mA</text>`, 'A multimeter with COM, V-ohm and mA sockets', 210),
+  iron: svgBox(`<rect x="60" y="90" width="120" height="22" rx="10" fill="#3B3486"/><rect x="180" y="95" width="60" height="12" fill="#B0B0B0"/><path d="M240 95 L272 101 L240 107 Z" fill="#E53935"/><path d="M276 80 q8 -12 0 -24 M288 82 q8 -12 0 -24" stroke="#BBB" stroke-width="3" fill="none"/><text x="160" y="150" text-anchor="middle" font-size="16" font-weight="800" fill="#E53935">~350 °C: never touch the tip</text>`, 'A soldering iron with a hot tip'),
+};
+const cpt = (t, h, a) => cptk(t, `<p class="body">${h}</p>`, G8ART[a || 'glider']);
+const bank = (gen, args) => args.map(a => gen(...a));
+Object.assign(LESSONS, {
+  G1: { title: 'Refresher: voltage dividers', goal: 'V_out = V_in × R2 ÷ (R1 + R2). Your glider uses one to read the battery.', cards: ['g8div'], steps: [
+    cpt('Welcome to the Glider track!', 'Over the next units you’ll build a <b>flight logger</b>: a tiny computer that rides on a glider and records how it flies. First, a quick refresher: <b>voltage dividers</b>, which you’ll use to read the battery.'),
+    ...mixSteps([cpt('Two resistors share the voltage', 'Two resistors in series split the voltage. The bottom one gets <b>V_in × R2 ÷ (R1 + R2)</b>.', 'div'),
+      tfk('g1t1', 'With R1 = R2, V_out is half of V_in.', true, 'Yes: equal shares.', ['Same resistance = same share.', 'Two shares → half each.', 'So V_out = V_in ÷ 2.']),
+      tfk('g1t2', 'A bigger bottom resistor (R2) makes V_out bigger.', true, 'Yes: R2 gets the bigger share.', ['Bigger R = bigger share of the voltage.', 'V_out is measured across R2.', 'So V_out goes up.'])],
+      bank(Q.DIV, [['g1q1', 9, 10, 10], ['g1q2', 5, 10, 10], ['g1q3', 9, 20, 10], ['g1q4', 6, 10, 20], ['g1q5', 4.2, 10, 10], ['g1q6', 12, 30, 10], ['g1q7', 5, 1, 4], ['g1q8', 3.3, 10, 20], ['g1q9', 8.4, 10, 10], ['g1q10', 9, 10, 20]])),
+    mc('g1w', 'Your LiPo is up to <b>4.2 V</b>, but your board’s pin only reads up to <b>3.3 V</b>. A 10 kΩ / 10 kΩ divider gives…', ['2.1 V: safe to read', '4.2 V: too high', '8.4 V'], '4.2 ÷ 2 = 2.1 V.', ['Equal resistors halve it.', '2.1 V is under 3.3 V.', 'In code you multiply by 2 to get the real battery voltage.']),
+    ...rev('g1r', ['LEDR', 'DIV', 'MAH'], 4)] },
+  G2: { title: 'Refresher: the LED resistor', goal: 'R = (V_s − V_led) ÷ I. Your logger’s status LED needs one.', cards: ['g8ledr'], steps: [
+    ...mixSteps([cpt('The LED resistor rule', 'An LED takes its own voltage (about <b>2 V</b> red, <b>3 V</b> blue/white). The resistor takes the rest: <b>R = (V_s − V_led) ÷ I</b>. Use amps: 10 mA = 0.01 A.', 'led'),
+      tfk('g2t1', 'Without a resistor, an LED on 5 V will burn out.', true, 'Yes: nothing limits the current.', ['The LED only “uses” about 2 V.', 'The extra voltage pushes huge current.', 'The resistor soaks it up.']),
+      mc('g2m1', 'A 3.3 V board pin, a blue LED (3.0 V). The resistor gets…', ['0.3 V', '3.3 V', '6.3 V'], '3.3 − 3.0 = 0.3 V.', ['The LED takes 3.0 V.', 'The resistor takes what’s left.', '3.3 − 3.0 = 0.3 V (so the LED will be dim).']),
+      tfk('g2t2', 'If you can’t find the exact resistor, pick the next bigger one.', true, 'Yes: a bit less current is safe.', ['Bigger R → less current → a bit dimmer.', 'Smaller R → more current → risk.', 'Round up!'])],
+      bank(Q.LEDR, [['g2q1', 5, 2, 10], ['g2q2', 9, 2, 10], ['g2q3', 3.3, 2, 10], ['g2q4', 5, 3, 10], ['g2q5', 5, 2, 20], ['g2q6', 9, 3, 20], ['g2q7', 3.3, 1.8, 5], ['g2q8', 6, 2, 15], ['g2q9', 12, 2, 20], ['g2q10', 3.7, 2, 10]])),
+    ...rev('g2r', ['DIV', 'LEDR', 'MI'], 4)] },
+  G3: { title: 'Multimeter: measuring volts', goal: 'Volts: red in V Ω, black in COM, probes across the part.', cards: ['g8mm'], steps: [
+    cpt('Meet the multimeter', 'A <b>multimeter</b> is your circuit detective. It measures <b>volts</b>, <b>amps</b> and <b>ohms</b>. Black probe always in <b>COM</b>. For volts, red goes in <b>V Ω</b>.', 'meter'),
+    ...mixSteps(VOLT, [...bank(Q.DIV, [['g3q1', 9, 10, 10], ['g3q2', 5, 20, 10]]), Q.LEDR('g3q3', 5, 2, 15),
+      mc('g3h', 'You measure 3 V across the resistor and 2 V across the LED. The battery must be…', ['5 V', '1 V', '6 V'], '3 + 2 = 5 V.', ['In a loop, the parts share the battery voltage.', 'Add them up.', '3 + 2 = 5 V.']),
+      mc('g3i', 'Which reading tells you your LiPo is nearly empty?', ['3.3 V', '4.2 V', '3.9 V'], '3.3 V is nearly empty for a LiPo.', ['A full LiPo is 4.2 V.', 'About 3.7 V is “half”.', 'Below about 3.3 V, stop and charge it.'])]),
+    ...rev('g3r', ['DIV', 'LEDR'], 4)] },
+  G4: { title: 'Multimeter: measuring current', goal: 'Amps: break the loop, meter in series, red in mA.', cards: ['g8amp'], steps: [
+    cpt('Current goes THROUGH the meter', 'To measure current, the meter becomes part of the loop. Break the circuit, put the probes in the gap, and move red to <b>mA</b>.', 'meter'),
+    ...mixSteps(AMPS, [Q.MI ? Q.MI('g4q1', 9, 450) : Q.LEDR('g4q1', 9, 2, 10), mc('g4h', '5 V across a 250 Ω resistor. What should the meter read?', ['20 mA', '1.25 A', '50 mA'], 'I = V ÷ R = 5 ÷ 250 = 0.02 A = 20 mA.', ['Ohm’s law: I = V ÷ R.', '5 ÷ 250 = 0.02 A.', '0.02 A = 20 mA.']),
+      mc('g4i', 'Your logger draws <b>50 mA</b> from a <b>500 mAh</b> battery. It should run about…', ['10 hours', '25,000 hours', '1 hour'], '500 ÷ 50 = 10 h.', ['Battery life ≈ mAh ÷ mA.', '500 ÷ 50 = 10.', 'That’s why measuring current matters!']),
+      tfk('g4j', 'After measuring current, move the red probe back to V Ω.', true, 'Yes: otherwise your next volts check is a short!', ['In mA mode the meter is a wire.', 'Probing a battery that way shorts it.', 'Move it back every time.'])]),
+    ...rev('g4r', ['DIV', 'LEDR', 'MAH'], 4)] },
+  G5: { title: 'Resistance & continuity', goal: 'Power OFF. Ω checks values; the beep checks connections.', cards: ['g8cont'], steps: [
+    cpt('Is it connected?', 'With the power <b>off</b>, the meter can measure resistance (Ω). <b>Continuity mode</b> (the 🔊 symbol) beeps when two points are connected. It’s the best tool for finding broken wires and shorts.', 'meter'),
+    ...mixSteps(OHMS, [mc('g5h', 'Two 10 kΩ resistors in series. The meter across both reads…', ['20 kΩ', '5 kΩ', '10 kΩ'], 'Series resistances add.', ['Series = one after another.', 'Add them: 10 + 10.', '20 kΩ.']),
+      mc('g5i', 'Two 10 kΩ resistors in parallel. The meter reads…', ['5 kΩ', '20 kΩ', '10 kΩ'], 'Two equal in parallel = half.', ['Parallel gives more paths.', 'Two equal paths halve it.', '10 ÷ 2 = 5 kΩ.']),
+      Q.DIV('g5q1', 9, 10, 10), Q.LEDR('g5q2', 5, 2, 10)]),
+    ...rev('g5r', ['DIV', 'LEDR', 'MAH'], 4)] },
+  G6: { title: 'Soldering safely', goal: 'Hot tip, stand, glasses, fumes away, check for shorts.', cards: ['g8sold'], steps: [
+    cpt('Making joints that last', 'A glider shakes and lands hard, so breadboard wires fall out. <b>Soldering</b> melts a metal alloy to join parts for good. It’s hot work: always with an adult.', 'iron'),
+    ...mixSteps(SOLDER, [OHMS[6], OHMS[2], VOLT[3], AMPS[2],
+      mc('g6h', 'You need to join two pins that are far apart on a board. Best choice?', ['A short wire soldered to both', 'A big blob of solder bridging them', 'Tape'], 'Use a wire.', ['Blobs crack and short to neighbours.', 'A wire is strong and neat.', 'Then continuity-check it.'])]),
+    ...rev('g6r', ['DIV', 'LEDR', 'MAH'], 5)] },
+});
+Object.assign(CARDS, {
+  g8div: { term: 'Battery divider', art: 'u7cap', def: 'Two resistors that scale a battery’s voltage down so a 3.3 V pin can read it safely.', lesson: 'G1' },
+  g8ledr: { term: 'LED resistor rule', def: 'R = (V_s − V_led) ÷ I. Round up to the next resistor you have.', lesson: 'G2' },
+  g8mm: { term: 'Multimeter (volts)', def: 'Black in COM, red in V Ω, probes across the part. ⎓ = DC.', lesson: 'G3' },
+  g8amp: { term: 'Measuring current', def: 'Break the loop, meter in series, red in mA. Move it back afterwards!', lesson: 'G4' },
+  g8cont: { term: 'Continuity', def: 'Power off. Beep = connected, silence/OL = open. Beep across + and − = short.', lesson: 'G5' },
+  g8sold: { term: 'Soldering safety', def: '~350 °C tip, iron in stand, glasses, fumes away, adult nearby, wash hands.', lesson: 'G6' },
+});
+UNITS.push({ id: 'U8', n: 8, title: 'Glider Logger 1: Meter & Solder', color: '#2EAD9C', dark: '#1D8073', lessons: ['G1', 'G2', 'G3', 'G4', 'G5', 'G6'], test: 'T8' });
+TESTS.T8 = { id: 'T8', unit: 'U8', title: 'Unit 8 test: Meter & Solder', pass: 0.8, steps: [Q.DIV('t8a', 9, 20, 10), Q.LEDR('t8b', 5, 2, 15), VOLT[1], AMPS[0], AMPS[2], OHMS[0], OHMS[6], SOLDER[1], SOLDER[6], Q.LEDR('t8c', 3.3, 2, 10)].map((s, i) => Object.assign({}, s, { tag: ['G1', 'G2', 'G3', 'G4', 'G4', 'G5', 'G5', 'G6', 'G6', 'G2'][i] })) };
+}
 /* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
@@ -5657,7 +5758,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.21 (2026-10-11)';
+const APP_VERSION = '7.22 (2026-10-11)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -7072,6 +7173,7 @@ function migSplit(flag, map) {
 if (LESSONS.C6) migSplit('u5split', { C6: 'C3', C7: 'C4' });
 if (LESSONS.F6) migSplit('u6split', { F6: 'F2', F7: 'F3' });
 if (LESSONS.K6) migSplit('u7split', { K6: 'K1', K7: 'K2', K8: 'K3', K9: 'K4' });
+/* PREVIEW: Glider Unit 8 rewards */ Object.assign(TOK_UNIT, { U8: 18 }); Object.assign(TOK_TESTU, { U8: 22 });
 /* =========================================================
    AVATAR v2: cuter bodies, expressions, layered accessories, shop, idle animation
    Bodies (v3): Cappy, Chiplet, Glowbie, Flippy, Lumi, Beep, Knobby, Boing, Volty, Stripes. Old bodies were refunded once (S.avatar.migBodies2, see ensureShop).
