@@ -5657,7 +5657,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.20 (2026-10-11)';
+const APP_VERSION = '7.21 (2026-10-11)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
@@ -8464,6 +8464,23 @@ cloudSignOut = async function () {
   migrate(); ensurePrefs(); ensureShop(); regenHearts(); saveLocal();
   renderTop(); showTab('profile'); toast('Signed out. Your progress is safe in your account.', ICON.check());
 };
+// guests with real progress: native "Leave site?" on close, and a Sprig sign-in nudge after lessons (first time, then max once a day)
+const isGuest = () => !CLOUD.user && !syncInfo().uid;
+addEventListener('beforeunload', e => { if (isGuest() && !syncInfo().redirect && Object.keys(S.done || {}).length) { e.preventDefault(); e.returnValue = ''; } });
+const NUDGE = { pending: 0 };
+const _completeN = complete; complete = function () { if (isGuest()) NUDGE.pending = 1; return _completeN.apply(this, arguments); };
+const _showTabN = showTab; showTab = function (t) { const r = _showTabN.apply(this, arguments); if (t === 'learn' && NUDGE.pending) { NUDGE.pending = 0; setTimeout(saveNudge, 600); } return r; };
+function saveNudge() {
+  if (!isGuest() || !Object.keys(S.done || {}).length || S.prefs.nudgeAt === today() || $('#saveNudge') || $('.lesson') || $('.onb')) return;
+  S.prefs.nudgeAt = today(); saveLocal();
+  const N = el(`<div class="snudge" id="saveNudge" role="dialog" aria-label="Save your progress"><div class="snm">${mascot('happy')}</div><div class="snb"><b>Save your progress?</b><p>Sign in with Google so your lessons are safe on any device.</p>
+    <div class="snr"><button class="gbtn" id="snIn">${GLOGO}<span>Sign in</span></button><button class="linkbtn" id="snNo">Not now</button></div><p class="snerr" hidden></p></div></div>`);
+  document.body.appendChild(N);
+  $('#snNo', N).onclick = () => { SFX.tap(); N.remove(); };
+  $('#snIn', N).onclick = async () => { SFX.tap(); const b = $('#snIn', N); b.disabled = true; await cloudSignIn(); if (CLOUD.user) { N.remove(); toast('Signed in. Your progress is backed up.', ICON.check()); } else { b.disabled = false; if (CLOUD.err) { const e = $('.snerr', N); e.hidden = false; e.textContent = CLOUD.err; } } };
+}
+document.head.insertAdjacentHTML('beforeend', `<style>.snudge{position:fixed;left:12px;right:12px;bottom:84px;max-width:440px;margin:0 auto;z-index:60;display:flex;gap:10px;align-items:center;background:#fff;border:2px solid #E4E1F5;border-radius:18px;padding:12px;box-shadow:0 8px 24px rgba(40,30,90,.18)}
+.snm{width:64px;flex:none}.snb b{color:var(--ink)}.snb p{margin:2px 0 8px;font-size:14px}.snr{display:flex;gap:12px;align-items:center}.snr .gbtn{width:auto;padding:8px 14px}.snudge .linkbtn{background:none;border:0;font-weight:800;color:#6B6899;text-decoration:underline;cursor:pointer}.snerr{color:var(--corald)}</style>`);
 /* =========================================================
    INIT
    ========================================================= */
