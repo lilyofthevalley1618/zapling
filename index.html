@@ -4963,6 +4963,67 @@ glL('I6', 'The complementary filter', 'Mix: 98% gyro (smooth) + 2% accel (no dri
 glUnit('U10', 10, 'Glider Logger 3: Sensing Motion', '#9B6BE0', '#7246B8', ['I1', 'I2', 'I3', 'I4', 'I5', 'I6'],
   [[LESSONS.I1.steps[1], 'I1'], [Q.GMS('t10a', 29.4), 'I2'], [LESSONS.I2.steps[1], 'I2'], [Q.GYRO('t10b', 45, 2), 'I3'], [LESSONS.I4.steps[1], 'I4'], [LESSONS.I4.steps[4], 'I4'], [Q.DRIFT('t10c', 0.5, 60), 'I5'], [LESSONS.I5.steps[1], 'I5'], [Q.CF('t10d', 10, 20, 0.1, 12), 'I6'], [Q.GYRO('t10e', 90, 0.5), 'I3']]);
 }
+/* Glider Unit 11 "Logging & Power": P1 CSV · P2 microSD · P3 sample rate · P4 timestamps · P5 LiPo & charging safety · P6 battery life & weight budget. */
+Object.assign(U2Q, {
+  ROWS(id, hz, s) { const a = hz * s; return u3x([id, `You log at <b>${hz} Hz</b> (${hz} rows per second) for <b>${s} s</b>. How many rows?`], a, [r2(hz / s), hz + s], 'rows', `${hz} × ${s} = ${a} rows.`, ['Hz = times per second.', `Each second adds ${hz} rows.`, `${hz} × ${s} = ${a}.`]); },
+  FSIZE(id, hz, s, b) { const a = r2(hz * s * b / 1000); return u3x([id, `${hz} rows/s for ${s} s, each row about <b>${b} bytes</b>. File size in kB? (1 kB = 1000 bytes)`], a, [r2(hz * s * b), r2(hz * b / 1000)], 'kB',
+    `${hz} × ${s} × ${b} = ${hz * s * b} bytes = ${a} kB.`, [`Rows: ${hz} × ${s} = ${hz * s}.`, `Bytes: ${hz * s} × ${b} = ${hz * s * b}.`, `÷ 1000 = ${a} kB.`]); },
+  DT(id, hz) { const a = r2(1000 / hz); return u3x([id, `Sampling at <b>${hz} Hz</b>. How many milliseconds between samples?`], a, [hz, r2(hz / 1000)], 'ms', `1000 ÷ ${hz} = ${a} ms.`, ['1 second = 1000 ms.', `Split it into ${hz} equal gaps.`, `1000 ÷ ${hz} = ${a} ms.`]); },
+  DUR(id, t1, t2) { const a = r2((t2 - t1) / 1000); return u3x([id, `The first row’s millis() is <b>${t1}</b>, the last is <b>${t2}</b>. How long was the flight, in seconds?`], a, [t2 - t1, r2(t2 / 1000)], 's',
+    `(${t2} − ${t1}) ÷ 1000 = ${a} s.`, ['millis() counts milliseconds since power-on.', `Subtract: ${t2} − ${t1} = ${t2 - t1} ms.`, `÷ 1000 = ${a} s.`]); },
+  WT(id, max, ...g) { const used = g.reduce((x, y) => x + y, 0), a = max - used; return u3x([id, `Your glider can carry <b>${max} g</b>. Board ${g[0]} g, IMU ${g[1]} g, SD module ${g[2]} g, LiPo ${g[3]} g. How many grams are left?`], a, [used, max + used], 'g',
+    `${max} − (${g.join(' + ')}) = ${max} − ${used} = ${a} g.`, ['Add up everything you carry.', `${g.join(' + ')} = ${used} g.`, `${max} − ${used} = ${a} g left.`]); },
+});
+Object.assign(U2BANK, { ROWS: [[10, 60], [50, 20], [100, 30], [25, 40]], FSIZE: [[10, 60, 40], [50, 20, 50], [100, 30, 30]], DT: [[10], [50], [100], [20], [25]], DUR: [[2000, 47000], [1500, 16500], [500, 60500]], WT: [[30, 3, 2, 4, 9], [25, 7, 2, 4, 6], [40, 3, 3, 5, 13]] });
+{ const Q = U2Q, A = glArt;
+glL('P1', 'CSV: data in rows', 'CSV = one row per sample, values split by commas.', ['p1card', 'CSV', 'Comma-Separated Values: a header row, then one line per sample, like t,pitch,roll.'],
+  ['Saving data as a table', 'A <b>CSV</b> file is a simple table. The first line is the <b>header</b> (column names), then <b>one row per sample</b>, values split by <b>commas</b>: <br><code>t_ms,pitch,roll,az<br>1200,-3.1,0.4,1.02</code>', A('t,pitch,roll', 'a CSV row')],
+  [glMc('p1a', 'In “1200,-3.1,0.4”, how many values are there?', ['3', '1', '4'], 'Commas split 3 values.', ['Count the commas: 2.', 'Values = commas + 1.', 'So 3 values.']),
+    glMc('p1b', 'The first line “t_ms,pitch,roll” is called…', ['The header', 'The footer', 'A bug'], 'The header names the columns.', ['It tells you what each column means.', 'Spreadsheets use it as titles.', 'Write it once, at the start.']),
+    tfk('p1c', 'Every row should have the same number of values, in the same order.', true, 'Yes: or the columns get mixed up.', ['Column 1 is always time.', 'Column 2 always pitch…', 'Keep the order fixed.']),
+    glMc('p1d', 'Which line prints one CSV row?', ['Serial.print(t); Serial.print(","); Serial.println(p);', 'Serial.println(t p);', 'Serial.begin(t);'], 'Values with commas between, newline at the end.', ['print each value…', '…a comma between…', '…println at the end of the row.']),
+    tfk('p1e', 'You can open a CSV file in a spreadsheet like Google Sheets.', true, 'Yes: then make graphs!', ['CSV is plain text.', 'Spreadsheets import it.', 'That’s how you’ll analyse flights.']),
+    glMc('p1f', 'Row “1300,,0.5” has an empty value. Likely?', ['A sensor read failed', 'Perfect data', 'The header'], 'Something didn’t get printed.', ['Two commas together = missing value.', 'Probably the IMU didn’t answer.', 'Spot it and investigate.'])],
+  [Q.ROWS('p1q1', 10, 60), Q.ROWS('p1q2', 50, 20), Q.GYRO('p1q3', 30, 2), Q.ROWS('p1q4', 100, 30), Q.GMS('p1q5', 19.6), Q.ROWS('p1q6', 25, 40), Q.CF('p1q7', 10, 20, 0.1, 12)], ['GYRO', 'DRIFT', 'ADC']);
+glL('P2', 'Logging to microSD', 'Open the file, write a row, flush or close so it saves.', ['p2card', 'microSD logging', 'SD.begin(), open the file in append mode, print rows, flush() often so data survives a crash.'],
+  ['A memory card that rides along', 'In flight there’s no laptop, so the logger writes to a <b>microSD card</b>. Open a file, <b>print</b> a CSV row, and <b>flush()</b> or <b>close()</b> so it’s really saved. If the glider crashes before that, the data is lost!', A('microSD', 'flight.csv')],
+  [glMc('p2a', 'Why call file.flush() regularly?', ['So data is really written before a crash or power loss', 'To make it faster', 'To delete old data'], 'Flush saves what’s waiting.', ['Writes wait in a memory buffer.', 'flush() pushes them onto the card.', 'A crash loses only unflushed rows.']),
+    glMc('p2b', 'SD.begin() returns false. Check first…', ['The card is inserted and wiring/CS pin is right', 'The glider’s wings', 'The baud rate'], 'Card and wiring.', ['No card or bad wiring → begin fails.', 'Check the CS pin number in code.', 'Format the card as FAT32.']),
+    tfk('p2c', 'Pulling the battery while writing can corrupt the file.', true, 'Yes: stop logging first.', ['The card may be mid-write.', 'Half-written data = broken file.', 'Add a stop button or flush often.']),
+    glMc('p2d', 'Each flight should go into…', ['A new file name, like LOG001.CSV, LOG002.CSV', 'The same file, overwriting it', 'The serial monitor'], 'New file each flight.', ['Overwriting loses old flights.', 'Number the files.', 'Check which numbers exist at start-up.']),
+    tfk('p2e', 'The SD module talks to the board over SPI, not I2C.', true, 'Yes: SPI uses more wires (MOSI, MISO, SCK, CS).', ['I2C: 2 wires.', 'SPI: 4 wires, faster.', 'SD cards like SPI.'])],
+  [Q.FSIZE('p2q1', 10, 60, 40), Q.ROWS('p2q2', 10, 60), Q.FSIZE('p2q3', 50, 20, 50), Q.ROWS('p2q4', 100, 30), Q.FSIZE('p2q5', 100, 30, 30), Q.FSIZE('p2q6', 20, 100, 40), Q.ROWS('p2q7', 20, 90)], ['ROWS', 'GYRO', 'LVL']);
+glL('P3', 'Sample rate', 'Hz = samples per second. Faster catches quick moves but makes bigger files.', ['p3card', 'Sample rate (Hz)', 'How many samples per second. dt = 1000 ÷ Hz milliseconds. Faster = more detail, bigger files.'],
+  ['How often to measure?', 'The <b>sample rate</b> is how many readings per second, in <b>Hz</b>. At <b>50 Hz</b> you log every <b>20 ms</b> (1000 ÷ 50). Faster catches quick bumps, but makes bigger files and uses more battery.', A('50 Hz', 'every 20 ms')],
+  [glMc('p3a', 'A landing bump lasts about 50 ms. Which rate could miss it?', ['5 Hz (every 200 ms)', '100 Hz (every 10 ms)', '50 Hz'], '5 Hz samples too slowly.', ['5 Hz = one sample per 200 ms.', 'A 50 ms bump fits between samples.', 'Faster sampling catches it.']),
+    tfk('p3b', 'Doubling the sample rate doubles the file size.', true, 'Yes: twice the rows.', ['Rows = Hz × seconds.', 'Double Hz → double rows.', 'File size follows.']),
+    glMc('p3c', 'For smooth glide angles, about how fast is a good starting rate?', ['50 Hz', '1 Hz', '100,000 Hz'], '50 Hz is a good balance.', ['1 Hz is too slow to see moves.', '100 kHz is far too much data.', '25–100 Hz works well.']),
+    tfk('p3d', 'If each loop takes longer than dt, you can’t reach that sample rate.', true, 'Yes: the loop must fit in the gap.', ['At 100 Hz you have 10 ms per loop.', 'Slow SD writes can take longer.', 'Then the real rate drops.'])],
+  [Q.DT('p3q1', 10), Q.DT('p3q2', 50), Q.ROWS('p3q3', 50, 20), Q.DT('p3q4', 100), Q.DT('p3q5', 20), Q.FSIZE('p3q6', 50, 20, 50), Q.DT('p3q7', 25), Q.ROWS('p3q8', 25, 40), Q.DT('p3q9', 200), Q.DT('p3q10', 4)], ['ROWS', 'FSIZE', 'GYRO']);
+glL('P4', 'Timestamps', 'Save millis() in every row so you know when each sample happened.', ['p4card', 'Timestamp', 'A time value in each row (millis() = ms since power-on). Subtract to find durations.'],
+  ['When did it happen?', 'Put a <b>timestamp</b> first in every row. <b>millis()</b> gives milliseconds since the board turned on. Later you can subtract times to find how long the flight took, or the real gap between samples.', A('millis()', 't_ms in every row')],
+  [glMc('p4a', 'millis() = 5000 means…', ['5 seconds since power-on', '5000 seconds', 'The date'], '5000 ms = 5 s.', ['millis counts milliseconds.', '1000 ms = 1 s.', 'So 5 s since start.']),
+    tfk('p4b', 'Timestamps let you find the real sample rate even if loops vary.', true, 'Yes: check the gaps.', ['Subtract neighbouring times.', 'Gaps of 20 ms → 50 Hz.', 'Uneven gaps show slow loops.']),
+    glMc('p4c', 'Two rows have t = 1200 and 1220. The gap is…', ['20 ms', '1220 ms', '2 s'], '1220 − 1200 = 20 ms.', ['Subtract the times.', '20 ms.', 'That’s 50 Hz.']),
+    tfk('p4d', 'millis() resets to 0 when the board restarts.', true, 'Yes: it counts from power-on.', ['Every reboot starts again at 0.', 'So it’s not a clock time.', 'It’s great for durations.'])],
+  [Q.DUR('p4q1', 2000, 47000), Q.DT('p4q2', 50), Q.DUR('p4q3', 1500, 16500), Q.ROWS('p4q4', 10, 60), Q.DUR('p4q5', 500, 60500), Q.DT('p4q6', 100), Q.DUR('p4q7', 3000, 9000), Q.DUR('p4q8', 10000, 25000), Q.FSIZE('p4q9', 10, 60, 40)], ['ROWS', 'DT', 'GYRO']);
+glL('P5', 'LiPo batteries & safety', 'LiPo: 3.7 V nominal, 4.2 V full, ~3.3 V empty. Charge with a proper charger, never puncture.', ['p5card', 'LiPo safety', '3.7 V cell (4.2 full, ~3.3 empty). Use a LiPo charger, never puncture or crush, stop if puffy or hot.'],
+  ['Light, powerful, handle with care', 'A <b>LiPo</b> cell is light and powerful: <b>3.7 V</b> normally, <b>4.2 V</b> full, about <b>3.3 V</b> empty. <b>mAh</b> is how much charge it holds. Charge only with a <b>LiPo charger</b>, with an adult. Never crush, puncture or short it. A <b>puffy</b> LiPo is dangerous: stop using it.', A('3.7 V', 'LiPo cell', '#E5884A')],
+  [glMc('p5a', 'Your LiPo looks puffy and swollen. You should…', ['Stop using it and ask an adult to dispose of it safely', 'Squeeze it flat', 'Charge it faster'], 'Puffy = damaged.', ['Gas inside means it’s failing.', 'It can catch fire.', 'Stop and dispose properly.']),
+    tfk('p5b', 'You can charge a LiPo with any USB phone charger wired straight to it.', false, 'No: use a proper LiPo charging circuit.', ['LiPos need a special charge pattern.', 'Overcharging above 4.2 V is dangerous.', 'Many XIAOs have one built in.']),
+    glMc('p5c', 'A LiPo reads 3.2 V. That means…', ['It’s empty: stop and charge', 'It’s full', 'It’s overcharged'], 'Below ~3.3 V is empty.', ['4.2 V full.', '3.7 V about half.', 'Below 3.3 V: stop to avoid damage.']),
+    glMc('p5d', 'A 500 mAh LiPo can give…', ['500 mA for 1 hour (or 50 mA for 10 hours)', '500 V', '500 hours always'], 'mAh = mA × hours.', ['It’s a charge tank.', '500 mA × 1 h = 500 mAh.', 'Less current → longer.']),
+    tfk('p5e', 'Shorting a LiPo’s wires can make it very hot or start a fire.', true, 'Yes: huge current flows.', ['LiPos can push big currents.', 'A short has almost no resistance.', 'Check for shorts before connecting!'])],
+  [Q.MAH('p5q1', 500, 50), Q.MAH('p5q2', 2000, 25), Q.BATRAW('p5q3', 620), Q.MAH('p5q4', 300, 60), Q.LVL('p5q5', 4.2, 3.3), Q.MAH('p5q6', 150, 30), Q.BATRAW('p5q7', 530)], ['DUR', 'DT', 'BATRAW']);
+glL('P6', 'Battery life & weight budget', 'Life ≈ mAh ÷ mA. Every gram counts: add up the weights.', ['p6card', 'Weight budget', 'The most your glider can carry. Add every part’s grams; what’s left is your spare.'],
+  ['Long enough, light enough', 'Battery life ≈ <b>mAh ÷ mA</b>. A bigger battery lasts longer but is <b>heavier</b>. Gliders can only carry so much, so you make a <b>weight budget</b>: add up every part and stay under the limit.', A('≤ 30 g', 'weight budget')],
+  [glMc('p6a', 'A 300 mAh LiPo weighs 7 g; a 150 mAh weighs 4 g. The logger draws 50 mA. Which is enough for a 2-hour test day?', ['300 mAh (6 h); 150 mAh (3 h) also works and is lighter', 'Neither', 'Only a 2000 mAh'], 'Both last over 2 h: pick lighter.', ['300 ÷ 50 = 6 h.', '150 ÷ 50 = 3 h.', 'Both enough: save 3 g with the smaller.']),
+    tfk('p6b', 'Adding weight to a glider makes it fly faster and come down sooner.', true, 'Yes: more weight needs more speed for lift.', ['Heavier needs more lift.', 'It glides faster and sinks faster.', 'Keep it light!']),
+    glMc('p6c', 'To save weight, which swap helps most?', ['Nano (7 g) → XIAO (3 g)', 'Shorter header row', 'Lighter sticker'], '4 g saved.', ['Big parts matter most.', 'XIAO is tiny.', '4 g is a lot on a small glider.'])],
+  [Q.MAH('p6q1', 300, 50), Q.WT('p6q2', 30, 3, 2, 4, 9), Q.MAH('p6q3', 150, 30), Q.WT('p6q4', 25, 7, 2, 4, 6), Q.MAH('p6q5', 500, 40), Q.WT('p6q6', 40, 3, 3, 5, 13), Q.MAH('p6q7', 100, 25), Q.WT('p6q8', 20, 3, 1, 3, 4), Q.MAH('p6q9', 250, 50), Q.WT('p6q10', 35, 3, 2, 4, 9)], ['DUR', 'ROWS', 'BATRAW'], 5);
+glUnit('U11', 11, 'Glider Logger 4: Logging & Power', '#E5884A', '#B9632A', ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'],
+  [[LESSONS.P1.steps[1], 'P1'], [Q.ROWS('t11a', 50, 20), 'P1'], [LESSONS.P2.steps[1], 'P2'], [Q.FSIZE('t11b', 10, 60, 40), 'P2'], [Q.DT('t11c', 50), 'P3'], [Q.DUR('t11d', 2000, 47000), 'P4'], [LESSONS.P5.steps[1], 'P5'], [Q.MAH('t11e', 500, 50), 'P5'], [Q.WT('t11f', 30, 3, 2, 4, 9), 'P6'], [LESSONS.P5.steps[4], 'P5']]);
+}
 /* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
@@ -5897,7 +5958,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.24 (2026-10-11)';
+const APP_VERSION = '7.25 (2026-10-11)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
