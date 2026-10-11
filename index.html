@@ -5085,6 +5085,46 @@ glL('W6', 'One variable at a time', 'Change ONE thing, keep the rest the same, f
 glUnit('U12', 12, 'Glider Logger 5: Flight & Data', '#3FB0E0', '#1E86B5', ['W1', 'W2', 'W3', 'W4', 'W5', 'W6'],
   [[Q.LIFT('t12a', 10, 0.1, 0.5), 'W1'], [Q.LIFTX('t12b', 2), 'W1'], [LESSONS.W2.steps[1], 'W2'], [LESSONS.W3.steps[1], 'W3'], [Q.CG('t12c', 10, 3, 5), 'W3'], [Q.GLIDE('t12d', 2, 8), 'W4'], [Q.GR('t12e', 24, 3), 'W4'], [Q.AVG('t12f', 12, 14, 16), 'W5'], [LESSONS.W6.steps[1], 'W6'], [LESSONS.W5.steps[3], 'W5']]);
 }
+/* Glider Unit 13 "KiCad PCB Intro": KC1 schematic · KC2 footprints · KC3 layout & traces · KC4 checks & ordering. */
+Object.assign(U2Q, {
+  AREA(id, w, h) { const a = w * h; return u3x([id, `Your logger PCB is <b>${w} mm × ${h} mm</b>. What’s its area in mm²?`], a, [2 * (w + h), w + h], 'mm²', `${w} × ${h} = ${a} mm².`, ['Area of a rectangle = width × height.', `${w} × ${h}.`, `= ${a} mm².`]); },
+  MIL(id, mil) { const a = r2(mil * 0.0254); return u3x([id, `A trace is <b>${mil} mil</b> wide. In mm? (1 mil = 0.0254 mm)`], a, [r2(mil / 0.0254), r2(mil / 100)], 'mm', `${mil} × 0.0254 = ${a} mm.`, ['A mil is a thousandth of an inch.', '1 mil = 0.0254 mm.', `${mil} × 0.0254 = ${a} mm.`]); },
+});
+Object.assign(U2BANK, { AREA: [[30, 20], [25, 18], [40, 15]], MIL: [[10], [20], [50]] });
+{ const Q = U2Q, A = glArt;
+glL('KC1', 'Schematic: the circuit map', 'A schematic shows what connects to what, using symbols.', ['kc1card', 'Schematic', 'A drawing of the circuit with symbols and wires (nets). It shows connections, not where parts sit.'],
+  ['Draw it before you build it', '<b>KiCad</b> is free software for designing circuit boards. Step 1 is the <b>schematic</b>: you place <b>symbols</b> (XIAO, IMU, SD, LED, resistor) and draw <b>wires</b>. Each connected group is a <b>net</b>, like “SDA” or “GND”.', A('KiCad', 'schematic → PCB', '#3B3486')],
+  [glMc('kc1a', 'A schematic shows…', ['Which pins connect to which', 'Exactly where parts sit on the board', 'The board’s colour'], 'Connections, not positions.', ['It’s a map of connections.', 'Layout comes later.', 'Symbols are tidy, not to scale.']),
+    glMc('kc1b', 'Every wire touching the IMU’s SDA pin and the XIAO’s SDA pin is one…', ['Net', 'Footprint', 'Layer'], 'Connected group = net.', ['A net = everything electrically joined.', 'Name it “SDA”.', 'KiCad tracks nets for you.']),
+    tfk('kc1c', 'Giving two wires the same net label connects them, even without a drawn line.', true, 'Yes: labels keep schematics tidy.', ['Labels like GND or 3V3 join nets.', 'Fewer criss-crossing lines.', 'Easier to read.']),
+    glMc('kc1d', 'Your LED needs a resistor in the schematic. Its value comes from…', ['R = (V_s − V_led) ÷ I', 'Guessing', 'The board size'], 'Same rule as always.', ['Schematics are real circuits.', 'Use the LED resistor rule.', 'Write the value on the symbol.']),
+    tfk('kc1e', 'ERC (electrical rules check) can find unconnected pins in your schematic.', true, 'Yes: run it before layout.', ['ERC looks for mistakes.', 'Like an output tied to an output, or a missing power.', 'Fix the errors it lists.'])],
+  [Q.LEDR('kc1q1', 3.3, 2, 10), Q.DIV('kc1q2', 4.2, 10, 10), Q.LEDR('kc1q3', 5, 2, 10), Q.BATRAW('kc1q4', 620), Q.LEDR('kc1q5', 3.3, 1.8, 5), Q.DIV('kc1q6', 5, 1, 2), Q.LVL('kc1q7', 5, 3.3)], ['AVG', 'MAH', 'GLIDE']);
+glL('KC2', 'Footprints', 'A footprint is the copper pads a real part solders onto.', ['kc2card', 'Footprint', 'The pattern of pads (and holes) a part needs on the PCB. It must match the real part exactly.'],
+  ['Where the real part lands', 'Each symbol needs a <b>footprint</b>: the exact <b>copper pads</b> (and holes) the real part solders onto. A through-hole resistor needs two holes; a surface-mount (SMD) part needs flat pads. The footprint must <b>match your real part</b>.', A('▣ ▣', 'pads')],
+  [glMc('kc2a', 'You picked a footprint with pins 2.54 mm apart, but your module’s pins are 2.0 mm apart. Result?', ['It won’t fit', 'It’ll fit fine', 'It’ll fit after soldering'], 'Footprints must match exactly.', ['Pin spacing (pitch) must match.', '2.54 ≠ 2.0.', 'Check the part’s datasheet.']),
+    glMc('kc2b', 'Through-hole parts…', ['Have legs that go through holes in the board', 'Sit flat on pads', 'Need no soldering'], 'Legs through holes.', ['Easy to hand-solder.', 'Strong.', 'A bit bigger and heavier.']),
+    tfk('kc2c', 'SMD (surface-mount) parts are usually smaller and lighter than through-hole.', true, 'Yes: great for gliders, trickier to solder.', ['Tiny pads, no legs.', 'Saves weight.', 'Needs a steady hand (or a factory).']),
+    glMc('kc2d', '2.54 mm is also called…', ['0.1 inch (100 mil)', '1 cm', '1 mil'], '2.54 mm = 0.1 in.', ['Standard header spacing.', '100 mil = 0.1 inch.', 'Breadboards use it too!'])],
+  [Q.MIL('kc2q1', 100), Q.AREA('kc2q2', 30, 20), Q.MIL('kc2q3', 50), Q.AREA('kc2q4', 25, 18), Q.MIL('kc2q5', 10), Q.AVG('kc2q6', 12, 14, 16), Q.MIL('kc2q7', 20), Q.LEDR('kc2q8', 3.3, 2, 10), Q.AREA('kc2q9', 40, 15)], ['AREA', 'MIL', 'WT']);
+glL('KC3', 'Layout & traces', 'Place parts, then draw copper traces. Keep it small and power traces wider.', ['kc3card', 'Trace', 'A copper path on the PCB that replaces a wire. Wider traces carry more current.'],
+  ['Copper roads', 'In the <b>PCB editor</b>, you place footprints on the board outline, then draw <b>traces</b>: copper roads that replace wires. Keep the board <b>small</b> (lighter!), short traces for signals, and <b>wider</b> traces for power.', A('━━', 'copper traces')],
+  [glMc('kc3a', 'Why make power traces wider than signal traces?', ['They carry more current', 'They look nicer', 'Signals need more room'], 'More current needs more copper.', ['Thin traces heat up with big current.', 'Power carries the most.', 'Signals carry tiny currents.']),
+    tfk('kc3b', 'Two traces from different nets must never touch.', true, 'Yes: that would be a short.', ['Different nets = different signals.', 'Touching joins them.', 'KiCad’s DRC catches this.']),
+    glMc('kc3c', 'For a glider logger board, a good goal is…', ['As small and light as possible', 'As big as possible', 'Square only'], 'Small = light.', ['Every mm² adds weight.', 'Pack parts close.', 'Leave room for the LiPo connector.']),
+    glMc('kc3d', 'The thin lines KiCad shows between unconnected pads (the “ratsnest”) mean…', ['Connections still to route as traces', 'Errors to delete', 'Cut lines'], 'Still to connect.', ['Ratsnest lines come from the schematic.', 'Route each one with a trace.', 'When they’re all gone, you’re done.']),
+    tfk('kc3e', 'A 2-layer board can have traces on the top and the bottom.', true, 'Yes: vias jump between layers.', ['Top + bottom copper.', 'Vias are tiny plated holes.', 'Helps traces cross.'])],
+  [Q.AREA('kc3q1', 30, 20), Q.MIL('kc3q2', 20), Q.AREA('kc3q3', 25, 18), Q.MIL('kc3q4', 10), Q.WT('kc3q5', 30, 3, 2, 4, 9), Q.AREA('kc3q6', 40, 15), Q.MIL('kc3q7', 50)], ['AREA', 'MIL', 'LEDR']);
+glL('KC4', 'Checks & ordering', 'Run DRC, check the 3D view, export Gerbers, order.', ['kc4card', 'DRC & Gerbers', 'DRC checks spacing and shorts. Gerber files are what a PCB factory uses to make your board.'],
+  ['From screen to real board', 'Before ordering, run the <b>DRC</b> (design rules check) for shorts and too-close traces. Peek at the <b>3D viewer</b>. Then export <b>Gerber files</b> and upload them to a PCB maker. A week later: your own board!', A('DRC ✓', 'then Gerbers → factory')],
+  [glMc('kc4a', 'What does DRC check?', ['Traces too close, shorts, unrouted nets', 'Your spelling', 'Battery life'], 'Design rules.', ['Spacing between copper.', 'Unrouted connections.', 'Fix them all before ordering.']),
+    glMc('kc4b', 'The factory needs which files?', ['Gerbers (and a drill file)', 'Your .ino code', 'A CSV of flights'], 'Gerbers.', ['Gerbers describe each layer.', 'Drill files describe holes.', 'Zip them and upload.']),
+    tfk('kc4c', 'It’s smart to print your board 1:1 on paper and check your parts fit.', true, 'Yes: a cheap last check.', ['Lay real parts on the printout.', 'Footprint mistakes show up.', 'Cheaper than a wrong order.']),
+    glMc('kc4d', 'After the boards arrive, the first test is…', ['Continuity check between + and − (no short), then power up', 'Plug in the LiPo straight away', 'Fly it'], 'Check for shorts first.', ['Same habit as soldering.', 'Beep test + and −.', 'Then power and test step by step.'])],
+  [Q.AREA('kc4q1', 30, 20), Q.MIL('kc4q2', 10), Q.AVG('kc4q3', 12, 14, 16), Q.LEDR('kc4q4', 3.3, 2, 10), Q.AREA('kc4q5', 25, 18), Q.MAH('kc4q6', 300, 50)], ['AREA', 'MIL', 'GR'], 5);
+glUnit('U13', 13, 'Glider Logger 6: KiCad PCB Intro', '#6C5CE7', '#4B3CC4', ['KC1', 'KC2', 'KC3', 'KC4'],
+  [[LESSONS.KC1.steps[1], 'KC1'], [LESSONS.KC1.steps[3], 'KC1'], [LESSONS.KC2.steps[1], 'KC2'], [Q.MIL('t13a', 100), 'KC2'], [LESSONS.KC3.steps[1], 'KC3'], [Q.AREA('t13b', 30, 20), 'KC3'], [LESSONS.KC4.steps[1], 'KC4'], [LESSONS.KC4.steps[3], 'KC4']]);
+}
 /* =========================================================
    STATE, DATES, XP, STREAK
    ========================================================= */
@@ -6019,7 +6059,7 @@ function renderReviewCard() {
 /* =========================================================
    PROFILE + SETTINGS
    ========================================================= */
-const APP_VERSION = '7.26 (2026-10-11)';
+const APP_VERSION = '7.27 (2026-10-11)';
 function renderProfile() {
   const v = $('#v-profile'); v.innerHTML = '';
   const lv = levelOf(S.xp), a = lvlXp(lv), b = lvlXp(lv + 1);
